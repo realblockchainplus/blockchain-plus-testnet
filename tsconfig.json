@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2015",
+    "sourceMap": true
+  },
+  "include": [
+    "src/app.ts",
+    "src/block.ts",
+    "src/transaction.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
