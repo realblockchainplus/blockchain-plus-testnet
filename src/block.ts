@@ -51,6 +51,15 @@ const generateNextBlock = (blockData: string[]) => {
   return new Block(nextIndex, nextHash, prevHash, nextTimestamp, blockData);
 };
 
+const addBlockToChain = (block: Block): boolean => {
+  const blockchain = getBlockchain();
+  if (isBlockValid(block, blockchain[blockchain.length - 1])) {
+    blockchain.push(block);
+    return true;
+  }
+  return false;
+} 
+
 const getLastBlock = (): Block => {
   return blockchain[blockchain.length - 1];
 };
@@ -58,7 +67,6 @@ const getLastBlock = (): Block => {
 const getCurrentTimestamp = (): number => {
   return Math.round(new Date().getTime() / 1000);
 };
-
 
 const isBlockValid = (newBlock: Block, prevBlock: Block) => {
   if (prevBlock.index + 1 !== newBlock.index) {
@@ -75,6 +83,31 @@ const isBlockValid = (newBlock: Block, prevBlock: Block) => {
   }
 };
 
+const isStructureValid = (block: Block): boolean => {
+  return typeof block.index === 'number'
+    && typeof block.hash === 'string'
+    && typeof block.prevHash === 'string'
+    && typeof block.timestamp === 'number'
+    && typeof block.data === 'object';
+};
+
+const isChainValid = (bc: Block[]): boolean => {
+  const isGenesisValid = (block: Block): boolean => {
+    return JSON.stringify(block) === JSON.stringify(genesisBlock)
+  };
+
+  const _genesisBlock = bc[0];
+  if (!isGenesisValid(_genesisBlock)) { return false; };
+  
+  for (let i = 1; i < bc.length; i += 1) {
+    const prevBlock = bc[i - 1];
+    const newBlock = bc[i];
+    if (!isBlockValid(newBlock, prevBlock)) { return false; }
+  }
+  
+  return true;
+}
+
 const genesisBlock: Block = new Block(
   0,
   '',
@@ -90,6 +123,6 @@ let blockchain: Block[] = [genesisBlock];
 console.log(genesisBlock);
 
 export {
-  Block, getBlockchain, calculateHash, calculateHashFromBlock, getLastBlock,
-  getCurrentTimestamp, isBlockValid
+  Block, addBlockToChain, getBlockchain, calculateHash, calculateHashFromBlock, getLastBlock,
+  generateNextBlock, isChainValid, isStructureValid, getCurrentTimestamp, isBlockValid
 }
