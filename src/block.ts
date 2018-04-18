@@ -1,4 +1,5 @@
 import * as CryptoJS from 'crypto-js';
+import { broadcastLatest } from './p2p';
 
 class Block {
 
@@ -52,7 +53,6 @@ const generateNextBlock = (blockData: string[]) => {
 };
 
 const addBlockToChain = (block: Block): boolean => {
-  const blockchain = getBlockchain();
   if (isBlockValid(block, blockchain[blockchain.length - 1])) {
     blockchain.push(block);
     return true;
@@ -68,8 +68,9 @@ const getCurrentTimestamp = (): number => {
   return Math.round(new Date().getTime() / 1000);
 };
 
-const isBlockValid = (newBlock: Block, prevBlock: Block) => {
-  if (prevBlock.index + 1 !== newBlock.index) {
+const isBlockValid = (newBlock: Block, prevBlock: Block): boolean => {
+  if (!isStructureValid(newBlock)) { return false; }
+  else if (prevBlock.index + 1 !== newBlock.index) {
     console.log(`[Index] ${newBlock.index} is an invalid index. Expecting: ${prevBlock.index + 1}`);
     return false;
   }
@@ -81,6 +82,7 @@ const isBlockValid = (newBlock: Block, prevBlock: Block) => {
     console.log(`[Next Hash] ${newBlock.hash} is invalid. Expecting: ${newBlock.hash}`);
     return false;
   }
+  return true;
 };
 
 const isStructureValid = (block: Block): boolean => {

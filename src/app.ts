@@ -33,7 +33,6 @@ const initHttpServer = (port: number) => {
   });
 
   app.post('/addPeer', (req, res) => {
-      console.log(req.body);
       connectToPeers(req.body.peer);
       res.send();
   });

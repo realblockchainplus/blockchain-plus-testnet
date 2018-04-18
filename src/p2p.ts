@@ -131,7 +131,7 @@ const broadcastLatest = (): void => {
 };
 
 const connectToPeers = (newPeer: string): void => {
-  console.log(`[New Peer]: `)
+  console.log(`[New Peer]: ${newPeer}`);
   const ws: WebSocket = new WebSocket(newPeer);
   ws.on('open', () => {
     initConnection(ws);
