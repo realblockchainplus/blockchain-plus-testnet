@@ -11,10 +11,10 @@ class Block {
   constructor(index: number, hash: string, prevHash: string,
   timestamp: number, data: string[]) {
     this.index = index;
+    this.hash = hash;
     this.prevHash = prevHash;
     this.timestamp = timestamp;
     this.data = data;
-    this.hash = hash;
   }
 };
 
@@ -31,11 +31,7 @@ const genesisTransaction = {
   id: ''
 };
 
-const genesisBlock: Block = new Block(
-  0, '', '', 0, []
-);
-
-let blockchain: Block[] = [genesisBlock];
+const getBlockchain = (): Block[] => { return blockchain; };
 
 const calculateHash = (index: number, prevHash: string, timestamp: number, data: string[]) => {
   return CryptoJS.SHA256(index + prevHash + timestamp + data).toString();
@@ -79,7 +75,21 @@ const isBlockValid = (newBlock: Block, prevBlock: Block) => {
   }
 };
 
-export = {
-  Block, calculateHash, calculateHashFromBlock, getLastBlock,
+const genesisBlock: Block = new Block(
+  0,
+  '',
+  '',
+  getCurrentTimestamp(),
+  []
+);
+
+genesisBlock.hash = calculateHashFromBlock(genesisBlock); 
+
+let blockchain: Block[] = [genesisBlock];
+
+console.log(genesisBlock);
+
+export {
+  Block, getBlockchain, calculateHash, calculateHashFromBlock, getLastBlock,
   getCurrentTimestamp, isBlockValid
 }

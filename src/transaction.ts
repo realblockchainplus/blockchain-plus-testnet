@@ -1,5 +1,9 @@
 import * as CryptoJS from 'crypto-js';
 
+/**
+ * An outgoing transaction
+ * @
+ */
 class TxOut {
   public address: string;
   public amount: number;
@@ -22,6 +26,10 @@ class Transaction {
   public txOuts: TxOut[];
 };
 
+/**
+ * 
+ *
+ */
 const getTransactionId = (transaction: Transaction): string => {
   const txInContent: string = transaction.txIns
     .map((txIn: TxIn) => txIn.txOutId + txIn.txOutIndex)
@@ -34,7 +42,27 @@ const getTransactionId = (transaction: Transaction): string => {
   return CryptoJS.SHA256(txInContent + txOutContent).toString();
 };
 
+const sendTransaction = (address: string, amount: number): Transaction => {
+  const tx: Transaction = createTransaction(address, amount);
+  return tx;
+};
+
+const createTransaction = (address: string, amount: number): Transaction => {
+  const txOut: TxOut = new TxOut(address, amount);
+  const txIn: TxIn = new TxIn();
+  txIn.txOutId = '';
+  txIn.txOutIndex = 0;
+  txIn.signature = '';
+
+  const tx: Transaction = new Transaction();
+  tx.txIns = [txIn];
+  tx.txOuts = [txOut];
+  tx.id = getTransactionId(tx);
+
+  return tx;
+};
+
 export {
-  Transaction, TxOut, TxIn, getTransactionId
+  Transaction, TxOut, TxIn, getTransactionId, sendTransaction
 }
 

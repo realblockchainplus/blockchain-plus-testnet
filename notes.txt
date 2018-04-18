@@ -15,7 +15,7 @@ KEY CONCEPTS:
 
 TRANSACTION FLOW:
 
-Given a network of 5 regular nodes and 5 partner nodes at t = 0:
+Given a network of 5 regular nodes and 5 partner nodes:
 
   regular: [A, B, C, D, E]
   partner: [V, W, X, Y, Z]
@@ -34,7 +34,7 @@ Given a network of 5 regular nodes and 5 partner nodes at t = 0:
   }
 
   randomNumberSet = new Uint32Array(20);
-  generateRandomNumbers = (t) => {
+  generateRandomNumbers = () => {
     window.crypto.getRandomValues(randomNumberSet);
   }
   validFor: 30;
