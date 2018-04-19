@@ -53,7 +53,8 @@ const generateNextBlock = (blockData: string[]) => {
 };
 
 const addBlockToChain = (block: Block): boolean => {
-  if (isBlockValid(block, blockchain[blockchain.length - 1])) {
+  const isValid = isBlockValid(block, blockchain[blockchain.length - 1]);
+  if (isValid) {
     blockchain.push(block);
     return true;
   }
@@ -69,7 +70,10 @@ const getCurrentTimestamp = (): number => {
 };
 
 const isBlockValid = (newBlock: Block, prevBlock: Block): boolean => {
-  if (!isStructureValid(newBlock)) { return false; }
+  if (!isStructureValid(newBlock)) { 
+    console.log(`[Structure] Structure of new block is invalid`);
+    return false; 
+  }
   else if (prevBlock.index + 1 !== newBlock.index) {
     console.log(`[Index] ${newBlock.index} is an invalid index. Expecting: ${prevBlock.index + 1}`);
     return false;

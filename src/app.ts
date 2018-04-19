@@ -2,9 +2,9 @@ import * as bodyParser from 'body-parser';
 import * as express from 'express';
 import * as _ from 'lodash';
 import * as kp from 'kill-port';
-import { Block, getBlockchain, generateNextBlock } from './block';
+import { Block, getBlockchain, generateNextBlock, addBlockToChain } from './block';
 import { getTransactionId, sendTransaction } from './transaction';
-import { connectToPeers, getSockets, initP2PServer } from './p2p';
+import { connectToPeers, getPods, initP2PServer } from './p2p';
 
 const httpPort: number = parseInt(process.env.HTTP_PORT) || 3001;
 const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
@@ -25,11 +25,20 @@ const initHttpServer = (port: number) => {
 
   app.post('/mineBlock', (req, res) => {
       const newBlock: Block = generateNextBlock(req.body.data);
-      res.send(newBlock);
+      const result = addBlockToChain(newBlock);
+      result ? res.send(newBlock) : res.send('Invalid Block');
   });
 
+
   app.get('/peers', (req, res) => {
-      res.send(getSockets().map(( s: any ) => s._socket.remoteAddress + ':' + s._socket.remotePort));
+      res.send(getPods().map(( p: any ) => {
+        const returnObj = {
+          name: p.name,
+          location: p.location,
+          address: `${p.ws._socket.remoteAddress} : ${p.ws._socket.remotePort}`
+        };
+        return returnObj;
+      }));
   });
 
   app.post('/addPeer', (req, res) => {

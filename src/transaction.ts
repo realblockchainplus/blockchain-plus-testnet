@@ -1,4 +1,9 @@
 import * as CryptoJS from 'crypto-js';
+import * as ecdsa from 'elliptic';
+
+const ec = new ecdsa.ec('secp256k1');
+
+const MINT_AMOUNT: number = 5;
 
 /**
  * An outgoing transaction
@@ -18,6 +23,20 @@ class TxIn {
   public txOutId: string;
   public txOutIndex: number;
   public signature: string;
+};
+
+class UnspentTxOut {
+  public readonly txOutId: string;
+  public readonly txOutIndex: number;
+  public readonly address: string;
+  public readonly amount: number;
+
+  constructor(txOutId: string, txOutIndex: number, address: string, amount: number) {
+    this.txOutId = txOutId;
+    this.txOutIndex = txOutIndex;
+    this.address = address;
+    this.amount = amount;
+  }
 };
 
 class Transaction {
@@ -61,6 +80,40 @@ const createTransaction = (address: string, amount: number): Transaction => {
 
   return tx;
 };
+
+const signTxIn = (transaction: Transaction, txInIndex: number, privateKey: string,
+  unspentTxOuts: UnspentTxOut[]): string => {
+    const txIn: TxIn = transaction.txIns[txInIndex];
+    const dataToSign = transaction.id;
+    const _unspentTxOut: UnspentTxOut = findUnspentTxOut(txIn.txOutId, txIn.txOutIndex, unspentTxOuts);
+    const _address = _unspentTxOut.address;
+    const key = ec.keyFromPrivate(privateKey, 'hex');
+    const signature: string = toHexString(key.sign(dataToSign).toDER());
+    return signature;
+};
+
+const findUnspentTxOut = (txOutId: string, txOutIndex: number, unspentTxOuts: UnspentTxOut[]) => {
+  let unspentTxOut: UnspentTxOut;
+  for (let i = 0; i < unspentTxOuts.length; i += 1) {
+    const _unspentTxOut = unspentTxOuts[i];
+    if (_unspentTxOut.txOutId === txOutId && _unspentTxOut.txOutIndex === txOutIndex) {
+      unspentTxOut = _unspentTxOut;
+    }
+  }
+  return unspentTxOut;
+};
+
+const toHexString = (byteArray): string => {
+  return Array.from(byteArray, (byte: any) => {
+      return ('0' + (byte & 0xFF).toString(16)).slice(-2);
+  }).join('');
+};
+
+const getPublicKey = (aPrivateKey: string): string => {
+  return ec.keyFromPrivate(aPrivateKey, 'hex').getPublic().encode('hex');
+};
+
+let unspentTxOuts: UnspentTxOut[] = [];
 
 export {
   Transaction, TxOut, TxIn, getTransactionId, sendTransaction

@@ -2,14 +2,68 @@ import * as WebSocket from 'ws';
 import { Server } from 'ws';
 import { addBlockToChain, Block, getBlockchain, getLastBlock, 
   isChainValid, isStructureValid } from './block';
+import { Pod, createPod } from './pod';
 
-const sockets: WebSocket[] = [];
+const pods: Pod[] = [];
+
+const randomNames = [
+  "Gale Rott",  
+  "Carleen Labarge",  
+  "Mindy Rummage",  
+  "Malena Imhoff",  
+  "Layla Pfaff",  
+  "Ashleigh Depaoli",  
+  "Dimple Brockway",  
+  "Cheryl Mckie",  
+  "Voncile Rideout",  
+  "Nanette Skinner",  
+  "Wilburn Hetzel",  
+  "Zack Ganey",  
+  "Aleen Pilarski",  
+  "Johnson Cribbs",  
+  "Timothy Hottle",  
+  "Kellye Loney",  
+  "Iraida Browne",  
+  "Shaun Burton",  
+  "Brianne Honey",  
+  "Ceola Cantrelle",  
+  "Sheilah Thiede",  
+  "Antoine Osterberg",  
+  "Denese Bergin",  
+  "Stacia Zobel",  
+  "Trinity Meng",  
+  "Christiana Barnes",  
+  "Freddie Kin",  
+  "Kai Reid",  
+  "Marybeth Lavine",  
+  "Vella Sachs",  
+  "Cameron Abate",  
+  "Shawanna Emanuel",  
+  "Hilaria Gabourel",  
+  "Clelia Rohloff",  
+  "Joi Sandidge",  
+  "Micheal Belew",  
+  "Mercedes Buhler",  
+  "Tam Steimle",  
+  "Slyvia Alongi",  
+  "Suzie Mcneilly",  
+  "Stefanie Beehler",  
+  "Nadene Orcutt",  
+  "Maud Barlow",  
+  "Dusty Dabrowski",  
+  "Kylee Krom",  
+  "Lena Edmisten",  
+  "Kristopher Whiteside",  
+  "Dorine Lepley",  
+  "Kelle Khouri",  
+  "Cristen Shier"
+];
 
 enum MessageType {
   QUERY_LATEST = 0,
   QUERY_ALL = 1,
   RESPONSE_BLOCKCHAIN = 2,
-}
+};
 
 class Message {
   public type: MessageType;
@@ -25,13 +79,15 @@ const initP2PServer = (p2pPort: number) => {
   });
 };
 
-const getSockets = () => { return sockets; };
+const getPods = () => { return pods; };
 
 const initConnection = (ws: WebSocket) => {
-  sockets.push(ws);
-  initMessageHandler(ws);
-  initErrorHandler(ws);
-  write(ws, queryChainLengthMsg());
+  const randomName = randomNames.splice(Math.floor(Math.random() * randomNames.length), 1)[0];
+  const pod = createPod(0, 0, randomName, ws);
+  pods.push(pod);
+  initMessageHandler(pod);
+  initErrorHandler(pod);
+  write(pod, queryChainLengthMsg());
 };
 
 const JSONToObject = <T>(data: string): T => {
@@ -43,7 +99,8 @@ const JSONToObject = <T>(data: string): T => {
   }
 };
 
-const initMessageHandler = (ws: WebSocket) => {
+const initMessageHandler = (pod: Pod) => {
+  const { ws } = pod;
   ws.on('message', (data: string) => {
     const message: Message = JSONToObject<Message>(data);
     if (message === null) {
@@ -53,10 +110,10 @@ const initMessageHandler = (ws: WebSocket) => {
     console.log('Received message' + JSON.stringify(message));
     switch (message.type) {
       case MessageType.QUERY_LATEST:
-        write(ws, responseLatestMsg());
+        write(pod, responseLatestMsg());
         break;
       case MessageType.QUERY_ALL:
-        write(ws, responseChainMsg());
+        write(pod, responseChainMsg());
         break;
       case MessageType.RESPONSE_BLOCKCHAIN:
         const receivedBlocks: Block[] = JSONToObject<Block[]>(message.data);
@@ -71,8 +128,14 @@ const initMessageHandler = (ws: WebSocket) => {
   });
 };
 
-const write = (ws: WebSocket, message: Message): void => ws.send(JSON.stringify(message));
-const broadcast = (message: Message): void => sockets.forEach((socket) => write(socket, message));
+const write = (pod: Pod, message: Message): void => {
+  const { ws } = pod;
+  ws.send(JSON.stringify(message));
+};
+
+const broadcast = (message: Message): void => pods.forEach((pod) => {
+  write(pod, message)
+});
 
 const queryChainLengthMsg = (): Message => ({ 'type': MessageType.QUERY_LATEST, 'data': null });
 
@@ -87,13 +150,14 @@ const responseLatestMsg = (): Message => ({
   'data': JSON.stringify([getLastBlock()])
 });
 
-const initErrorHandler = (ws: WebSocket) => {
-  const closeConnection = (myWs: WebSocket) => {
-    console.log('connection failed to peer: ' + myWs.url);
-    sockets.splice(sockets.indexOf(myWs), 1);
+const initErrorHandler = (pod: Pod) => {
+  const { ws } = pod;
+  const closeConnection = (myPod: Pod) => {
+    console.log('connection failed to peer: ' + myPod.ws.url);
+    pods.splice(pods.indexOf(myPod), 1);
   };
-  ws.on('close', () => closeConnection(ws));
-  ws.on('error', () => closeConnection(ws));
+  ws.on('close', () => closeConnection(pod));
+  ws.on('error', () => closeConnection(pod));
 };
 
 const handleBlockchainResponse = (receivedBlocks: Block[]) => {
@@ -141,5 +205,5 @@ const connectToPeers = (newPeer: string): void => {
   });
 };
 
-export { connectToPeers, broadcastLatest, initP2PServer, getSockets };
+export { connectToPeers, broadcastLatest, initP2PServer, getPods };
 
