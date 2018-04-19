@@ -7,6 +7,11 @@ import { Pod, createPod } from './pod';
 const pods: Pod[] = [];
 
 const randomNames = [
+  "Jeevan Singh",
+  "Jaswinder Singh",
+  "Gabor Levai",
+  "Rajah Vasjaragagag",
+  "Scott Donnelly",
   "Gale Rott",  
   "Carleen Labarge",  
   "Mindy Rummage",  
@@ -74,8 +79,8 @@ const initP2PServer = (p2pPort: number) => {
   const server: Server = new WebSocket.Server({ port: p2pPort });
   console.log('Starting p2p server...');
   server.on('connection', (ws: WebSocket) => {
-    console.log('p2p connection started');
-    initConnection(ws);
+    // console.log('p2p connection started');
+    // initConnection(ws);
   });
 };
 
@@ -83,7 +88,9 @@ const getPods = () => { return pods; };
 
 const initConnection = (ws: WebSocket) => {
   const randomName = randomNames.splice(Math.floor(Math.random() * randomNames.length), 1)[0];
-  const pod = createPod(0, 0, randomName, ws);
+  const randomLocation = Math.floor(Math.random() * 5000);
+  const pod = createPod(0, randomLocation, randomName, ws);
+  console.log(`Adding Pod... ${pod.name}`);
   pods.push(pod);
   initMessageHandler(pod);
   initErrorHandler(pod);
@@ -198,6 +205,7 @@ const connectToPeers = (newPeer: string): void => {
   console.log(`[New Peer]: ${newPeer}`);
   const ws: WebSocket = new WebSocket(newPeer);
   ws.on('open', () => {
+    console.log(`[Web Socket] is open... initiating connection`);
     initConnection(ws);
   });
   ws.on('error', (error) => {

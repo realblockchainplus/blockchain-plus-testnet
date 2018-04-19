@@ -29,7 +29,7 @@ const regularPodSpecs = {
   storage: 100
 };
 
-const partnerPodSpecs ={
+const partnerPodSpecs = {
   ram: 4,
   storage: 200
 };
