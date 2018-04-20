@@ -28,20 +28,16 @@ const initHttpServer = (port: number) => {
     res.send(getBlockchain());
   });
 
-  app.get('/blocks', (req, res) => {
-    res.send(getBlockchain());
-  });
-
   app.post('/mineBlock', (req, res) => {
       const newBlock: Block = generateNextBlock(req.body.data);
       const result = addBlockToChain(newBlock);
       result ? res.send(newBlock) : res.send('Invalid Block');
   });
 
-
   app.get('/peers', (req, res) => {
       res.send(getPods().map(( p: any ) => {
         const returnObj = {
+          type: p.type,
           name: p.name,
           location: p.location,
           address: `${p.ws._socket.remoteAddress} : ${p.ws._socket.remotePort}`
@@ -53,6 +49,11 @@ const initHttpServer = (port: number) => {
   app.post('/addPeer', (req, res) => {
       connectToPeers(req.body.peer);
       res.send();
+  });
+
+  app.post('/send', (req, res) => {
+    sendTransaction(req.body.address, req.body.amount);
+    res.send();
   });
 
   app.listen(port, () => {

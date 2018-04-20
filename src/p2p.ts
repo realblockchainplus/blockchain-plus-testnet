@@ -88,8 +88,9 @@ const getPods = () => { return pods; };
 
 const initConnection = (ws: WebSocket) => {
   const randomName = randomNames.splice(Math.floor(Math.random() * randomNames.length), 1)[0];
-  const randomLocation = Math.floor(Math.random() * 5000);
-  const pod = createPod(0, randomLocation, randomName, ws);
+  const randomLocation = { x: Math.floor(Math.random() * 5000), y: Math.floor(Math.random() * 5000) };
+  const randomType = Math.floor(Math.random() * 10) <= 1 ? 0 : 1; 
+  const pod = createPod(randomType, randomLocation, randomName, ws);
   console.log(`Adding Pod... ${pod.name}`);
   pods.push(pod);
   initMessageHandler(pod);

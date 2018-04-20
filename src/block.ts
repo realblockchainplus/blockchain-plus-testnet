@@ -1,4 +1,5 @@
 import * as CryptoJS from 'crypto-js';
+import { Transaction, TxIn, TxOut } from './transaction';
 import { broadcastLatest } from './p2p';
 
 class Block {
@@ -7,10 +8,10 @@ class Block {
   public hash: string;
   public prevHash: string;
   public timestamp: number;
-  public data: string[];
+  public data: Transaction[];
 
   constructor(index: number, hash: string, prevHash: string,
-  timestamp: number, data: string[]) {
+  timestamp: number, data: Transaction[]) {
     this.index = index;
     this.hash = hash;
     this.prevHash = prevHash;
@@ -19,22 +20,13 @@ class Block {
   }
 };
 
-const genesisTransaction = {
-  txIns: [{
-    signature: '',
-    txOutId: '',
-    txOutIndex: 0,
-  }],
-  txOuts: [{
-    address: '',
-    amount: 0
-  }],
-  id: ''
-};
+const genesisTransaction = new Transaction ();
+genesisTransaction.txIns = [new TxIn()];
+genesisTransaction.txOuts =  [new TxOut('', 0)];
 
 const getBlockchain = (): Block[] => { return blockchain; };
 
-const calculateHash = (index: number, prevHash: string, timestamp: number, data: string[]) => {
+const calculateHash = (index: number, prevHash: string, timestamp: number, data: Transaction[]) => {
   return CryptoJS.SHA256(index + prevHash + timestamp + data).toString();
 };
 
@@ -43,7 +35,7 @@ const calculateHashFromBlock = (block: Block): string => {
   return calculateHash(index, prevHash, timestamp, data);
 };
 
-const generateNextBlock = (blockData: string[]) => {
+const generateNextBlock = (blockData: Transaction[]) => {
   const prevBlock: Block = getLastBlock();
   const prevHash: string = prevBlock.hash;
   const nextIndex: number = prevBlock.index + 1;
