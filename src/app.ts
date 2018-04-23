@@ -1,10 +1,9 @@
 import * as bodyParser from 'body-parser';
 import * as express from 'express';
-import * as _ from 'lodash';
-import * as kp from 'kill-port';
 import { Block, getBlockchain, generateNextBlock, addBlockToChain } from './block';
-import { getTransactionId, sendTransaction } from './transaction';
 import { connectToPeers, getPods, initP2PServer } from './p2p';
+
+import { transaction } from './transactionOpp';
 
 const httpPort: number = parseInt(process.env.HTTP_PORT) || 3001;
 const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
@@ -20,7 +19,11 @@ const initHttpServer = (port: number) => {
   });
 
   app.get('/blocks', (req, res) => {
-    res.send(getBlockchain());
+    res.send(transaction.blockChain);
+  });
+
+  app.post('/blocks', (req, res) => {
+    res.send(transaction.transctionInfo(req.body));
   });
 
   app.post('/mineBlock', (req, res) => {
