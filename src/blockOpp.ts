@@ -25,8 +25,10 @@ class Block {
         let createdBlock;
 
         if ( this.getLastBlock()) {
-            createdBlock = this.createBlocks(this.index, this.hash, this.prevHash, this.timestamp, this.data);
-            this.index++;
+            this.prevHash = CryptoJS.SHA256(this.getLastBlock()).toString();
+            this.hash     = this.calculateHash(this.index, this.prevHash, this.timestamp, this.data);
+            this.index   += parseInt(this.getLastBlock().index);
+            createdBlock  = this.createBlocks(this.index, this.hash, this.prevHash, this.timestamp, this.data);
         } else {
             // genesisBlock
             this.genesisBlock();

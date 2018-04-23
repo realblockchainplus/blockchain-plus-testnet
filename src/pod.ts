@@ -5,13 +5,13 @@ class Pod {
   public id: number;
   public type: podType;
   public spawnTimestamp: number;
-  public location: number;
+  public location: object;
   public ram: number;
   public storage: number;
   public name: string;
   public ws: WebSocket;
 
-  constructor(type: podType, location: number, name: string, ws: WebSocket) {
+  constructor(type: podType, location: object, name: string, ws: WebSocket) {
     this.type = type;
     this.location = location;
     this.ws = ws;
@@ -29,12 +29,12 @@ const regularPodSpecs = {
   storage: 100
 };
 
-const partnerPodSpecs ={
+const partnerPodSpecs = {
   ram: 4,
   storage: 200
 };
 
-const createPod = (type: podType, location: number, name: string, ws: WebSocket) => {
+const createPod = (type: podType, location: object, name: string, ws: WebSocket) => {
   const pod: Pod = new Pod(type, location, name, ws);
   pod.id = 0 // get num of pods + 1   OR   random string for id
   pod.spawnTimestamp = Math.round(new Date().getTime() / 1000);
