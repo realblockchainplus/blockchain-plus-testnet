@@ -1,4 +1,5 @@
 import * as CryptoJS from 'crypto-js';
+import {isBoolean} from 'util';
 
 class Block {
     public index: number;
@@ -6,7 +7,8 @@ class Block {
     public prevHash: string;
     public timestamp: number;
     public data: any[]; // sender, recipient and amount
-    public listblockchian: any[] = [];
+    public listblockchain: any[] = [];
+    public genesis: any[] = [];
 
     constructor(index: number = 0, hash: string = ' ', prevHash: string = ' ', timestamp: number = 0, data: string[] = []) {
         this.index     = index;
@@ -14,34 +16,42 @@ class Block {
         this.prevHash  = prevHash;
         this.timestamp = this.getCurrentTimestamp();
         this.data      = data;
-        this.genesisBlock();
+        this.genesis.push(this.genesisBlock());
     }
 
     get  blockChain() {
-        return this.listblockchian;
+        return this.listblockchain;
     }
 
     public createBlock = () => {
         let createdBlock;
+        const prevBlock = this.getLastBlock();
 
-        if ( this.getLastBlock()) {
-            this.prevHash = CryptoJS.SHA256(this.getLastBlock()).toString();
+        if ( prevBlock ) {
+            this.prevHash = prevBlock.hash;
+            this.index    = parseInt(this.getLastBlock().index + 1);
             this.hash     = this.calculateHash(this.index, this.prevHash, this.timestamp, this.data);
-            this.index   += parseInt(this.getLastBlock().index);
             createdBlock  = this.createBlocks(this.index, this.hash, this.prevHash, this.timestamp, this.data);
+
+            if (this.validateBlock(createdBlock, prevBlock)) {
+                this.listblockchain.push(createdBlock);
+                // house keeping
+                this.isValidChain(this.listblockchain, this.genesis);
+            } else {
+                return 'invalid block';
+            }
         } else {
-            // genesisBlock
-            this.genesisBlock();
+            // genesis Block
+            this.genesis.push(this.genesisBlock());
         }
 
-        this.listblockchian.push(createdBlock);
         return createdBlock;
     }
 
     public createBlocks = (index: number = 0, hash: string = ' ', prevHash: string = ' ', timestamp: number = 0, data: string[] = []) => {
         const create = {'index' : index,
                 'hash': hash,
-                'prevHasd' : prevHash,
+                'prevHash' : prevHash,
                 'timestamp': timestamp,
                 'data': data };
         return create;
@@ -49,17 +59,49 @@ class Block {
 
     public genesisBlock() {
         const basicBlock = {'index' : this.index,
-            'hash': this.hash,
+            'hash': this.calculateHash(this.index, this.prevHash, this.timestamp, this.data),
             'prevHasd' : this.prevHash,
             'timestamp': this.timestamp,
             'data': this.data };
         this.index++;
-        this.listblockchian.push(basicBlock);
+        this.listblockchain.push(basicBlock);
         return basicBlock;
     }
 
+    public validateBlock = (newBlock, prevBlock) => {
+        if (parseInt(prevBlock.index + 1) !== parseInt(newBlock.index)) {
+            console.log('invalid index');
+            return false;
+        } else if (prevBlock.hash !== newBlock.prevHash) {
+            console.log('invalid previous hash');
+            return false;
+        } else if (this.hash !== newBlock.hash) {
+            console.log('invalid hash');
+            return false;
+        }
+        return true;
+    }
+
+    public isValidChain = (listblockchain, genesis) => {
+        if (JSON.stringify(listblockchain[0]) !== JSON.stringify(genesis[0])) {
+            return false;
+        } else {
+            const tempBlocks: any[] = [];
+
+            tempBlocks.push(genesis[0]);
+            for (let i = 1; i < listblockchain.length; i++) {
+                if (this.validateBlock(listblockchain[i], tempBlocks[i - 1])) {
+                    tempBlocks.push(listblockchain[i]);
+                } else {
+                    return false;
+                }
+            }
+            return this.listblockchain = tempBlocks;
+        }
+    }
+
     public  getLastBlock() {
-        return this.listblockchian[this.listblockchian.length - 1];
+        return this.listblockchain[this.listblockchain.length - 1];
     }
 
     public getCurrentTimestamp = () => {

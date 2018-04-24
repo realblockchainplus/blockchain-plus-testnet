@@ -51,7 +51,7 @@ const addBlockToChain = (block: Block): boolean => {
     return true;
   }
   return false;
-} 
+};
 
 const getLastBlock = (): Block => {
   return blockchain[blockchain.length - 1];
@@ -62,19 +62,16 @@ const getCurrentTimestamp = (): number => {
 };
 
 const isBlockValid = (newBlock: Block, prevBlock: Block): boolean => {
-  if (!isStructureValid(newBlock)) { 
+  if (!isStructureValid(newBlock)) {
     console.log(`[Structure] Structure of new block is invalid`);
-    return false; 
-  }
-  else if (prevBlock.index + 1 !== newBlock.index) {
+    return false;
+  } else if (prevBlock.index + 1 !== newBlock.index) {
     console.log(`[Index] ${newBlock.index} is an invalid index. Expecting: ${prevBlock.index + 1}`);
     return false;
-  }
-  else if (prevBlock.hash !== newBlock.prevHash) {
+  } else if (prevBlock.hash !== newBlock.prevHash) {
     console.log(`[Previous Hash] ${newBlock.prevHash} is invalid. Expecting: ${prevBlock.hash}`);
     return false;
-  }
-  else if (calculateHashFromBlock(newBlock) !== newBlock.hash) {
+  } else if (calculateHashFromBlock(newBlock) !== newBlock.hash) {
     console.log(`[Next Hash] ${newBlock.hash} is invalid. Expecting: ${newBlock.hash}`);
     return false;
   }
@@ -91,20 +88,20 @@ const isStructureValid = (block: Block): boolean => {
 
 const isChainValid = (bc: Block[]): boolean => {
   const isGenesisValid = (block: Block): boolean => {
-    return JSON.stringify(block) === JSON.stringify(genesisBlock)
+    return JSON.stringify(block) === JSON.stringify(genesisBlock);
   };
 
   const _genesisBlock = bc[0];
-  if (!isGenesisValid(_genesisBlock)) { return false; };
-  
+  if (!isGenesisValid(_genesisBlock)) { return false; }
+
   for (let i = 1; i < bc.length; i += 1) {
     const prevBlock = bc[i - 1];
     const newBlock = bc[i];
     if (!isBlockValid(newBlock, prevBlock)) { return false; }
   }
-  
+
   return true;
-}
+};
 
 const genesisBlock: Block = new Block(
   0,
@@ -114,11 +111,10 @@ const genesisBlock: Block = new Block(
   []
 );
 
-genesisBlock.hash = calculateHashFromBlock(genesisBlock); 
+genesisBlock.hash = calculateHashFromBlock(genesisBlock);
 
-let blockchain: Block[] = [genesisBlock];
+const blockchain: Block[] = [genesisBlock];
 
-console.log(genesisBlock);
 
 export {
   Block, addBlockToChain, getBlockchain, calculateHash, calculateHashFromBlock, getLastBlock,
