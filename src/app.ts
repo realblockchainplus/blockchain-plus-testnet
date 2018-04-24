@@ -34,7 +34,7 @@ const initHttpServer = (port: number) => {
     // res.send(transaction.blockChain);
   });
 
-  app.post('blocks', (req, res) => {
+  app.post('/blocks', (req, res) => {
     res.send(transaction.transctionInfo(req.body));
   });
 
