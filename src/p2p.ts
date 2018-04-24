@@ -73,7 +73,8 @@ enum MessageType {
   QUERY_ALL = 1,
   RESPONSE_BLOCKCHAIN = 2,
   QUERY_TRANSACTION_POOL = 3,
-  RESPONSE_TRANSACTION_POOL = 4
+  RESPONSE_TRANSACTION_POOL = 4,
+  SELECTED_FOR_VALIDATION = 5
 };
 
 class Message {
@@ -159,6 +160,8 @@ const initMessageHandler = (pod: Pod) => {
               console.log(e.message);
             }
           });
+          break;
+        case MessageType.SELECTED_FOR_VALIDATION:
           break;
       }
     } catch (e) {

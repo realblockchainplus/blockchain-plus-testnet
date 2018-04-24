@@ -43,8 +43,6 @@ let blockchain: Block[] = [genesisBlock];
 
 let unspentTxOuts: UnspentTxOut[] = [];
 
-
-
 const getBlockchain = (): Block[] => { return blockchain; };
 
 const calculateHash = (index: number, prevHash: string, timestamp: number, data: Transaction[]) => {
