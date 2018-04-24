@@ -4,9 +4,11 @@ import * as _ from 'lodash';
 import * as kp from 'kill-port';
 import * as cors from 'cors';
 
-import { Block, getBlockchain, generateNextBlock, addBlockToChain } from './block';
+import { Block, getBlockchain, generateNextBlock, addBlockToChain, getAccountBalance, generateNextBlockWithTransaction } from './block';
 import { getTransactionId, sendTransaction } from './transaction';
 import { connectToPeers, getPods, initP2PServer } from './p2p';
+import { initWallet, getPublicFromWallet } from './wallet';
+import { getTransactionPool } from './transactionPool';
 
 const httpPort: number = parseInt(process.env.HTTP_PORT) || 3001;
 const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
@@ -29,9 +31,35 @@ const initHttpServer = (port: number) => {
   });
 
   app.post('/mineBlock', (req, res) => {
-      const newBlock: Block = generateNextBlock(req.body.data);
-      const result = addBlockToChain(newBlock);
-      result ? res.send(newBlock) : res.send('Invalid Block');
+    const newBlock: Block = generateNextBlock(req.body.data);
+    const result = addBlockToChain(newBlock);
+    result ? res.send(newBlock) : res.status(400).send('Invalid Block');
+  });
+
+  app.post('/mineTransaction', (req, res) => {
+    const address = req.body.address;
+    const amount = req.body.amount;
+    try {
+      const resp = generateNextBlockWithTransaction(address, amount);
+      res.send(resp);
+    } catch (e) {
+      console.log(e.message);
+      res.status(400).send(e.message);
+    }
+  });
+
+  app.get('/transactionPool', (req, res) => {
+    res.send(getTransactionPool());
+  });
+
+  app.get('/balance', (req, res) => {
+    const balance = getAccountBalance();
+    res.send({ balance });
+  });
+
+  app.get('/address', (req, res) => {
+    const address: string = getPublicFromWallet();
+    res.send({'address': address});
   });
 
   app.get('/peers', (req, res) => {
@@ -40,7 +68,8 @@ const initHttpServer = (port: number) => {
           type: p.type,
           name: p.name,
           location: p.location,
-          address: `${p.ws._socket.remoteAddress} : ${p.ws._socket.remotePort}`
+          ip: `${p.ws._socket.remoteAddress} : ${p.ws._socket.remotePort}`,
+          publicAddress: p.address
         };
         return returnObj;
       }));
@@ -63,3 +92,4 @@ const initHttpServer = (port: number) => {
 
 initHttpServer(httpPort);
 initP2PServer(p2pPort);
+initWallet();

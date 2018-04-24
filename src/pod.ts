@@ -9,6 +9,7 @@ class Pod {
   public ram: number;
   public storage: number;
   public name: string;
+  public address: string;
   public ws: WebSocket;
 
   constructor(type: podType, location: object, name: string, ws: WebSocket) {
