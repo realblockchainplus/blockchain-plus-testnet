@@ -95,11 +95,11 @@ const validateTransaction = (transaction: Transaction, aUnspentTxOuts: UnspentTx
 };
 
 const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[], blockIndex: number): boolean => {
-  const coinbaseTx = aTransactions[0];
-  if (!validateCoinbaseTx(coinbaseTx, blockIndex)) {
-      console.log('invalid coinbase transaction: ' + JSON.stringify(coinbaseTx));
-      return false;
-  }
+  // const coinbaseTx = aTransactions[0];
+  // if (!validateCoinbaseTx(coinbaseTx, blockIndex)) {
+  //     console.log('invalid coinbase transaction: ' + JSON.stringify(coinbaseTx));
+  //     return false;
+  // }
 
   //check for duplicate txIns. Each txIn can be included only once
   const txIns: TxIn[] = _(aTransactions)
@@ -118,33 +118,33 @@ const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts:
 
 };
 
-const validateCoinbaseTx = (transaction: Transaction, blockIndex: number): boolean => {
-  if (transaction == null) {
-      console.log('the first transaction in the block must be coinbase transaction');
-      return false;
-  }
-  if (getTransactionId(transaction) !== transaction.id) {
-      console.log('invalid coinbase tx id: ' + transaction.id);
-      return false;
-  }
-  if (transaction.txIns.length !== 1) {
-      console.log('one txIn must be specified in the coinbase transaction');
-      return;
-  }
-  if (transaction.txIns[0].txOutIndex !== blockIndex) {
-      console.log('the txIn signature in coinbase tx must be the block height');
-      return false;
-  }
-  if (transaction.txOuts.length !== 1) {
-      console.log('invalid number of txOuts in coinbase transaction');
-      return false;
-  }
-  if (transaction.txOuts[0].amount != MINT_AMOUNT) {
-      console.log('invalid coinbase amount in coinbase transaction');
-      return false;
-  }
-  return true;
-};
+// const validateCoinbaseTx = (transaction: Transaction, blockIndex: number): boolean => {
+//   if (transaction == null) {
+//       console.log('the first transaction in the block must be coinbase transaction');
+//       return false;
+//   }
+//   if (getTransactionId(transaction) !== transaction.id) {
+//       console.log('invalid coinbase tx id: ' + transaction.id);
+//       return false;
+//   }
+//   if (transaction.txIns.length !== 1) {
+//       console.log('one txIn must be specified in the coinbase transaction');
+//       return;
+//   }
+//   if (transaction.txIns[0].txOutIndex !== blockIndex) {
+//       console.log('the txIn signature in coinbase tx must be the block height');
+//       return false;
+//   }
+//   if (transaction.txOuts.length !== 1) {
+//       console.log('invalid number of txOuts in coinbase transaction');
+//       return false;
+//   }
+//   if (transaction.txOuts[0].amount != MINT_AMOUNT) {
+//       console.log('invalid coinbase amount in coinbase transaction');
+//       return false;
+//   }
+//   return true;
+// };
 
 const validateTxIn = (txIn: TxIn, transaction: Transaction, aUnspentTxOuts: UnspentTxOut[]): boolean => {
   const referencedUTxOut: UnspentTxOut =
@@ -243,6 +243,28 @@ const toHexString = (byteArray): string => {
   }).join('');
 };
 
+const processTransactions = (aTransactions: Transaction[], aUnspentTxOuts: UnspentTxOut[], blockIndex: number) => {
+  if (!validateBlockTransactions(aTransactions, aUnspentTxOuts, blockIndex)) {
+      console.log('invalid block transactions');
+      return null;
+  }
+  return updateUnspentTxOuts(aTransactions, aUnspentTxOuts);
+};
+
+const isValidAddress = (address: string): boolean => {
+  if (address.length !== 130) {
+    console.log(`Invalid public key length. Expected 130, got: ${address.length}`);
+  }
+  else if (address.match('^[a-fA-F0-9]+$') === null) {
+    console.log('public key must contain only hex characters');
+    return false;
+  } else if (!address.startsWith('04')) {
+    console.log('public key must start with 04');
+    return false;
+  }
+  return true;
+};
+
 const getPublicKey = (aPrivateKey: string): string => {
   return ec.keyFromPrivate(aPrivateKey, 'hex').getPublic().encode('hex');
 };
@@ -250,6 +272,6 @@ const getPublicKey = (aPrivateKey: string): string => {
 export {
   Transaction, TxOut, TxIn, getTransactionId,
   sendTransaction, getPublicKey, signTxIn, UnspentTxOut,
-  validateTransaction
+  validateTransaction, isValidAddress, processTransactions
 }
 

@@ -1,7 +1,11 @@
 import * as WebSocket from 'ws';
 import { Server } from 'ws';
-import { addBlockToChain, Block, getBlockchain, getLastBlock, 
-  isChainValid, isStructureValid } from './block';
+import {
+  addBlockToChain, Block, getBlockchain, getLastBlock,
+  handleReceivedTransaction, isStructureValid
+} from './block';
+import { Transaction } from './transaction';
+import { getTransactionPool } from './transactionPool';
 import { Pod, createPod } from './pod';
 
 const pods: Pod[] = [];
@@ -12,55 +16,55 @@ const randomNames = [
   "Gabor Levai",
   "Rajah Vasjaragagag",
   "Scott Donnelly",
-  "Gale Rott",  
-  "Carleen Labarge",  
-  "Mindy Rummage",  
-  "Malena Imhoff",  
-  "Layla Pfaff",  
-  "Ashleigh Depaoli",  
-  "Dimple Brockway",  
-  "Cheryl Mckie",  
-  "Voncile Rideout",  
-  "Nanette Skinner",  
-  "Wilburn Hetzel",  
-  "Zack Ganey",  
-  "Aleen Pilarski",  
-  "Johnson Cribbs",  
-  "Timothy Hottle",  
-  "Kellye Loney",  
-  "Iraida Browne",  
-  "Shaun Burton",  
-  "Brianne Honey",  
-  "Ceola Cantrelle",  
-  "Sheilah Thiede",  
-  "Antoine Osterberg",  
-  "Denese Bergin",  
-  "Stacia Zobel",  
-  "Trinity Meng",  
-  "Christiana Barnes",  
-  "Freddie Kin",  
-  "Kai Reid",  
-  "Marybeth Lavine",  
-  "Vella Sachs",  
-  "Cameron Abate",  
-  "Shawanna Emanuel",  
-  "Hilaria Gabourel",  
-  "Clelia Rohloff",  
-  "Joi Sandidge",  
-  "Micheal Belew",  
-  "Mercedes Buhler",  
-  "Tam Steimle",  
-  "Slyvia Alongi",  
-  "Suzie Mcneilly",  
-  "Stefanie Beehler",  
-  "Nadene Orcutt",  
-  "Maud Barlow",  
-  "Dusty Dabrowski",  
-  "Kylee Krom",  
-  "Lena Edmisten",  
-  "Kristopher Whiteside",  
-  "Dorine Lepley",  
-  "Kelle Khouri",  
+  "Gale Rott",
+  "Carleen Labarge",
+  "Mindy Rummage",
+  "Malena Imhoff",
+  "Layla Pfaff",
+  "Ashleigh Depaoli",
+  "Dimple Brockway",
+  "Cheryl Mckie",
+  "Voncile Rideout",
+  "Nanette Skinner",
+  "Wilburn Hetzel",
+  "Zack Ganey",
+  "Aleen Pilarski",
+  "Johnson Cribbs",
+  "Timothy Hottle",
+  "Kellye Loney",
+  "Iraida Browne",
+  "Shaun Burton",
+  "Brianne Honey",
+  "Ceola Cantrelle",
+  "Sheilah Thiede",
+  "Antoine Osterberg",
+  "Denese Bergin",
+  "Stacia Zobel",
+  "Trinity Meng",
+  "Christiana Barnes",
+  "Freddie Kin",
+  "Kai Reid",
+  "Marybeth Lavine",
+  "Vella Sachs",
+  "Cameron Abate",
+  "Shawanna Emanuel",
+  "Hilaria Gabourel",
+  "Clelia Rohloff",
+  "Joi Sandidge",
+  "Micheal Belew",
+  "Mercedes Buhler",
+  "Tam Steimle",
+  "Slyvia Alongi",
+  "Suzie Mcneilly",
+  "Stefanie Beehler",
+  "Nadene Orcutt",
+  "Maud Barlow",
+  "Dusty Dabrowski",
+  "Kylee Krom",
+  "Lena Edmisten",
+  "Kristopher Whiteside",
+  "Dorine Lepley",
+  "Kelle Khouri",
   "Cristen Shier"
 ];
 
@@ -68,6 +72,8 @@ enum MessageType {
   QUERY_LATEST = 0,
   QUERY_ALL = 1,
   RESPONSE_BLOCKCHAIN = 2,
+  QUERY_TRANSACTION_POOL = 3,
+  RESPONSE_TRANSACTION_POOL = 4
 };
 
 class Message {
@@ -89,13 +95,16 @@ const getPods = () => { return pods; };
 const initConnection = (ws: WebSocket) => {
   const randomName = randomNames.splice(Math.floor(Math.random() * randomNames.length), 1)[0];
   const randomLocation = { x: Math.floor(Math.random() * 5000), y: Math.floor(Math.random() * 5000) };
-  const randomType = Math.floor(Math.random() * 10) <= 1 ? 0 : 1; 
+  const randomType = Math.floor(Math.random() * 10) <= 1 ? 0 : 1;
   const pod = createPod(randomType, randomLocation, randomName, ws);
   console.log(`Adding Pod... ${pod.name}`);
   pods.push(pod);
   initMessageHandler(pod);
   initErrorHandler(pod);
   write(pod, queryChainLengthMsg());
+  setTimeout(() => {
+    broadcast(queryTransactionPoolMsg());
+  }, 500);
 };
 
 const JSONToObject = <T>(data: string): T => {
@@ -110,28 +119,50 @@ const JSONToObject = <T>(data: string): T => {
 const initMessageHandler = (pod: Pod) => {
   const { ws } = pod;
   ws.on('message', (data: string) => {
-    const message: Message = JSONToObject<Message>(data);
-    if (message === null) {
-      console.log('could not parse received JSON message: ' + data);
-      return;
-    }
-    console.log('Received message' + JSON.stringify(message));
-    switch (message.type) {
-      case MessageType.QUERY_LATEST:
-        write(pod, responseLatestMsg());
-        break;
-      case MessageType.QUERY_ALL:
-        write(pod, responseChainMsg());
-        break;
-      case MessageType.RESPONSE_BLOCKCHAIN:
-        const receivedBlocks: Block[] = JSONToObject<Block[]>(message.data);
-        if (receivedBlocks === null) {
-          console.log('invalid blocks received:');
-          console.log(message.data)
+    try {
+      const message: Message = JSONToObject<Message>(data);
+      if (message === null) {
+        console.log('could not parse received JSON message: ' + data);
+        return;
+      }
+      console.log('Received message' + JSON.stringify(message));
+      switch (message.type) {
+        case MessageType.QUERY_LATEST:
+          write(pod, responseLatestMsg());
           break;
-        }
-        handleBlockchainResponse(receivedBlocks);
-        break;
+        case MessageType.QUERY_ALL:
+          write(pod, responseChainMsg());
+          break;
+        case MessageType.RESPONSE_BLOCKCHAIN:
+          const receivedBlocks: Block[] = JSONToObject<Block[]>(message.data);
+          if (receivedBlocks === null) {
+            console.log('invalid blocks received:');
+            console.log(message.data);
+            break;
+          }
+          handleBlockchainResponse(receivedBlocks);
+          break;
+        case MessageType.QUERY_TRANSACTION_POOL:
+          write(pod, responseTransactionPoolMsg());
+          break;
+        case MessageType.RESPONSE_TRANSACTION_POOL:
+          const receievedTransactions: Transaction[] = JSONToObject<Transaction[]>(message.data);
+          if (receievedTransactions === null) {
+            console.log(`Invalid transaction received: ${JSON.stringify(message.data)}`);
+            break;
+          }
+          receievedTransactions.forEach((transaction: Transaction) => {
+            try {
+              handleReceivedTransaction(transaction);
+              broadCastTransactionPool();
+            } catch (e) {
+              console.log(e.message);
+            }
+          });
+          break;
+      }
+    } catch (e) {
+      console.log(`Error on message: ${e}`);
     }
   });
 };
@@ -156,6 +187,16 @@ const responseChainMsg = (): Message => ({
 const responseLatestMsg = (): Message => ({
   'type': MessageType.RESPONSE_BLOCKCHAIN,
   'data': JSON.stringify([getLastBlock()])
+});
+
+const queryTransactionPoolMsg = (): Message => ({
+  'type': MessageType.QUERY_TRANSACTION_POOL,
+  'data': null
+});
+
+const responseTransactionPoolMsg = (): Message => ({
+  'type': MessageType.RESPONSE_TRANSACTION_POOL,
+  'data': JSON.stringify(getTransactionPool())
 });
 
 const initErrorHandler = (pod: Pod) => {
@@ -202,6 +243,10 @@ const broadcastLatest = (): void => {
   broadcast(responseLatestMsg());
 };
 
+const broadCastTransactionPool = () => {
+  broadcast(responseTransactionPoolMsg());
+};
+
 const connectToPeers = (newPeer: string): void => {
   console.log(`[New Peer]: ${newPeer}`);
   const ws: WebSocket = new WebSocket(newPeer);
@@ -214,5 +259,5 @@ const connectToPeers = (newPeer: string): void => {
   });
 };
 
-export { connectToPeers, broadcastLatest, initP2PServer, getPods };
+export { connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getPods };
 
