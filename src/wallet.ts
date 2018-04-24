@@ -24,7 +24,6 @@ const generatePrivateKey = (): string => {
 };
 
 const initWallet = () => {
-  // let's not override existing private keys
   if (existsSync(privateKeyLocation)) {
     return;
   }

@@ -7,8 +7,11 @@ import * as cors from 'cors';
 import { Block, getBlockchain, generateNextBlock, addBlockToChain, getAccountBalance, generateNextBlockWithTransaction } from './block';
 import { getTransactionId, sendTransaction } from './transaction';
 import { connectToPeers, getPods, initP2PServer } from './p2p';
+import { Pod } from './pod';
 import { initWallet, getPublicFromWallet } from './wallet';
 import { getTransactionPool } from './transactionPool';
+import { selectRandom } from './rngTool';
+import { transaction } from './transactionOpp';
 
 const httpPort: number = parseInt(process.env.HTTP_PORT) || 3001;
 const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
@@ -28,17 +31,26 @@ const initHttpServer = (port: number) => {
 
   app.get('/blocks', (req, res) => {
     res.send(getBlockchain());
+    // res.send(transaction.blockChain);
   });
 
-  app.post('/mineBlock', (req, res) => {
-    const newBlock: Block = generateNextBlock(req.body.data);
-    const result = addBlockToChain(newBlock);
-    result ? res.send(newBlock) : res.status(400).send('Invalid Block');
+  app.post('blocks', (req, res) => {
+    res.send(transaction.transctionInfo(req.body));
   });
+
+  // app.post('/mineBlock', (req, res) => {
+  //   const newBlock: Block = generateNextBlock(req.body.data);
+  //   const result = addBlockToChain(newBlock);
+  //   result ? res.send(newBlock) : res.status(400).send('Invalid Block');
+  // });
 
   app.post('/mineTransaction', (req, res) => {
     const address = req.body.address;
     const amount = req.body.amount;
+    const pods = getPods();
+    const regularPods = pods.filter(pod => pod.type === 0);
+    const partnerPods = pods.filter(pod => pod.type === 1);
+    const selectedPods: Pod[] = [...selectRandom(regularPods), ...selectRandom(partnerPods)];
     try {
       const resp = generateNextBlockWithTransaction(address, amount);
       res.send(resp);
