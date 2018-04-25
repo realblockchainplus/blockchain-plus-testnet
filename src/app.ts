@@ -7,7 +7,7 @@ import * as minimist from 'minimist';
 
 import { Block, getBlockchain, generateNextBlock, addBlockToChain, getAccountBalance, generateNextBlockWithTransaction, sendTransaction, getLastBlock } from './block';
 import { Transaction, getTransactionId, addToWallet } from './transaction';
-import { connectToPeers, getSockets, initP2PServer } from './p2p';
+import { connectToPeers, getPods, initP2PServer } from './p2p';
 import { initWallet, getPublicFromWallet } from './wallet';
 import { getTransactionPool } from './transactionPool';
 import { selectRandom } from './rngTool';
@@ -72,16 +72,25 @@ const initHttpServer = (port: number) => {
 
   app.get('/address', (req, res) => {
     const address: string = getPublicFromWallet();
-    res.send({'address': address});
+    res.send({ 'address': address });
   });
 
   app.get('/peers', (req, res) => {
-    res.send(getSockets().map((s: any) => s._socket.remoteAddress + ':' + s._socket.remotePort));
+    res.send(getPods().map((p: any) => {
+      const returnObj = {
+        type: p.type,
+        name: p.name,
+        location: p.location,
+        ip: `${p.ws._socket.remoteAddress} : ${p.ws._socket.remotePort}`,
+        publicAddress: p.address
+      };
+      return returnObj;
+    }));
   });
 
   app.post('/addPeer', (req, res) => {
-      connectToPeers(req.body.peer);
-      res.send();
+    connectToPeers(req.body.peer);
+    res.send({ retVal: 'test' });
   });
 
   app.post('/send', (req, res) => {
@@ -102,5 +111,5 @@ const initHttpServer = (port: number) => {
 };
 
 initHttpServer(httpPort);
-if (argv.s === 'true' ) { initP2PServer(p2pPort); }
+if (argv.s === 'true') { initP2PServer(p2pPort); }
 initWallet();
