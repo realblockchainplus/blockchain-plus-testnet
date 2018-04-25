@@ -7,6 +7,8 @@ import { Pod, createPod } from './pod';
 import { Transaction } from './transaction';
 import { getTransactionPool } from './transactionPool';
 
+const pods: Pod[] = [];
+
 const randomNames = [
   "Jeevan Singh",
   "Jaswinder Singh",
@@ -65,8 +67,6 @@ const randomNames = [
   "Cristen Shier"
 ];
 
-const pods: Pod[] = [];
-
 enum MessageType {
   QUERY_LATEST = 0,
   QUERY_ALL = 1,
@@ -95,7 +95,7 @@ const initConnection = (ws: WebSocket) => {
   const randomName = randomNames.splice(Math.floor(Math.random() * randomNames.length), 1)[0];
   const randomLocation = { x: Math.floor(Math.random() * 5000), y: Math.floor(Math.random() * 5000) };
   const randomType = Math.floor(Math.random() * 10) <= 1 ? 0 : 1;
-  const pod: Pod = createPod(randomType, randomLocation, randomName, ws);
+  const pod: Pod = createPod(randomType, randomLocation, randomName);
   console.log(`Adding Pod... ${pod.name}`);
   pods.push(pod);
   initMessageHandler(pod);

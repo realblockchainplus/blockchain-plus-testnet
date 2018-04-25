@@ -1,0 +1,7 @@
+{
+  "userconfig": {
+    "optionOne": false,
+    "optionTwo": true,
+    "whatever": "abcd"
+  }
+}
