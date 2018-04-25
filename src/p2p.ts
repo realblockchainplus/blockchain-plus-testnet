@@ -1,108 +1,43 @@
 import * as WebSocket from 'ws';
 import { Server } from 'ws';
 import {
-  addBlockToChain, Block, getBlockchain, getLastBlock,
-  handleReceivedTransaction, isStructureValid
+  addBlockToChain, Block, getBlockchain, getLastBlock, handleReceivedTransaction, isStructureValid, replaceChain
 } from './block';
 import { Transaction } from './transaction';
 import { getTransactionPool } from './transactionPool';
-import { Pod, createPod } from './pod';
 
-const pods: Pod[] = [];
-
-const randomNames = [
-  "Jeevan Singh",
-  "Jaswinder Singh",
-  "Gabor Levai",
-  "Rajah Vasjaragagag",
-  "Scott Donnelly",
-  "Gale Rott",
-  "Carleen Labarge",
-  "Mindy Rummage",
-  "Malena Imhoff",
-  "Layla Pfaff",
-  "Ashleigh Depaoli",
-  "Dimple Brockway",
-  "Cheryl Mckie",
-  "Voncile Rideout",
-  "Nanette Skinner",
-  "Wilburn Hetzel",
-  "Zack Ganey",
-  "Aleen Pilarski",
-  "Johnson Cribbs",
-  "Timothy Hottle",
-  "Kellye Loney",
-  "Iraida Browne",
-  "Shaun Burton",
-  "Brianne Honey",
-  "Ceola Cantrelle",
-  "Sheilah Thiede",
-  "Antoine Osterberg",
-  "Denese Bergin",
-  "Stacia Zobel",
-  "Trinity Meng",
-  "Christiana Barnes",
-  "Freddie Kin",
-  "Kai Reid",
-  "Marybeth Lavine",
-  "Vella Sachs",
-  "Cameron Abate",
-  "Shawanna Emanuel",
-  "Hilaria Gabourel",
-  "Clelia Rohloff",
-  "Joi Sandidge",
-  "Micheal Belew",
-  "Mercedes Buhler",
-  "Tam Steimle",
-  "Slyvia Alongi",
-  "Suzie Mcneilly",
-  "Stefanie Beehler",
-  "Nadene Orcutt",
-  "Maud Barlow",
-  "Dusty Dabrowski",
-  "Kylee Krom",
-  "Lena Edmisten",
-  "Kristopher Whiteside",
-  "Dorine Lepley",
-  "Kelle Khouri",
-  "Cristen Shier"
-];
+const sockets: WebSocket[] = [];
 
 enum MessageType {
   QUERY_LATEST = 0,
   QUERY_ALL = 1,
   RESPONSE_BLOCKCHAIN = 2,
   QUERY_TRANSACTION_POOL = 3,
-  RESPONSE_TRANSACTION_POOL = 4,
-  SELECTED_FOR_VALIDATION = 5
-};
+  RESPONSE_TRANSACTION_POOL = 4
+}
 
 class Message {
   public type: MessageType;
   public data: any;
-};
+}
 
 const initP2PServer = (p2pPort: number) => {
   const server: Server = new WebSocket.Server({ port: p2pPort });
-  console.log('Starting p2p server...');
   server.on('connection', (ws: WebSocket) => {
-    // console.log('p2p connection started');
-    // initConnection(ws);
+    initConnection(ws);
   });
+  console.log('listening websocket p2p port on: ' + p2pPort);
 };
 
-const getPods = () => { return pods; };
+const getSockets = () => sockets;
 
 const initConnection = (ws: WebSocket) => {
-  const randomName = randomNames.splice(Math.floor(Math.random() * randomNames.length), 1)[0];
-  const randomLocation = { x: Math.floor(Math.random() * 5000), y: Math.floor(Math.random() * 5000) };
-  const randomType = Math.floor(Math.random() * 10) <= 1 ? 0 : 1;
-  const pod = createPod(randomType, randomLocation, randomName, ws);
-  console.log(`Adding Pod... ${pod.name}`);
-  pods.push(pod);
-  initMessageHandler(pod);
-  initErrorHandler(pod);
-  write(pod, queryChainLengthMsg());
+  sockets.push(ws);
+  initMessageHandler(ws);
+  initErrorHandler(ws);
+  write(ws, queryChainLengthMsg());
+
+  // query transactions pool only some time after chain query
   setTimeout(() => {
     broadcast(queryTransactionPoolMsg());
   }, 500);
@@ -117,67 +52,60 @@ const JSONToObject = <T>(data: string): T => {
   }
 };
 
-const initMessageHandler = (pod: Pod) => {
-  const { ws } = pod;
+const initMessageHandler = (ws: WebSocket) => {
   ws.on('message', (data: string) => {
+
     try {
       const message: Message = JSONToObject<Message>(data);
       if (message === null) {
         console.log('could not parse received JSON message: ' + data);
         return;
       }
-      console.log('Received message' + JSON.stringify(message));
+      console.log('Received message: %s', JSON.stringify(message));
       switch (message.type) {
         case MessageType.QUERY_LATEST:
-          write(pod, responseLatestMsg());
+          write(ws, responseLatestMsg());
           break;
         case MessageType.QUERY_ALL:
-          write(pod, responseChainMsg());
+          write(ws, responseChainMsg());
           break;
         case MessageType.RESPONSE_BLOCKCHAIN:
           const receivedBlocks: Block[] = JSONToObject<Block[]>(message.data);
           if (receivedBlocks === null) {
-            console.log('invalid blocks received:');
-            console.log(message.data);
+            console.log('invalid blocks received: %s', JSON.stringify(message.data));
             break;
           }
           handleBlockchainResponse(receivedBlocks);
           break;
         case MessageType.QUERY_TRANSACTION_POOL:
-          write(pod, responseTransactionPoolMsg());
+          write(ws, responseTransactionPoolMsg());
           break;
         case MessageType.RESPONSE_TRANSACTION_POOL:
-          const receievedTransactions: Transaction[] = JSONToObject<Transaction[]>(message.data);
-          if (receievedTransactions === null) {
-            console.log(`Invalid transaction received: ${JSON.stringify(message.data)}`);
+          const receivedTransactions: Transaction[] = JSONToObject<Transaction[]>(message.data);
+          if (receivedTransactions === null) {
+            console.log('invalid transaction received: %s', JSON.stringify(message.data));
             break;
           }
-          receievedTransactions.forEach((transaction: Transaction) => {
+          receivedTransactions.forEach((transaction: Transaction) => {
             try {
               handleReceivedTransaction(transaction);
+              // if no error is thrown, transaction was indeed added to the pool
+              // let's broadcast transaction pool
               broadCastTransactionPool();
             } catch (e) {
               console.log(e.message);
             }
           });
           break;
-        case MessageType.SELECTED_FOR_VALIDATION:
-          break;
       }
     } catch (e) {
-      console.log(`Error on message: ${e}`);
+      console.log(e);
     }
   });
 };
 
-const write = (pod: Pod, message: Message): void => {
-  const { ws } = pod;
-  ws.send(JSON.stringify(message));
-};
-
-const broadcast = (message: Message): void => pods.forEach((pod) => {
-  write(pod, message)
-});
+const write = (ws: WebSocket, message: Message): void => ws.send(JSON.stringify(message));
+const broadcast = (message: Message): void => sockets.forEach((socket) => write(socket, message));
 
 const queryChainLengthMsg = (): Message => ({ 'type': MessageType.QUERY_LATEST, 'data': null });
 
@@ -202,14 +130,13 @@ const responseTransactionPoolMsg = (): Message => ({
   'data': JSON.stringify(getTransactionPool())
 });
 
-const initErrorHandler = (pod: Pod) => {
-  const { ws } = pod;
-  const closeConnection = (myPod: Pod) => {
-    console.log('connection failed to peer: ' + myPod.ws.url);
-    pods.splice(pods.indexOf(myPod), 1);
+const initErrorHandler = (ws: WebSocket) => {
+  const closeConnection = (myWs: WebSocket) => {
+    console.log('connection failed to peer: ' + myWs.url);
+    sockets.splice(sockets.indexOf(myWs), 1);
   };
-  ws.on('close', () => closeConnection(pod));
-  ws.on('error', () => closeConnection(pod));
+  ws.on('close', () => closeConnection(ws));
+  ws.on('error', () => closeConnection(ws));
 };
 
 const handleBlockchainResponse = (receivedBlocks: Block[]) => {
@@ -234,8 +161,8 @@ const handleBlockchainResponse = (receivedBlocks: Block[]) => {
       console.log('We have to query the chain from our peer');
       broadcast(queryAllMsg());
     } else {
-      console.log('Received blockchain is longer than current blockchain. Replace chain is not implemented yet.');
-      // replaceChain(receivedBlocks);
+      console.log('Received blockchain is longer than current blockchain');
+      replaceChain(receivedBlocks);
     }
   } else {
     console.log('received blockchain is not longer than received blockchain. Do nothing');
@@ -246,21 +173,18 @@ const broadcastLatest = (): void => {
   broadcast(responseLatestMsg());
 };
 
+const connectToPeers = (newPeer: string): void => {
+  const ws: WebSocket = new WebSocket(newPeer);
+  ws.on('open', () => {
+    initConnection(ws);
+  });
+  ws.on('error', () => {
+    console.log('connection failed');
+  });
+};
+
 const broadCastTransactionPool = () => {
   broadcast(responseTransactionPoolMsg());
 };
 
-const connectToPeers = (newPeer: string): void => {
-  console.log(`[New Peer]: ${newPeer}`);
-  const ws: WebSocket = new WebSocket(newPeer);
-  ws.on('open', () => {
-    console.log(`[Web Socket] is open... initiating connection`);
-    initConnection(ws);
-  });
-  ws.on('error', (error) => {
-    console.log(`[Error]: ${error}`);
-  });
-};
-
-export { connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getPods };
-
+export { connectToPeers, broadcastLatest, broadCastTransactionPool, initP2PServer, getSockets };

@@ -1,4 +1,4 @@
 node_modules
-node
+node/
 src/*.js
 src/*.map

@@ -29,19 +29,20 @@ const getCurrentTimestamp = (): number => {
 
 const genesisTransaction = new Transaction();
 genesisTransaction.txIns = [new TxIn()];
-genesisTransaction.txOuts = [new TxOut('04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a', 500)];
+genesisTransaction.txOuts = [new TxOut('04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a', 50)];
+genesisTransaction.id = 'e655f6a5f26dc9b4cac6e46f52336428287759cf81ef5ff10854f69d68f43fa3';
 
 const genesisBlock: Block = new Block(
   0,
+  '91a73664bc84c0baa1fc75ea6e4aa6d1d20c5df664c724e3159aefc2e1186627',
   '',
-  '',
-  getCurrentTimestamp(),
+  1465154705,
   [genesisTransaction]
 );
 
 let blockchain: Block[] = [genesisBlock];
 
-let unspentTxOuts: UnspentTxOut[] = [];
+let unspentTxOuts: UnspentTxOut[] = processTransactions(blockchain[0].data, [], 0);
 
 const getBlockchain = (): Block[] => { return blockchain; };
 
@@ -97,6 +98,21 @@ const sendTransaction = (address: string, amount: number): Transaction => {
   addToTransactionPool(tx, getUnspentTxOuts());
   broadCastTransactionPool();
   return tx;
+};
+
+const replaceChain = (newBlocks: Block[]) => {
+  const aUnspentTxOuts = isChainValid(newBlocks);
+  const validChain: boolean = aUnspentTxOuts !== null;
+  if (validChain) {
+
+    console.log('Received blockchain is valid. Replacing current blockchain with received blockchain');
+    blockchain = newBlocks;
+    setUnspentTxOuts(aUnspentTxOuts);
+    updateTransactionPool(unspentTxOuts);
+    broadcastLatest();
+  } else {
+    console.log('Received blockchain invalid');
+  }
 };
 
 const isBlockValid = (newBlock: Block, prevBlock: Block): boolean => {
@@ -180,6 +196,7 @@ console.log(genesisBlock);
 
 export {
   Block, addBlockToChain, getBlockchain, calculateHash, calculateHashFromBlock, getLastBlock,
-  generateNextBlock, generateNextBlockWithTransaction, getAccountBalance,
-  isChainValid, isStructureValid, getCurrentTimestamp, isBlockValid, handleReceivedTransaction
+  generateNextBlock, generateNextBlockWithTransaction, getAccountBalance, replaceChain,
+  isChainValid, isStructureValid, getCurrentTimestamp, isBlockValid, handleReceivedTransaction,
+  sendTransaction
 }

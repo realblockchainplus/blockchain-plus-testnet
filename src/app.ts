@@ -3,17 +3,18 @@ import * as express from 'express';
 import * as _ from 'lodash';
 import * as kp from 'kill-port';
 import * as cors from 'cors';
+import * as minimist from 'minimist';
 
-import { Block, getBlockchain, generateNextBlock, addBlockToChain, getAccountBalance, generateNextBlockWithTransaction } from './block';
-import { getTransactionId, sendTransaction } from './transaction';
-import { connectToPeers, getPods, initP2PServer } from './p2p';
-import { Pod } from './pod';
+import { Block, getBlockchain, generateNextBlock, addBlockToChain, getAccountBalance, generateNextBlockWithTransaction, sendTransaction, getLastBlock } from './block';
+import { Transaction, getTransactionId, addToWallet } from './transaction';
+import { connectToPeers, getSockets, initP2PServer } from './p2p';
 import { initWallet, getPublicFromWallet } from './wallet';
 import { getTransactionPool } from './transactionPool';
 import { selectRandom } from './rngTool';
 import { transaction } from './transactionOpp';
 
-const httpPort: number = parseInt(process.env.HTTP_PORT) || 3001;
+const argv = minimist(process.argv.slice(2));
+const httpPort: number = parseInt(argv.p) || 3001;
 const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
 
 const REGULAR_NODES = 0;
@@ -44,21 +45,21 @@ const initHttpServer = (port: number) => {
   //   result ? res.send(newBlock) : res.status(400).send('Invalid Block');
   // });
 
-  app.post('/mineTransaction', (req, res) => {
-    const address = req.body.address;
-    const amount = req.body.amount;
-    const pods = getPods();
-    const regularPods = pods.filter(pod => pod.type === 0);
-    const partnerPods = pods.filter(pod => pod.type === 1);
-    const selectedPods: Pod[] = [...selectRandom(regularPods), ...selectRandom(partnerPods)];
-    try {
-      const resp = generateNextBlockWithTransaction(address, amount);
-      res.send(resp);
-    } catch (e) {
-      console.log(e.message);
-      res.status(400).send(e.message);
-    }
-  });
+  // app.post('/testTransaction', (req, res) => {
+  //   const address = req.body.address;
+  //   const amount = req.body.amount;
+  //   const pods = getPods();
+  //   const regularPods = pods.filter(pod => pod.type === 0);
+  //   const partnerPods = pods.filter(pod => pod.type === 1);
+  //   const selectedPods: Pod[] = [...selectRandom(regularPods), ...selectRandom(partnerPods)];
+  //   try {
+  //     const resp = generateNextBlockWithTransaction(address, amount);
+  //     res.send(resp);
+  //   } catch (e) {
+  //     console.log(e.message);
+  //     res.status(400).send(e.message);
+  //   }
+  // });
 
   app.get('/transactionPool', (req, res) => {
     res.send(getTransactionPool());
@@ -75,16 +76,7 @@ const initHttpServer = (port: number) => {
   });
 
   app.get('/peers', (req, res) => {
-      res.send(getPods().map(( p: any ) => {
-        const returnObj = {
-          type: p.type,
-          name: p.name,
-          location: p.location,
-          ip: `${p.ws._socket.remoteAddress} : ${p.ws._socket.remotePort}`,
-          publicAddress: p.address
-        };
-        return returnObj;
-      }));
+    res.send(getSockets().map((s: any) => s._socket.remoteAddress + ':' + s._socket.remotePort));
   });
 
   app.post('/addPeer', (req, res) => {
@@ -97,11 +89,18 @@ const initHttpServer = (port: number) => {
     res.send();
   });
 
+  app.post('/addToWallet', (req, res) => {
+    const newFunds: Transaction = addToWallet(req.body.address, getLastBlock().index + 1);
+    const newBlock: Block = generateNextBlock([newFunds]);
+    const result = addBlockToChain(newBlock);
+    result ? res.send(newBlock) : res.status(400).send('Invalid Block');
+  });
+
   app.listen(port, () => {
     console.log(`[Node] Listening on port: ${port}`);
   });
 };
 
 initHttpServer(httpPort);
-initP2PServer(p2pPort);
+if (argv.s === 'true' ) { initP2PServer(p2pPort); }
 initWallet();

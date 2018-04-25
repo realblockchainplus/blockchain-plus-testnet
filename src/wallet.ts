@@ -1,10 +1,14 @@
 import { ec } from 'elliptic';
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import * as _ from 'lodash';
+import * as minimist from 'minimist';
 import { getPublicKey, getTransactionId, signTxIn, Transaction, TxIn, TxOut, UnspentTxOut } from './transaction';
 
 const EC = new ec('secp256k1');
-const privateKeyLocation = process.env.PRIVATE_KEY || 'node/wallet/private_key';
+const argv = minimist(process.argv.slice(2));
+const port = argv.p;
+const keyName = port || 'private_key';
+const privateKeyLocation = `node/wallet/${keyName}`;
 
 const getPrivateFromWallet = (): string => {
   const buffer = readFileSync(privateKeyLocation, 'utf8');

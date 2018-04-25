@@ -4,7 +4,7 @@ import * as _ from 'lodash';
 
 const ec = new ecdsa.ec('secp256k1');
 
-const MINT_AMOUNT: number = 5;
+const MINT_AMOUNT: number = 100;
 
 /**
  * An outgoing transaction
@@ -118,6 +118,19 @@ const validateBlockTransactions = (aTransactions: Transaction[], aUnspentTxOuts:
 
 };
 
+const addToWallet = (address: string, blockIndex: number): Transaction => {
+  const t = new Transaction();
+  const txIn: TxIn = new TxIn();
+  txIn.signature = '';
+  txIn.txOutId = '';
+  txIn.txOutIndex = blockIndex;
+
+  t.txIns = [txIn];
+  t.txOuts = [new TxOut(address, MINT_AMOUNT)];
+  t.id = getTransactionId(t);
+  return t;
+};
+
 // const validateCoinbaseTx = (transaction: Transaction, blockIndex: number): boolean => {
 //   if (transaction == null) {
 //       console.log('the first transaction in the block must be coinbase transaction');
@@ -175,26 +188,6 @@ const hasDuplicates = (txIns: TxIn[]): boolean => {
 
 const getTxInAmount = (txIn: TxIn, aUnspentTxOuts: UnspentTxOut[]): number => {
   return findUnspentTxOut(txIn.txOutId, txIn.txOutIndex, aUnspentTxOuts).amount;
-};
-
-const sendTransaction = (address: string, amount: number): Transaction => {
-  const tx: Transaction = createTransaction(address, amount);
-  return tx;
-};
-
-const createTransaction = (address: string, amount: number): Transaction => {
-  const txOut: TxOut = new TxOut(address, amount);
-  const txIn: TxIn = new TxIn();
-  txIn.txOutId = '';
-  txIn.txOutIndex = 0;
-  txIn.signature = '';
-
-  const tx: Transaction = new Transaction();
-  tx.txIns = [txIn];
-  tx.txOuts = [txOut];
-  tx.id = getTransactionId(tx);
-
-  return tx;
 };
 
 const signTxIn = (transaction: Transaction, txInIndex: number, privateKey: string,
@@ -271,7 +264,7 @@ const getPublicKey = (aPrivateKey: string): string => {
 
 export {
   Transaction, TxOut, TxIn, getTransactionId,
-  sendTransaction, getPublicKey, signTxIn, UnspentTxOut,
+  getPublicKey, signTxIn, UnspentTxOut, addToWallet,
   validateTransaction, isValidAddress, processTransactions
 }
 
