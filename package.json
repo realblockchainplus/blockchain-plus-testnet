@@ -5,7 +5,7 @@
   "scripts": {
     "start-server": "node src/app.js -p 3001 -s true",
     "start-node": "node src/app.js -p 3002 -s false",
-    "now-start": "node app.js -p 3001 -s true",
+    "now-start": "node js/app.js -p 3001 -s true",
     "compile": "tsc"
   },
   "author": "",
@@ -33,5 +33,11 @@
     "@types/node": "^9.6.5",
     "@types/ws": "^4.0.2",
     "tslint": "^5.9.1"
+  },
+  "now": {
+    "files": [
+      "node",
+      "js"
+    ]
   }
 }

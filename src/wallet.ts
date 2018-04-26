@@ -1,5 +1,5 @@
 import { ec } from 'elliptic';
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
+import { mkdirSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import * as _ from 'lodash';
 import * as minimist from 'minimist';
 import { getPublicKey, getTransactionId, signTxIn, Transaction, TxIn, TxOut, UnspentTxOut } from './transaction';
@@ -10,6 +10,12 @@ const port = argv.p;
 const keyName = port || 'private_key';
 const privateKeyLocation = `node/wallet/${keyName}`;
 
+const createNodeDir = (): void => {
+  if (existsSync('node')) {
+    return;
+  }
+  mkdirSync('node/wallet');
+}
 const getPrivateFromWallet = (): string => {
   const buffer = readFileSync(privateKeyLocation, 'utf8');
   return buffer.toString();
@@ -28,6 +34,7 @@ const generatePrivateKey = (): string => {
 };
 
 const initWallet = () => {
+  createNodeDir();
   if (existsSync(privateKeyLocation)) {
     return;
   }

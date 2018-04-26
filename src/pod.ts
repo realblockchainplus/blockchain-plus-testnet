@@ -1,6 +1,6 @@
 import * as io from 'socket.io-client';
 import { Socket } from 'socket.io-client';
-import * as WebSocket from 'ws';
+import { getPublicFromWallet } from './wallet';
 
 class Pod {
 
@@ -33,6 +33,64 @@ enum podType {
   PARTNER_POD = 1
 };
 
+const randomNames = [
+  "Jeevan Singh",
+  "Jaswinder Singh",
+  "Gabor Levai",
+  "Rajah Vasjaragagag",
+  "Scott Donnelly",
+  "Gale Rott",
+  "Carleen Labarge",
+  "Mindy Rummage",
+  "Malena Imhoff",
+  "Layla Pfaff",
+  "Ashleigh Depaoli",
+  "Dimple Brockway",
+  "Cheryl Mckie",
+  "Voncile Rideout",
+  "Nanette Skinner",
+  "Wilburn Hetzel",
+  "Zack Ganey",
+  "Aleen Pilarski",
+  "Johnson Cribbs",
+  "Timothy Hottle",
+  "Kellye Loney",
+  "Iraida Browne",
+  "Shaun Burton",
+  "Brianne Honey",
+  "Ceola Cantrelle",
+  "Sheilah Thiede",
+  "Antoine Osterberg",
+  "Denese Bergin",
+  "Stacia Zobel",
+  "Trinity Meng",
+  "Christiana Barnes",
+  "Freddie Kin",
+  "Kai Reid",
+  "Marybeth Lavine",
+  "Vella Sachs",
+  "Cameron Abate",
+  "Shawanna Emanuel",
+  "Hilaria Gabourel",
+  "Clelia Rohloff",
+  "Joi Sandidge",
+  "Micheal Belew",
+  "Mercedes Buhler",
+  "Tam Steimle",
+  "Slyvia Alongi",
+  "Suzie Mcneilly",
+  "Stefanie Beehler",
+  "Nadene Orcutt",
+  "Maud Barlow",
+  "Dusty Dabrowski",
+  "Kylee Krom",
+  "Lena Edmisten",
+  "Kristopher Whiteside",
+  "Dorine Lepley",
+  "Kelle Khouri",
+  "Cristen Shier"
+];
+
 const regularPodSpecs = {
   ram: 2,
   storage: 100,
@@ -45,17 +103,17 @@ const partnerPodSpecs = {
   uptime: 99.97
 };
 
-const createPod = (type: podType, location: object, name: string) => {
-  const pod: Pod = new Pod(type, location, name);
-  io('http://localhost:3001');
-  console.log('after io');
+const createPod = (type: podType) => {
+  const randomName = randomNames.splice(Math.floor(Math.random() * randomNames.length), 1)[0];
+  const randomLocation = { x: Math.floor(Math.random() * 5000), y: Math.floor(Math.random() * 5000) };
+  const pod: Pod = new Pod(type, randomLocation, randomName);
   pod.id = 0 // get num of pods + 1   OR   random string for id
   pod.spawnTimestamp = Math.round(new Date().getTime() / 1000);
   type === podType.REGULAR_POD ? Object.assign(pod, regularPodSpecs) : Object.assign(pod, partnerPodSpecs);
   pod.ram = gbToMb(pod.ram);
   pod.storage = gbToMb(pod.storage);
   pod.status = manageUptime(pod);
-  connectToNetwork(pod);
+  io
   return pod;
 };
 
@@ -64,7 +122,7 @@ const gbToMb = (gb: number) => {
 };
 
 const connectToNetwork = (pod: Pod): Socket => {
-  io('http://localhost:6001');
+  // io('http://localhost:6001');
 };
 
 const manageUptime = (pod: Pod): status => {

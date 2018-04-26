@@ -9,7 +9,7 @@ import * as socketio from 'socket.io';
 
 import { Block, getBlockchain, generateNextBlock, addBlockToChain, getAccountBalance, generateNextBlockWithTransaction, sendTransaction, getLastBlock } from './block';
 import { Transaction, getTransactionId, addToWallet } from './transaction';
-import { getPods, initP2PServer } from './p2p';
+import { getPods, initP2PServer, initP2PNode } from './p2p.1';
 import { initWallet, getPublicFromWallet } from './wallet';
 import { Pod, createPod } from './pod';
 import { getTransactionPool } from './transactionPool';
@@ -23,68 +23,9 @@ const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
 const REGULAR_NODES = 0;
 const PARTNER_NODES = 0;
 
-const randomNames = [
-  "Jeevan Singh",
-  "Jaswinder Singh",
-  "Gabor Levai",
-  "Rajah Vasjaragagag",
-  "Scott Donnelly",
-  "Gale Rott",
-  "Carleen Labarge",
-  "Mindy Rummage",
-  "Malena Imhoff",
-  "Layla Pfaff",
-  "Ashleigh Depaoli",
-  "Dimple Brockway",
-  "Cheryl Mckie",
-  "Voncile Rideout",
-  "Nanette Skinner",
-  "Wilburn Hetzel",
-  "Zack Ganey",
-  "Aleen Pilarski",
-  "Johnson Cribbs",
-  "Timothy Hottle",
-  "Kellye Loney",
-  "Iraida Browne",
-  "Shaun Burton",
-  "Brianne Honey",
-  "Ceola Cantrelle",
-  "Sheilah Thiede",
-  "Antoine Osterberg",
-  "Denese Bergin",
-  "Stacia Zobel",
-  "Trinity Meng",
-  "Christiana Barnes",
-  "Freddie Kin",
-  "Kai Reid",
-  "Marybeth Lavine",
-  "Vella Sachs",
-  "Cameron Abate",
-  "Shawanna Emanuel",
-  "Hilaria Gabourel",
-  "Clelia Rohloff",
-  "Joi Sandidge",
-  "Micheal Belew",
-  "Mercedes Buhler",
-  "Tam Steimle",
-  "Slyvia Alongi",
-  "Suzie Mcneilly",
-  "Stefanie Beehler",
-  "Nadene Orcutt",
-  "Maud Barlow",
-  "Dusty Dabrowski",
-  "Kylee Krom",
-  "Lena Edmisten",
-  "Kristopher Whiteside",
-  "Dorine Lepley",
-  "Kelle Khouri",
-  "Cristen Shier"
-];
-
 const initHttpServer = (port: number) => {
   const app = express();
   const server = new http.Server(app);
-  const io = socketio(server);
 
   app.use(bodyParser.json());
   app.use(cors());
@@ -164,19 +105,19 @@ const initHttpServer = (port: number) => {
     result ? res.send(newBlock) : res.status(400).send('Invalid Block');
   });
 
-  io.on('connection', socket => {
-    console.log('a peer connected');
-  });
-
-  server.listen(port, () => {
-    console.log(`[Node] Listening on port: ${port}`);
-  });
+  if (argv.s === 'true') {
+    server.listen(port, () => {
+      console.log(`[Node] Listening on port: ${port}`);
+    });
+    initP2PServer(server);
+  }
+  else {
+    server.listen(0, () => {
+      console.log(`[Node] New Node created on port: ${server.address().port}`);
+    });
+    initP2PNode(server);
+  }
 };
 
-if (argv.s === 'true') { initHttpServer(httpPort); }
-// initP2PServer(p2pPort);
+initHttpServer(httpPort);
 initWallet();
-const randomName = randomNames.splice(Math.floor(Math.random() * randomNames.length), 1)[0];
-const randomLocation = { x: Math.floor(Math.random() * 5000), y: Math.floor(Math.random() * 5000) };
-const randomType = Math.floor(Math.random() * 10) <= 1 ? 0 : 1;
-const pod: Pod = createPod(randomType, randomLocation, randomName);
