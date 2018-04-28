@@ -2,7 +2,7 @@ import * as CryptoJS from 'crypto-js';
 import * as _ from 'lodash';
 import { Transaction, TxIn, TxOut, isValidAddress, processTransactions, UnspentTxOut } from './transaction';
 import { addToTransactionPool, getTransactionPool, updateTransactionPool } from './transactionPool';
-import { broadcastLatest, broadCastTransactionPool } from './p2p';
+import { broadcastLatest, broadCastTransactionPool } from './p2p.1';
 import { getBalance, getPublicFromWallet, createTransaction, getPrivateFromWallet, findUnspentTxOuts } from './wallet';
 
 class Block {
@@ -29,7 +29,17 @@ const getCurrentTimestamp = (): number => {
 
 const genesisTransaction = new Transaction();
 genesisTransaction.txIns = [new TxIn()];
-genesisTransaction.txOuts = [new TxOut('04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a', 50)];
+genesisTransaction.txOuts = [new TxOut(
+  '', 
+  '04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a',
+  50,
+  '',
+  '',
+  '',
+  '',
+  '',
+  getCurrentTimestamp()
+)];
 genesisTransaction.id = 'e655f6a5f26dc9b4cac6e46f52336428287759cf81ef5ff10854f69d68f43fa3';
 
 const genesisBlock: Block = new Block(
@@ -177,8 +187,12 @@ const addBlockToChain = (block: Block): boolean => {
     }
     else {
       blockchain.push(block);
+      console.log('New block pushed to chain');
       setUnspentTxOuts(retVal);
+      console.log('After [setUnspentTxOuts]');
       updateTransactionPool(unspentTxOuts);
+      console.log('After [updateTransactionPool]');
+      console.log('Calling [broadcastLatest]');
       broadcastLatest();
       return true;
     }
@@ -191,8 +205,6 @@ const handleReceivedTransaction = (transaction: Transaction) => {
 };
 
 genesisBlock.hash = calculateHashFromBlock(genesisBlock);
-
-console.log(genesisBlock);
 
 export {
   Block, addBlockToChain, getBlockchain, calculateHash, calculateHashFromBlock, getLastBlock,

@@ -105,19 +105,12 @@ const initHttpServer = (port: number) => {
     result ? res.send(newBlock) : res.status(400).send('Invalid Block');
   });
 
-  if (argv.s === 'true') {
-    server.listen(port, () => {
-      console.log(`[Node] Listening on port: ${port}`);
-    });
-    initP2PServer(server);
-  }
-  else {
-    server.listen(0, () => {
-      console.log(`[Node] New Node created on port: ${server.address().port}`);
-    });
-    initP2PNode(server);
-  }
+  server.listen(0, () => {
+    console.log(`[Node] New Node created on port: ${server.address().port}`);
+    initWallet(server.address().port);
+  });
+  initP2PServer(server);
+  initP2PNode(server);
 };
 
 initHttpServer(httpPort);
-initWallet();

@@ -1,7 +1,7 @@
 import * as socketIo from 'socket.io';
 import * as ioClient from 'socket.io-client';
 import { Socket } from 'socket.io-client';
-import { Server }  from 'http';
+import { Server } from 'http';
 import { Pod, createPod } from './pod';
 import {
   addBlockToChain, Block, getBlockchain, getLastBlock, handleReceivedTransaction, isStructureValid, replaceChain
@@ -18,7 +18,8 @@ enum MessageType {
   QUERY_TRANSACTION_POOL = 3,
   RESPONSE_TRANSACTION_POOL = 4,
   SELECTED_FOR_VALIDATION = 5,
-  RESPONSE_IDENTITY = 6
+  RESPONSE_IDENTITY = 6,
+  VALIDATION_RESULT = 7
 };
 
 class Message {
@@ -28,24 +29,26 @@ class Message {
 
 let io;
 
-const initP2PServer = (server: Server) => {
+const initP2PServer = (server: Server): any => {
   io = socketIo(server);
   io.on('connection', socket => {
     handleNewConnection(socket);
   });
 };
+
 const initP2PNode = (server: Server) => {
   const randomType: number = Math.floor(Math.random() * 10) >= 1 ? 0 : 1;
   const pod: Pod = createPod(randomType);
   const message: Message = new Message();
   message.type = MessageType.RESPONSE_IDENTITY;
   message.data = pod;
-  const socket: Socket = ioClient('https://blockchain-plus-testnet-tumvcoynzo.now.sh');
+  const socket: Socket = ioClient('https://blockchain-plus-testnet.now.sh');
   socket.on('identity', () => {
     console.log('Received [identity]');
     write(socket, message);
   });
   socket.on('message', (message: Message) => {
+    console.log(`Received Message: ${message.type}`);
     handleMessage(socket, message);
   });
   const getAll: Message = new Message();
@@ -92,7 +95,7 @@ const handleMessage = (socket: Socket, message: Message) => {
         write(socket, responseTransactionPoolMsg());
         break;
       case MessageType.RESPONSE_TRANSACTION_POOL:
-        const receivedTransactions: Transaction[] = message.data;
+        const receivedTransactions: Transaction[] = JSON.parse(message.data);
         if (receivedTransactions === null) {
           console.log('invalid transaction received: %s', JSON.stringify(message.data));
           break;
@@ -102,7 +105,7 @@ const handleMessage = (socket: Socket, message: Message) => {
             handleReceivedTransaction(transaction);
             // if no error is thrown, transaction was indeed added to the pool
             // let's broadcast transaction pool
-            io.broadcast.emit(responseTransactionPoolMsg());
+            io.emit('message', responseTransactionPoolMsg());
           } catch (e) {
             console.log(e.message);
           }
@@ -110,15 +113,16 @@ const handleMessage = (socket: Socket, message: Message) => {
         break;
       case MessageType.RESPONSE_IDENTITY:
         console.log('Received Peer Identity');
-        console.dir(message.data);
+        pods.push(message.data);
         break;
-      }
+    }
   } catch (e) {
     console.log(e);
   }
 };
 
 const write = (socket: Socket, message: Message): void => {
+  console.log('Before emit');
   socket.emit('message', message);
 };
 
@@ -167,6 +171,16 @@ const responseIdentityMsg = (pod: Pod): Message => ({
   'data': JSON.stringify(pod)
 });
 
+const queryIsTransactionValid = (transaction: Transaction): Message => ({
+  'type': MessageType.SELECTED_FOR_VALIDATION,
+  'data': JSON.stringify(transaction)
+});
+
+const responseIsTransactionValid = (result: Boolean): Message => ({
+  'type': MessageType.VALIDATION_RESULT,
+  'data': result
+});
+
 const handleBlockchainResponse = (socket: Socket, receivedBlocks: Block[]) => {
   if (receivedBlocks.length === 0) {
     console.log('received block chain size of 0');
@@ -198,7 +212,16 @@ const handleBlockchainResponse = (socket: Socket, receivedBlocks: Block[]) => {
 };
 
 const broadcastLatest = (): void => {
-  io.broadcast.emit(responseLatestMsg());
+  console.log('Broadcasting latest blockchain');
+  io.clients((err, clients) => {
+    console.log(clients);
+  });
+  io.emit('message', responseLatestMsg());
+};
+
+const broadCastTransactionPool = (): void => {
+  console.log('Broadcasting latest transaction pool');
+  io.emit('message', responseTransactionPoolMsg());
 };
 
 // const initConnection = (socket: Socket) => {  
@@ -212,5 +235,5 @@ const broadcastLatest = (): void => {
 // };
 
 export {
-  initP2PServer, initP2PNode, getPods
+  initP2PServer, initP2PNode, getPods, broadcastLatest, broadCastTransactionPool
 }

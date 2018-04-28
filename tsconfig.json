@@ -2,8 +2,10 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "ES2016",
-    "sourceMap": true
+    "sourceMap": true,
+    "outDir": "js"
   },
+  "compileOnSave": true,
   "include": [
     "src/app.ts",
     "src/block.ts",

@@ -1,6 +1,7 @@
 import * as CryptoJS from 'crypto-js';
 import * as ecdsa from 'elliptic';
 import * as _ from 'lodash';
+import { getPublicFromWallet } from './wallet';
 
 const ec = new ecdsa.ec('secp256k1');
 
@@ -11,12 +12,28 @@ const MINT_AMOUNT: number = 100;
  * @
  */
 class TxOut {
+  public from: string;
   public address: string;
   public amount: number;
+  public witnessOne: string;
+  public witnessTwo: string;
+  public partnerOne: string;
+  public partnerTwo: string;
+  public signature: string;
+  public timestamp: number;
 
-  constructor(address: string, amount: number) {
+  constructor(from: string, address: string, amount: number,
+    witnessOne: string, witnessTwo: string, partnerOne: string,
+    partnerTwo: string, signature: string, timestamp: number) {
+    this.from = from;
     this.address = address;
     this.amount = amount;
+    this.witnessOne = witnessOne;
+    this.witnessTwo = witnessTwo;
+    this.partnerOne = partnerOne;
+    this.partnerTwo = partnerTwo;
+    this.signature = signature;
+    this.timestamp = timestamp;
   }
 };
 
@@ -126,7 +143,7 @@ const addToWallet = (address: string, blockIndex: number): Transaction => {
   txIn.txOutIndex = blockIndex;
 
   t.txIns = [txIn];
-  t.txOuts = [new TxOut(address, MINT_AMOUNT)];
+  t.txOuts = [new TxOut(getPublicFromWallet(), address, MINT_AMOUNT)];
   t.id = getTransactionId(t);
   return t;
 };

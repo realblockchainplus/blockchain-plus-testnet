@@ -7,8 +7,7 @@ import { getPublicKey, getTransactionId, signTxIn, Transaction, TxIn, TxOut, Uns
 const EC = new ec('secp256k1');
 const argv = minimist(process.argv.slice(2));
 const port = argv.p;
-const keyName = port || 'private_key';
-const privateKeyLocation = `node/wallet/${keyName}`;
+let privateKeyLocation = '';
 
 const createNodeDir = (): void => {
   if (existsSync('node')) {
@@ -33,7 +32,9 @@ const generatePrivateKey = (): string => {
   return privateKey.toString(16);
 };
 
-const initWallet = () => {
+const initWallet = (port) => {
+  privateKeyLocation += `node/wallet/${port}`;
+  console.log(privateKeyLocation);
   createNodeDir();
   if (existsSync(privateKeyLocation)) {
     return;
@@ -78,11 +79,11 @@ const findTxOutsForAmount = (amount: number, myUnspentTxOuts: UnspentTxOut[]) =>
 };
 
 const createTxOuts = (receiverAddress: string, myAddress: string, amount, leftOverAmount: number) => {
-  const txOut1: TxOut = new TxOut(receiverAddress, amount);
+  const txOut1: TxOut = new TxOut(myAddress, receiverAddress, amount);
   if (leftOverAmount === 0) {
     return [txOut1];
   } else {
-    const leftOverTx = new TxOut(myAddress, leftOverAmount);
+    const leftOverTx = new TxOut(myAddress, myAddress, leftOverAmount);
     return [txOut1, leftOverTx];
   }
 };

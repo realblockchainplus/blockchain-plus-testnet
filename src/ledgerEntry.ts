@@ -1,3 +1,6 @@
+import { Block } from './block';
+import { Transaction, TxOut, TxIn } from './transaction';
+
 class LedgerEntry {
   public transactionId: string;
   public from: string;
@@ -32,6 +35,19 @@ class LedgerEntry {
 enum ledgerType {
   MY_LEDGER = 0,
   WITNESS_LEDGER = 1
+}
+
+const writeToLedger = (block: Block) => {
+  const tx: Transaction = block.data[0];  // blocks only have 1 tx right now
+  const txOut: TxOut = tx.txOuts[0];
+  const txIn: TxIn = tx.txIns[0];
+  const ledgerEntry = new LedgerEntry(
+    tx.id,
+    txOut.from,
+    txOut.amount,
+    txOut.address,    
+    
+  )
 }
 
 export {

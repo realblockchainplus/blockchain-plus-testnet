@@ -113,7 +113,6 @@ const createPod = (type: podType) => {
   pod.ram = gbToMb(pod.ram);
   pod.storage = gbToMb(pod.storage);
   pod.status = manageUptime(pod);
-  io
   return pod;
 };
 
