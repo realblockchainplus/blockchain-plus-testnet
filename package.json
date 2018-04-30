@@ -3,14 +3,15 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start-server": "node js/app.js -p 3001 -s true",
-    "start-node": "node js/app.js -p 3002 -s false",
-    "now-start": "node js/app.js -p 3001 -s true",
+    "start-regular": "node js/app.js -t 0 -s false",
+    "start-partner": "node js/app.js -t 1 -s false",
+    "now-start": "node js/app.js -s true",
     "compile": "tsc"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@types/d3-fetch": "^1.1.1",
     "body-parser": "^1.18.2",
     "cors": "^2.8.4",
     "cross-env": "^5.1.4",

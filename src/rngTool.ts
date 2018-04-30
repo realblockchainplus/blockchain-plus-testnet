@@ -8,14 +8,17 @@ const selectRandom = (pods: Pod[]): Pod[] => {
 };
 
 const buildRandomSet = (podsLength: number): number[] => {
+  console.log('Building random set..');
   const randomSet: number[] = [];
   let randomNumber;
   while (randomSet.length < 2) {
-    randomNumber = Math.floor(Math.random() * podsLength);
+    randomNumber = Math.round(Math.random() * podsLength);
     if (randomSet.indexOf(randomNumber) === -1) {
+      console.log('Random number not in set, adding');
       randomSet.push(randomNumber);
     }
   }
+  console.log('While loop over, returning randomSet');
   return randomSet;
 }
 

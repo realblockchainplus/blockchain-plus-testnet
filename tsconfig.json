@@ -12,6 +12,7 @@
     "src/transaction.ts",
     "src/p2p.ts",
     "src/pod.ts",
+    "src/ledger.ts",
     "src/wallet.ts"
   ],
   "exclude": [

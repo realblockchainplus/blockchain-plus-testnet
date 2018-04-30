@@ -1,7 +1,6 @@
 import * as CryptoJS from 'crypto-js';
 import * as _ from 'lodash';
 import { Transaction, isValidAddress } from './transaction';
-import { addToTransactionPool, getTransactionPool, updateTransactionPool } from './transactionPool';
 import { broadcastLatest } from './p2p';
 import { getPublicFromWallet, getPrivateFromWallet } from './wallet';
 
@@ -29,11 +28,6 @@ const genesisTransaction = new Transaction(
   '', 
   '04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a',
   50,
-  '',
-  '',
-  '',
-  '',
-  '',
   getCurrentTimestamp()
 );
 genesisTransaction.id = 'e655f6a5f26dc9b4cac6e46f52336428287759cf81ef5ff10854f69d68f43fa3';

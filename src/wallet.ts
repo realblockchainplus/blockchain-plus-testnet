@@ -5,8 +5,6 @@ import * as minimist from 'minimist';
 import { getPublicKey, getTransactionId, Transaction } from './transaction';
 
 const EC = new ec('secp256k1');
-const argv = minimist(process.argv.slice(2));
-const port = argv.p;
 let privateKeyLocation = '';
 
 const createNodeDir = (): void => {
@@ -42,6 +40,7 @@ const initWallet = (port) => {
 
   writeFileSync(privateKeyLocation, newPrivateKey);
   console.log('new wallet with private key created to : %s', privateKeyLocation);
+  console.log(`Public address: ${getPublicFromWallet()}`);
 };
 
 const deleteWallet = () => {

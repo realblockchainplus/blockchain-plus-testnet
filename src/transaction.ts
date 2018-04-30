@@ -2,7 +2,7 @@ import * as CryptoJS from 'crypto-js';
 import * as ecdsa from 'elliptic';
 import * as _ from 'lodash';
 import { Ledger } from './ledger';
-import { getPublicFromWallet } from './wallet';
+import { getPublicFromWallet, generatePrivateKey } from './wallet';
 import { Pod } from './pod';
 import { getPods, getIo, write, queryIsTransactionValid } from './p2p';
 import { selectRandom } from './rngTool';
@@ -26,18 +26,36 @@ class Transaction {
   public timestamp: number;
 
   constructor(from: string, address: string, amount: number,
-    witnessOne: string, witnessTwo: string, partnerOne: string,
-    partnerTwo: string, signature: string, timestamp: number) {
+    timestamp: number) {
     this.from = from;
     this.address = address;
     this.amount = amount;
-    this.witnessOne = witnessOne;
-    this.witnessTwo = witnessTwo;
-    this.partnerOne = partnerOne;
-    this.partnerTwo = partnerTwo;
-    this.signature = signature;
     this.timestamp = timestamp;
+    // this.witnessOne = witnessOne;
+    // this.witnessTwo = witnessTwo;
+    // this.partnerOne = partnerOne;
+    // this.partnerTwo = partnerTwo;
   }
+
+  assignValidatorsToTransaction = (selectedPods: Pod[]): void => {
+    this.witnessOne = selectedPods[0].address;
+    this.witnessTwo = selectedPods[1].address;
+    this.partnerOne = selectedPods[2].address;
+    this.partnerTwo = selectedPods[3].address;
+  }
+
+  setTransactionId = (transactionId: string): void => {
+    this.id = transactionId;
+  }
+
+  generateSignature = (): void => {
+    const key = ec.keyFromPrivate(generatePrivateKey(), 'hex');
+    this.signature = toHexString(key.sign(this.id).toDER());
+  } 
+
+
+  // witnessOne: string, witnessTwo: string, partnerOne: string,
+  //   partnerTwo: string,
 }
 
 const getTransactionId = (transaction: Transaction): string => {
@@ -52,15 +70,29 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   const pods: Pod[] = getPods();
   const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
   const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
+  console.dir(regularPods);
+  console.dir(partnerPods);
   const selectedPods: Pod[] = [...selectRandom(regularPods), ...selectRandom(partnerPods)];
+  console.dir(selectedPods);
+  transaction.assignValidatorsToTransaction(selectedPods);
+  transaction.setTransactionId(getTransactionId(transaction));
+  transaction.generateSignature();
+
   const io: Server = getIo();
+  console.log('Starting for loop for sending out validation checks...');
   for (let i = 0; i < selectedPods.length; i += 1) {
     const pod = selectedPods[i];
     io.clients((err, clients) => {
+      console.log('Starting client for loop...');
       for (let k = 0; k < clients.length; k += 1) {
         const client = clients[k];
-        if (clients.id === pod.ws.id) {
+        console.log(`Checking ${client.id} against ${pod.ws.id}`);
+        if (client.id === pod.ws.id) {
+          console.log('Sending out validation check...');
           write(pod.ws, queryIsTransactionValid({ transaction, senderLedger }));
+        }
+        else {
+          console.log(`ClientId: ${client.id} does not match PodId: ${pod.ws.id}`);
         }
       }
     });
@@ -87,7 +119,13 @@ const validateTransaction = (transaction: Transaction, senderLedger: Ledger): Re
     result.reason = 'This is a test! Every transaction is valid.';
     return result;
   }
-}
+};
+
+const generateSignature = (transaction: Transaction, privateKey: string): string => {
+  const key = ec.keyFromPrivate(privateKey, 'hex');
+  const signature: string = toHexString(key.sign(transaction.id).toDER());
+  return signature;
+} 
 
 const toHexString = (byteArray): string => {
   return Array.from(byteArray, (byte: any) => {
@@ -114,7 +152,7 @@ const getPublicKey = (aPrivateKey: string): string => {
 };
 
 export {
-  Transaction, getTransactionId, Result,
+  Transaction, getTransactionId, Result, requestValidateTransaction,
   getPublicKey, validateTransaction, isValidAddress
 }
 

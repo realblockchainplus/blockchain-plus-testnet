@@ -7,22 +7,18 @@ import * as minimist from 'minimist';
 import * as http from 'http';
 import * as socketio from 'socket.io';
 
-import { Block, getBlockchain, generateNextBlock, getLastBlock } from './block';
-import { Transaction, getTransactionId } from './transaction';
+import { Block, getBlockchain, generateNextBlock, getLastBlock, getCurrentTimestamp } from './block';
+import { Transaction, getTransactionId, requestValidateTransaction } from './transaction';
 import { getPods, initP2PServer, initP2PNode } from './p2p';
 import { initWallet, getPublicFromWallet } from './wallet';
+import { Ledger, getLedger, ledgerType } from './ledger';
 import { Pod, createPod } from './pod';
-import { getTransactionPool } from './transactionPool';
 import { selectRandom } from './rngTool';
-
-const argv = minimist(process.argv.slice(2));
-const httpPort: number = parseInt(argv.p) || 3001;
-const p2pPort: number = parseInt(process.env.P2P_PORT) || 6001;
 
 const REGULAR_NODES = 0;
 const PARTNER_NODES = 0;
 
-const initHttpServer = (port: number) => {
+const initHttpServer = () => {
   const app = express();
   const server = new http.Server(app);
 
@@ -34,6 +30,16 @@ const initHttpServer = (port: number) => {
     }
   });
 
+  app.post('/transaction', (req, res) => {
+    const transaction = new Transaction(
+      getPublicFromWallet(),
+      req.body.transaction.address,
+      req.body.transaction.amount,
+      getCurrentTimestamp()
+    );
+    
+    requestValidateTransaction(transaction, getLedger(ledgerType.MY_LEDGER));
+  });
   app.get('/blocks', (req, res) => {
     res.send(getBlockchain());
     // res.send(transaction.blockChain);
@@ -45,12 +51,12 @@ const initHttpServer = (port: number) => {
   });
 
   app.get('/peers', (req, res) => {
-    res.send(getPods().map((p: any) => {
+    res.send(getPods().map((p: Pod) => {
       const returnObj = {
         type: p.type,
         name: p.name,
         location: p.location,
-        ip: `${p.ws._socket.remoteAddress} : ${p.ws._socket.remotePort}`,
+        id: `${p.ws}`,
         publicAddress: p.address
       };
       return returnObj;
@@ -60,9 +66,10 @@ const initHttpServer = (port: number) => {
   server.listen(0, () => {
     console.log(`[Node] New Node created on port: ${server.address().port}`);
     initWallet(server.address().port);
+    initP2PServer(server);
+    initP2PNode(server);
   });
-  initP2PServer(server);
-  initP2PNode(server);
 };
 
-initHttpServer(httpPort);
+console.log(getLedger(ledgerType.MY_LEDGER));
+initHttpServer();

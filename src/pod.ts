@@ -107,7 +107,7 @@ const createPod = (type: podType) => {
   const randomName = randomNames.splice(Math.floor(Math.random() * randomNames.length), 1)[0];
   const randomLocation = { x: Math.floor(Math.random() * 5000), y: Math.floor(Math.random() * 5000) };
   const pod: Pod = new Pod(type, randomLocation, randomName);
-  pod.id = 0 // get num of pods + 1   OR   random string for id
+  pod.address = getPublicFromWallet();
   pod.spawnTimestamp = Math.round(new Date().getTime() / 1000);
   type === podType.REGULAR_POD ? Object.assign(pod, regularPodSpecs) : Object.assign(pod, partnerPodSpecs);
   pod.ram = gbToMb(pod.ram);
@@ -118,10 +118,6 @@ const createPod = (type: podType) => {
 
 const gbToMb = (gb: number) => {
   return gb * 1024;
-};
-
-const connectToNetwork = (pod: Pod): Socket => {
-  // io('http://localhost:6001');
 };
 
 const manageUptime = (pod: Pod): status => {
@@ -137,4 +133,4 @@ const manageUptime = (pod: Pod): status => {
   return changeStatus();
 };
 
-export { Pod, createPod };
+export { Pod, createPod, podType };
