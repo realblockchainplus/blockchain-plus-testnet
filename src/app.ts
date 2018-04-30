@@ -7,14 +7,13 @@ import * as minimist from 'minimist';
 import * as http from 'http';
 import * as socketio from 'socket.io';
 
-import { Block, getBlockchain, generateNextBlock, addBlockToChain, getAccountBalance, generateNextBlockWithTransaction, sendTransaction, getLastBlock } from './block';
-import { Transaction, getTransactionId, addToWallet } from './transaction';
-import { getPods, initP2PServer, initP2PNode } from './p2p.1';
+import { Block, getBlockchain, generateNextBlock, getLastBlock } from './block';
+import { Transaction, getTransactionId } from './transaction';
+import { getPods, initP2PServer, initP2PNode } from './p2p';
 import { initWallet, getPublicFromWallet } from './wallet';
 import { Pod, createPod } from './pod';
 import { getTransactionPool } from './transactionPool';
 import { selectRandom } from './rngTool';
-import { transaction } from './transactionOpp';
 
 const argv = minimist(process.argv.slice(2));
 const httpPort: number = parseInt(argv.p) || 3001;
@@ -40,41 +39,6 @@ const initHttpServer = (port: number) => {
     // res.send(transaction.blockChain);
   });
 
-  app.post('/blocks', (req, res) => {
-    res.send(transaction.transctionInfo(req.body));
-  });
-
-  // app.post('/mineBlock', (req, res) => {
-  //   const newBlock: Block = generateNextBlock(req.body.data);
-  //   const result = addBlockToChain(newBlock);
-  //   result ? res.send(newBlock) : res.status(400).send('Invalid Block');
-  // });
-
-  app.post('/testTransaction', (req, res) => {
-    const address = req.body.address;
-    const amount = req.body.amount;
-    const pods = getPods();
-    const regularPods = pods.filter(pod => pod.type === 0);
-    const partnerPods = pods.filter(pod => pod.type === 1);
-    const selectedPods: Pod[] = [...selectRandom(regularPods), ...selectRandom(partnerPods)];
-    try {
-      const resp = generateNextBlockWithTransaction(address, amount);
-      res.send(resp);
-    } catch (e) {
-      console.log(e.message);
-      res.status(400).send(e.message);
-    }
-  });
-
-  app.get('/transactionPool', (req, res) => {
-    res.send(getTransactionPool());
-  });
-
-  app.get('/balance', (req, res) => {
-    const balance = getAccountBalance();
-    res.send({ balance });
-  });
-
   app.get('/address', (req, res) => {
     const address: string = getPublicFromWallet();
     res.send({ 'address': address });
@@ -91,18 +55,6 @@ const initHttpServer = (port: number) => {
       };
       return returnObj;
     }));
-  });
-
-  app.post('/send', (req, res) => {
-    sendTransaction(req.body.address, req.body.amount);
-    res.send();
-  });
-
-  app.post('/addToWallet', (req, res) => {
-    const newFunds: Transaction = addToWallet(req.body.address, getLastBlock().index + 1);
-    const newBlock: Block = generateNextBlock([newFunds]);
-    const result = addBlockToChain(newBlock);
-    result ? res.send(newBlock) : res.status(400).send('Invalid Block');
   });
 
   server.listen(0, () => {

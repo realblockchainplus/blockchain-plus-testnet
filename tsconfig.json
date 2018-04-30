@@ -10,11 +10,8 @@
     "src/app.ts",
     "src/block.ts",
     "src/transaction.ts",
-    "src/p2p.1.ts",
+    "src/p2p.ts",
     "src/pod.ts",
-    "src/transactionPool.ts",
-    "src/blockOpp.ts",
-    "src/transactionOpp.ts",
     "src/wallet.ts"
   ],
   "exclude": [
