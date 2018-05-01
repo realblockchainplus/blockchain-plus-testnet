@@ -7,7 +7,7 @@ const myLedgerLocation = 'node/ledger/my_ledger.json';
 const witnessLedgerLocation = 'node/ledger/witness_ledger.json';
 
 class Ledger {
-  public entries: Block[];
+  public entries: Transaction[];
   public ledgerType: ledgerType;
 };
 
@@ -16,14 +16,12 @@ enum ledgerType {
   WITNESS_LEDGER = 1
 };
 
-const updateLedger = (block: Block, type: ledgerType): void => {
+const updateLedger = (transaction: Transaction, type: ledgerType): void => {
   const ledgerLocation = type === ledgerType.MY_LEDGER ? myLedgerLocation : witnessLedgerLocation;
-  const _block = { ...block };                                                                                                                                                                                                                                                                                          
-  const transaction = _block.data[0];
   const _transaction = updateTransaction(transaction, type);
   d3f.json(ledgerLocation).then((ledger: Ledger) => {
     const _ledger = { ...ledger };
-    _ledger.entries.push(block);
+    _ledger.entries.push(transaction);
     fs.writeFileSync(ledgerLocation, _ledger);
   });
 };
@@ -40,6 +38,18 @@ const getLedger = (type: ledgerType): Ledger => {
   return ledger;
 };
 
+const getEntryByTransactionId = (transactionId: string, type: ledgerType): Transaction => {
+  const { entries }: { entries: Transaction[] } = getLedger(type);
+  let index = null;
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i];
+    if (transactionId === entry.id) {
+      index = i;
+    }
+  }
+  return entries[index];
+};
+
 export {
-  Ledger, updateLedger, getLedger, ledgerType
+  Ledger, updateLedger, getLedger, ledgerType, getEntryByTransactionId
 }

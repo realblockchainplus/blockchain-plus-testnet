@@ -2,10 +2,11 @@ import * as CryptoJS from 'crypto-js';
 import * as ecdsa from 'elliptic';
 import * as _ from 'lodash';
 import * as ioClient from 'socket.io-client';
-import { Ledger } from './ledger';
+import { Block } from './block';
+import { Ledger, getLedger, getEntryByTransactionId } from './ledger';
 import { getPublicFromWallet, generatePrivateKey } from './wallet';
 import { Pod } from './pod';
-import { getPods, getIo, write, queryIsTransactionValid } from './p2p';
+import { getPods, getIo, write, queryIsTransactionValid, getPodIndexByPublicKey, isTransactionHashValid } from './p2p';
 import { selectRandom } from './rngTool';
 import { getCurrentTimestamp } from './block';
 import { Server } from 'socket.io';
@@ -25,6 +26,7 @@ class Transaction {
   public partnerTwo: string;
   public signature: string;
   public timestamp: number;
+  public hash: string;
 
   constructor(from: string, address: string, amount: number,
     timestamp: number) {
@@ -52,8 +54,20 @@ class Transaction {
   generateSignature = (): void => {
     const key = ec.keyFromPrivate(generatePrivateKey(), 'hex');
     this.signature = toHexString(key.sign(this.id).toDER());
-  } 
+  }
 
+  generateHash = (): void => {
+    this.hash = CryptoJS.SHA256(
+      this.witnessOne + 
+      this.witnessTwo + 
+      this.partnerOne + 
+      this.partnerTwo + 
+      this.address + 
+      this.amount +
+      this.from + 
+      this.timestamp.toString()
+    ).toString();
+  }
 
   // witnessOne: string, witnessTwo: string, partnerOne: string,
   //   partnerTwo: string,
@@ -67,14 +81,16 @@ const getTransactionId = (transaction: Transaction): string => {
   return CryptoJS.SHA256(witnessOne + witnessTwo + partnerOne + partnerTwo + address + from + getCurrentTimestamp().toString()).toString();
 };
 
+const getExpectedTransactionId = (transaction: Transaction): string => {
+  const { address, from, witnessOne, witnessTwo, partnerOne, partnerTwo, timestamp } = transaction;
+  return CryptoJS.SHA256(witnessOne + witnessTwo + partnerOne + partnerTwo + address + from + timestamp.toString()).toString();
+}
+
 const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledger): boolean => {
   const pods: Pod[] = getPods();
   const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
   const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
-  console.dir(regularPods);
-  console.dir(partnerPods);
   const selectedPods: Pod[] = [...selectRandom(regularPods), ...selectRandom(partnerPods)];
-  console.dir(selectedPods);
   transaction.assignValidatorsToTransaction(selectedPods);
   transaction.setTransactionId(getTransactionId(transaction));
   transaction.generateSignature();
@@ -89,21 +105,6 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       console.log(`Connected to ${pod.ip}:${pod.port}... sending transaction details.`);
       write(socket, queryIsTransactionValid({ transaction, senderLedger }));
     });
-    // Might be used for something else later
-    // io.clients((err, clients) => {
-    //   console.log('Starting client for loop...');
-    //   for (let k = 0; k < clients.length; k += 1) {
-    //     const client = clients[k];
-    //     console.log(`Checking ${client.id} against ${pod.ws.id}`);
-    //     if (client.id === pod.ws.id) {
-    //       console.log('Sending out validation check...');
-    //       write(pod.ws, queryIsTransactionValid({ transaction, senderLedger }));
-    //     }
-    //     else {
-    //       console.log(`ClientId: ${client.id} does not match PodId: ${pod.ws.id}`);
-    //     }
-    //   }
-    // });
   }
   return true;
 };
@@ -111,21 +112,61 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
 interface Result {
   result: boolean,
   reason: string,
-  transaction: Transaction
+  id: string
 };
 
+const validateLedger = (senderLedger: Ledger): Result => {
+  const io: Server = getIo();
+  const pods: Pod[] = getPods();
+  for (let i = 0; i < senderLedger.entries.length; i += 1) {
+    const entry: Transaction = senderLedger.entries[i];
+    const witnesses: string[] = [entry.witnessOne, entry.witnessTwo];
+    const partners: string[] = [entry.partnerOne, entry.partnerTwo];
+    const validators: string[] = [...witnesses, ...partners];
+    const validatingPods: Pod[] = [];
+    validators.map((v: string) => {
+      const pod: Pod = pods[getPodIndexByPublicKey(v)];
+      validatingPods.push(pod);
+      return;
+    });
+    for (let k = 0; k < validatingPods.length; k += 1) {
+      const pod = validatingPods[k];    
+      const socket = ioClient(`${pod.ip}:${pod.port}`);
+      console.log(`Connecting to ${pod.ip}:${pod.port}`);
+      socket.on('connect', () => {
+        console.log(`Connected to ${pod.ip}:${pod.port}... sending transaction details.`);
+        write(socket, isTransactionHashValid({ transactionId: entry.id, hash: entry.hash }));
+      });
+    }
+  }
+}
+
 const validateTransaction = (transaction: Transaction, senderLedger: Ledger): Result => {
-  const expectedTransactionId = getTransactionId(transaction);
-  const result: Result = { result: false, reason: '', transaction };
+  const expectedTransactionId: string = getExpectedTransactionId(transaction);
+  let result: Result = { result: false, reason: '', id: transaction.id };
   if (expectedTransactionId !== transaction.id) {
     result.reason = `TransactionId is invalid. Expecting: ${expectedTransactionId}. Got: ${transaction.id}.`;
     console.log(result.reason);
     return result;
   }
   else {
-    result.result = true;
-    result.reason = 'This is a test! Every transaction is valid.';
+    result = validateSignature(transaction); // Check if sender has proper access to funds
+    if (!result.result) { return result; }
+    result = validateLedger(senderLedger);
+    if (!result.result) { return result; }
     return result;
+  }
+};
+
+const validateSignature = (transaction: Transaction): Result => {
+  const { id, from, signature } : { id: string, from: string, signature: string } = transaction;
+  const key = ec.keyFromPublic(from, 'hex');
+  const result = key.verify(id, signature);
+  const reason = 'Transaction signature is invalid.';
+  return {
+    result,
+    reason,
+    id
   }
 };
 
@@ -133,7 +174,28 @@ const generateSignature = (transaction: Transaction, privateKey: string): string
   const key = ec.keyFromPrivate(privateKey, 'hex');
   const signature: string = toHexString(key.sign(transaction.id).toDER());
   return signature;
-} 
+};
+
+const validateTransactionHash = (id: string, hash: string): Result => {
+  const transaction: Transaction = getEntryByTransactionId(id, 1);
+  let result: boolean = false;
+  let reason: string = 'Transaction hash is valid';
+  if (!transaction) {
+    result = false;
+    reason = 'Transaction was not found in witnesses ledger';
+  }
+  if (transaction.hash === hash) { 
+    result = true;
+  }
+  else {
+    reason = 'Transaction hash is invalid.';
+  }
+  return {
+    result,
+    reason,
+    id
+  }
+}
 
 const toHexString = (byteArray): string => {
   return Array.from(byteArray, (byte: any) => {
@@ -159,8 +221,24 @@ const getPublicKey = (aPrivateKey: string): string => {
   return ec.keyFromPrivate(aPrivateKey, 'hex').getPublic().encode('hex');
 };
 
+// Might be used for something else later
+// io.clients((err, clients) => {
+//   console.log('Starting client for loop...');
+//   for (let k = 0; k < clients.length; k += 1) {
+//     const client = clients[k];
+//     console.log(`Checking ${client.id} against ${pod.ws.id}`);
+//     if (client.id === pod.ws.id) {
+//       console.log('Sending out validation check...');
+//       write(pod.ws, queryIsTransactionValid({ transaction, senderLedger }));
+//     }
+//     else {
+//       console.log(`ClientId: ${client.id} does not match PodId: ${pod.ws.id}`);
+//     }
+//   }
+// });
+
 export {
   Transaction, getTransactionId, Result, requestValidateTransaction,
-  getPublicKey, validateTransaction, isValidAddress
+  getPublicKey, validateTransaction, validateTransactionHash, isValidAddress
 }
 

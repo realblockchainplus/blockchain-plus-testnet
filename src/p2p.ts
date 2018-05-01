@@ -8,7 +8,7 @@ import {
   Block, getBlockchain, getLastBlock,
   isStructureValid, generateNextBlock
 } from './block';
-import { Transaction, validateTransaction, Result } from './transaction';
+import { Transaction, validateTransaction, Result, validateTransactionHash } from './transaction';
 import { Ledger, updateLedger } from './ledger';
 import { getPublicFromWallet } from './wallet';
 
@@ -27,7 +27,9 @@ enum MessageType {
   RESPONSE_IDENTITY = 6,
   VALIDATION_RESULT = 7,
   POD_LIST_UPDATED = 8,
-  KILL_SERVER_PROCESS = 9
+  KILL_SERVER_PROCESS = 9,
+  TRANSACTION_CONFIRMATION_REQUEST = 10,
+  TRANSACTION_CONFIRMATION_RESULT = 11
 };
 
 class Message {
@@ -127,8 +129,8 @@ const handleMessage = (socket: Socket, message: Message) => {
           { transaction: Transaction, senderLedger: Ledger } = JSON.parse(message.data);
         const result = validateTransaction(transaction, senderLedger);        
         if (result.result) { 
-          const block: Block = generateNextBlock([transaction]);
-          updateLedger(block, 1);
+          transaction.generateHash();
+          updateLedger(transaction, 1);
         }
         io.emit('message', responseIsTransactionValid(result));
         break;
@@ -137,9 +139,9 @@ const handleMessage = (socket: Socket, message: Message) => {
         const { result, reason, transaction }:
           { result: boolean, reason: string, transaction: Transaction } = JSON.parse(message.data);
         if (result) {
-          const block: Block = generateNextBlock([transaction]);
           if (transaction.from === getPublicFromWallet() || transaction.address === getPublicFromWallet()) {
-            updateLedger(block, 0);
+            transaction.generateHash();
+            updateLedger(transaction, 0);
           }
         }
       }
@@ -154,6 +156,15 @@ const handleMessage = (socket: Socket, message: Message) => {
         localSocket.close();
         io.close();
         process.exit();
+        break;
+      case MessageType.TRANSACTION_CONFIRMATION_REQUEST:
+        console.log('Selected to confirm a valid transaction. Confirm...');
+        const { transactionId, hash }:
+          { transactionId: string, hash: string } = JSON.parse(message.data);
+        const result = validateTransactionHash(transactionId, hash);        
+        io.emit('message', responseIsTransactionValid(result));
+        break;
+      case MessageType.TRANSACTION_CONFIRMATION_RESULT:
         break;
     }
   } catch (e) {
@@ -233,6 +244,19 @@ const responseIsTransactionValid = (result: Result): Message => ({
   'data': JSON.stringify(result)
 });
 
+const isTransactionHashValid = (transactionData: {
+    transactionId: string,
+    hash: string
+  }): Message => ({
+  'type': MessageType.TRANSACTION_CONFIRMATION_REQUEST,
+  'data': JSON.stringify(transactionData)
+});
+
+const responseIsTransactionHashValid = (result: Result): Message => ({
+  'type': MessageType.TRANSACTION_CONFIRMATION_RESULT,
+  'data': JSON.stringify(result)
+});
+
 const podListUpdated = (pods: Pod[]): Message => ({
   'type': MessageType.POD_LIST_UPDATED,
   'data': JSON.stringify(pods)
@@ -279,5 +303,5 @@ const killAll = (): void => {
 
 export {
   initP2PServer, initP2PNode, getPods, getIo, broadcastLatest, write,
-  queryIsTransactionValid, killAll
+  queryIsTransactionValid, killAll, getPodIndexByPublicKey, isTransactionHashValid
 }
