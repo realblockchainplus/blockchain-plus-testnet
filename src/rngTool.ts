@@ -12,7 +12,7 @@ const buildRandomSet = (podsLength: number): number[] => {
   const randomSet: number[] = [];
   let randomNumber;
   while (randomSet.length < 2) {
-    randomNumber = Math.round(Math.random() * podsLength);
+    randomNumber = Math.round(Math.random() * (podsLength - 1));
     if (randomSet.indexOf(randomNumber) === -1) {
       console.log('Random number not in set, adding');
       randomSet.push(randomNumber);

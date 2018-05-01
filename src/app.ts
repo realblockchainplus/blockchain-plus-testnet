@@ -9,7 +9,7 @@ import * as socketio from 'socket.io';
 
 import { Block, getBlockchain, generateNextBlock, getLastBlock, getCurrentTimestamp } from './block';
 import { Transaction, getTransactionId, requestValidateTransaction } from './transaction';
-import { getPods, initP2PServer, initP2PNode } from './p2p';
+import { getPods, getIo, initP2PServer, initP2PNode, killAll } from './p2p';
 import { initWallet, getPublicFromWallet } from './wallet';
 import { Ledger, getLedger, ledgerType } from './ledger';
 import { Pod, createPod } from './pod';
@@ -61,6 +61,11 @@ const initHttpServer = () => {
       };
       return returnObj;
     }));
+  });
+
+  app.get('/killAll', (req, res) => {
+    killAll();
+    res.send();
   });
 
   server.listen(0, () => {

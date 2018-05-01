@@ -1,6 +1,7 @@
 import * as CryptoJS from 'crypto-js';
 import * as ecdsa from 'elliptic';
 import * as _ from 'lodash';
+import * as ioClient from 'socket.io-client';
 import { Ledger } from './ledger';
 import { getPublicFromWallet, generatePrivateKey } from './wallet';
 import { Pod } from './pod';
@@ -82,20 +83,27 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   console.log('Starting for loop for sending out validation checks...');
   for (let i = 0; i < selectedPods.length; i += 1) {
     const pod = selectedPods[i];
-    io.clients((err, clients) => {
-      console.log('Starting client for loop...');
-      for (let k = 0; k < clients.length; k += 1) {
-        const client = clients[k];
-        console.log(`Checking ${client.id} against ${pod.ws.id}`);
-        if (client.id === pod.ws.id) {
-          console.log('Sending out validation check...');
-          write(pod.ws, queryIsTransactionValid({ transaction, senderLedger }));
-        }
-        else {
-          console.log(`ClientId: ${client.id} does not match PodId: ${pod.ws.id}`);
-        }
-      }
+    console.log(`Connecting to ${pod.ip}:${pod.port}`);
+    const socket = ioClient(`${pod.ip}:${pod.port}`);
+    socket.on('connect', () => {
+      console.log(`Connected to ${pod.ip}:${pod.port}... sending transaction details.`);
+      write(socket, queryIsTransactionValid({ transaction, senderLedger }));
     });
+    // Might be used for something else later
+    // io.clients((err, clients) => {
+    //   console.log('Starting client for loop...');
+    //   for (let k = 0; k < clients.length; k += 1) {
+    //     const client = clients[k];
+    //     console.log(`Checking ${client.id} against ${pod.ws.id}`);
+    //     if (client.id === pod.ws.id) {
+    //       console.log('Sending out validation check...');
+    //       write(pod.ws, queryIsTransactionValid({ transaction, senderLedger }));
+    //     }
+    //     else {
+    //       console.log(`ClientId: ${client.id} does not match PodId: ${pod.ws.id}`);
+    //     }
+    //   }
+    // });
   }
   return true;
 };

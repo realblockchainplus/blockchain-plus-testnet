@@ -26,7 +26,8 @@ enum MessageType {
   SELECTED_FOR_VALIDATION = 5,
   RESPONSE_IDENTITY = 6,
   VALIDATION_RESULT = 7,
-  POD_LIST_UPDATED = 8
+  POD_LIST_UPDATED = 8,
+  KILL_SERVER_PROCESS = 9
 };
 
 class Message {
@@ -35,6 +36,8 @@ class Message {
 };
 
 let io;
+let gServer;
+let localSocket;
 
 const initP2PServer = (server: http.Server): any => {
   io = socketIo(server);
@@ -48,6 +51,7 @@ const initP2PServer = (server: http.Server): any => {
 };
 
 const initP2PNode = (server: http.Server) => {
+  gServer = server;
   if (isSeed) { 
     console.log('Process is a seed server, node will not be created.');
     return false;
@@ -55,8 +59,10 @@ const initP2PNode = (server: http.Server) => {
   const randomType: number = Math.floor(Math.random() * 10) >= 1 ? 0 : 1;
   const pod: Pod = createPod(type);
   const socket: Socket = ioClient('https://bcp-tn.now.sh');
+  localSocket = socket;
   socket.on('connect', () => {
     pod.ws = socket.id;
+    pod.port = server.address().port;
     const message: Message = new Message();
     message.type = MessageType.RESPONSE_IDENTITY;
     message.data = pod;
@@ -78,6 +84,8 @@ const initP2PNode = (server: http.Server) => {
 const getPods = () => { return pods; };
 
 const getIo = () => { return io; };
+
+const getServer = () => { return gServer; };
 
 const handleNewConnection = (socket: Socket) => {
   console.log('New connection, emitting [identity]');
@@ -107,6 +115,7 @@ const handleMessage = (socket: Socket, message: Message) => {
       case MessageType.RESPONSE_IDENTITY: 
         console.log('Received Pod Identity');
         if (getPodIndexByPublicKey(message.data.address) === null) {
+          message.data.ip = socket.handshake.headers['x-real-ip'];
           pods.push(message.data);
           io.emit('message', podListUpdated(pods));
         }
@@ -139,6 +148,13 @@ const handleMessage = (socket: Socket, message: Message) => {
         pods = JSON.parse(message.data);
         break;
       }
+      case MessageType.KILL_SERVER_PROCESS:
+        console.log('Kill command received, killing process');
+        gServer.close();
+        localSocket.close();
+        io.close();
+        process.exit();
+        break;
     }
   } catch (e) {
     console.log(e);
@@ -222,6 +238,11 @@ const podListUpdated = (pods: Pod[]): Message => ({
   'data': JSON.stringify(pods)
 });
 
+const killMsg = (): Message => ({
+  'type': MessageType.KILL_SERVER_PROCESS,
+  'data': null
+});
+
 const handleBlockchainResponse = (socket: Socket, receivedBlocks: Block[]) => {
   if (receivedBlocks.length === 0) {
     console.log('received block chain size of 0');
@@ -242,6 +263,10 @@ const broadcastLatest = (): void => {
   io.emit('message', responseLatestMsg());
 };
 
+const killAll = (): void => {
+  io.emit('message', killMsg());
+};
+
 // const initConnection = (socket: Socket) => {  
 //   io.on('connection', socket => {
 //     console.log('a peer connected');
@@ -254,5 +279,5 @@ const broadcastLatest = (): void => {
 
 export {
   initP2PServer, initP2PNode, getPods, getIo, broadcastLatest, write,
-  queryIsTransactionValid
+  queryIsTransactionValid, killAll
 }

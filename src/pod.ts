@@ -13,6 +13,8 @@ class Pod {
   public uptime: number;
   public status: status;
   public name: string;
+  public ip: string;
+  public port: number;
   public address: string;
   public ws: Socket;
 
