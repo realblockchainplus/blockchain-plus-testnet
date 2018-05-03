@@ -47,14 +47,16 @@ const initP2PServer = (server: http.Server): any => {
     console.log('[initP2PServer] handleMessage');
     handleNewConnection(socket);
   });
-  io.on('disconnect', socket => {
-    closeConnection(socket);
-  });
+  if (isSeed) {
+    io.on('disconnect', socket => {
+      closeConnection(socket);
+    });
+  }
 };
 
 const initP2PNode = (server: http.Server) => {
   gServer = server;
-  if (isSeed) { 
+  if (isSeed) {
     console.log('Process is a seed server, node will not be created.');
     return false;
   }
@@ -96,8 +98,10 @@ const handleNewConnection = (socket: Socket) => {
     console.log('[handleNewConnection] handleMessage');
     handleMessage(socket, message);
   });
-  socket.on('disconnect', () => closeConnection(socket));
-  socket.on('error', () => closeConnection(socket));
+  if (isSeed) {
+    socket.on('disconnect', () => closeConnection(socket));
+    socket.on('error', () => closeConnection(socket));
+  }
 };
 
 const handleMessage = (socket: Socket, message: Message): Result => {
@@ -115,7 +119,7 @@ const handleMessage = (socket: Socket, message: Message): Result => {
       case MessageType.QUERY_ALL:
         write(socket, responseChainMsg());
         break;
-      case MessageType.RESPONSE_IDENTITY: 
+      case MessageType.RESPONSE_IDENTITY:
         console.log('Received Pod Identity');
         if (getPodIndexByPublicKey(message.data.address) === null) {
           message.data.ip = socket.handshake.headers['x-real-ip'];
@@ -146,13 +150,27 @@ const handleMessage = (socket: Socket, message: Message): Result => {
         break;
       }
       case MessageType.VALIDATION_RESULT: {
+        console.log('Validation Result msg');
         const { result, transaction }:
           { result: Result, transaction: Transaction } = JSON.parse(message.data);
-        if (result.result) {          
-          if (transaction) {
-            if (transaction.from === getPublicFromWallet() || transaction.address === getPublicFromWallet()) {
-              transaction.generateHash();
-              updateLedger(transaction, 0);
+        const tx = new Transaction(
+          transaction.from,
+          transaction.address,
+          transaction.amount,
+          transaction.timestamp
+        );
+        const _tx = Object.assign(tx, transaction);
+        if (result.result) {
+          console.log(`Validation Result returned ${result.result}`);
+          // console.dir(_tx);
+          if (_tx) {
+            console.log(`Transaction From: ${_tx.from}. My Public Key: ${getPublicFromWallet()}`);
+            if (_tx.from === getPublicFromWallet() || _tx.address === getPublicFromWallet()) {
+              console.log('Transaction Hash generated');
+              _tx.generateHash();
+              console.log('Writing to ledger...');
+              updateLedger(_tx, 0);
+              socket.disconnect();
             }
           }
         }
@@ -162,7 +180,14 @@ const handleMessage = (socket: Socket, message: Message): Result => {
       }
       case MessageType.POD_LIST_UPDATED: {
         console.log('Pod list updated...');
-        pods = JSON.parse(message.data);
+        const data = JSON.parse(message.data);
+        if (data.length === undefined) {
+          // console.dir(data);
+          console.log('Pod list received was undefined. Ignoring. TEMPORARY, TRACK DOWN MESSAGE SOURCE.');
+          break;
+        }
+        pods = data;
+        console.log(`Number of pods: ${pods.length}`);
         break;
       }
       case MessageType.KILL_SERVER_PROCESS:
@@ -173,14 +198,15 @@ const handleMessage = (socket: Socket, message: Message): Result => {
         process.exit();
         break;
       case MessageType.TRANSACTION_CONFIRMATION_REQUEST: {
-        console.log('Selected to confirm a valid transaction. Confirm...');
+        console.log('Selected to confirm a valid transaction. Confirming...');
         const { transactionId, hash }:
           { transactionId: string, hash: string } = JSON.parse(message.data);
-        const result = validateTransactionHash(transactionId, hash);        
+        const result = validateTransactionHash(transactionId, hash);
         io.emit('message', responseIsTransactionHashValid(result));
         break;
       }
       case MessageType.TRANSACTION_CONFIRMATION_RESULT:
+        socket.disconnect();
         return JSON.parse(message.data);
     }
   } catch (e) {
@@ -211,10 +237,10 @@ const getPodIndexBySocket = (socket: Socket): number => {
   return index;
 };
 
-const getPodIndexByPublicKey = (publicKey: string): number => {
+const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[] = pods): number => {
   let index = null;
-  for (let i = 0; i < pods.length; i += 1) {
-    const _pod = pods[i];
+  for (let i = 0; i < _pods.length; i += 1) {
+    const _pod = _pods[i];
     if (publicKey === _pod.address) {
       index = i;
     }
@@ -261,9 +287,9 @@ const responseIsTransactionValid = (result: Result, transaction: Transaction): M
 });
 
 const isTransactionHashValid = (transactionData: {
-    transactionId: string,
-    hash: string
-  }): Message => ({
+  transactionId: string,
+  hash: string
+}): Message => ({
   'type': MessageType.TRANSACTION_CONFIRMATION_REQUEST,
   'data': JSON.stringify(transactionData)
 });

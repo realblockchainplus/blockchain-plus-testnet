@@ -36,9 +36,14 @@ const initLedger = (port: number) => {
 const updateLedger = (transaction: Transaction, type: ledgerType): void => {
   const _transaction = updateTransaction(transaction, type);
   const ledger: Ledger = getLedger(type);
-  const _ledger = { ...ledger };
-  _ledger.entries.push(_transaction);
-  writeLedger(_ledger, type);
+  const _ledger: Ledger = { ...ledger };
+  if (getEntryInLedgerByTransactionId(_transaction.id, _ledger) === undefined) {
+    _ledger.entries.push(_transaction);
+    writeLedger(_ledger, type);
+  }
+  else {
+    console.log('Entry already exists. TEMPORARY CHECK.');
+  }
 };
 
 const updateTransaction = (transaction: Transaction, type: ledgerType): Transaction => {
@@ -65,7 +70,7 @@ const getEntryByTransactionId = (transactionId: string, type: ledgerType): Trans
   let index = null;
   for (let i = 0; i < entries.length; i += 1) {
     const entry = entries[i];
-    if (transactionId === entry.id) {
+    if (transactionId == entry.id) {
       index = i;
     }
   }
@@ -77,7 +82,7 @@ const getEntryInLedgerByTransactionId = (transactionId: string, ledger: Ledger):
   let index = null;
   for (let i = 0; i < entries.length; i += 1) {
     const entry = entries[i];
-    if (transactionId === entry.id) {
+    if (transactionId == entry.id) {
       index = i;
     }
   }

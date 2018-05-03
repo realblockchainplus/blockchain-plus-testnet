@@ -18,6 +18,11 @@ import { selectRandom } from './rngTool';
 const REGULAR_NODES = 0;
 const PARTNER_NODES = 0;
 
+const portMin = 50000;
+const portMax = 65535;
+const randomPort = Math.floor((Math.random() * (portMax - portMin)) + portMin);
+
+
 const initHttpServer = () => {
   const app = express();
   const server = new http.Server(app);
@@ -37,7 +42,7 @@ const initHttpServer = () => {
       req.body.transaction.amount,
       getCurrentTimestamp()
     );
-    
+
     requestValidateTransaction(transaction, getLedger(ledgerType.MY_LEDGER));
     res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.address}.`);
   });
@@ -68,8 +73,7 @@ const initHttpServer = () => {
     killAll();
     res.send();
   });
-
-  server.listen(0, () => {
+  server.listen(randomPort, () => {
     console.log(`[Node] New Node created on port: ${server.address().port}`);
     initWallet(server.address().port);
     initP2PServer(server);
