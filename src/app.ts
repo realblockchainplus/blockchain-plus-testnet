@@ -7,8 +7,7 @@ import * as minimist from 'minimist';
 import * as http from 'http';
 import * as socketio from 'socket.io';
 
-import { Block, getBlockchain, generateNextBlock, getLastBlock, getCurrentTimestamp } from './block';
-import { Transaction, getTransactionId, requestValidateTransaction } from './transaction';
+import { Transaction, getTransactionId, requestValidateTransaction, getCurrentTimestamp } from './transaction';
 import { getPods, getIo, initP2PServer, initP2PNode, killAll } from './p2p';
 import { initWallet, getPublicFromWallet } from './wallet';
 import { Ledger, getLedger, ledgerType } from './ledger';
@@ -45,10 +44,6 @@ const initHttpServer = () => {
 
     requestValidateTransaction(transaction, getLedger(ledgerType.MY_LEDGER));
     res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.address}.`);
-  });
-  app.get('/blocks', (req, res) => {
-    res.send(getBlockchain());
-    // res.send(transaction.blockChain);
   });
 
   app.get('/address', (req, res) => {

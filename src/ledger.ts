@@ -1,4 +1,3 @@
-import { Block } from './block';
 import * as fs from 'fs';
 import { Transaction } from './transaction';
 

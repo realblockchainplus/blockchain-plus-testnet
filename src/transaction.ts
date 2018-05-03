@@ -2,7 +2,6 @@ import * as CryptoJS from 'crypto-js';
 import * as ecdsa from 'elliptic';
 import * as _ from 'lodash';
 import * as ioClient from 'socket.io-client';
-import { Block } from './block';
 import { Ledger, getLedger, getEntryByTransactionId, updateLedger, getEntryInLedgerByTransactionId } from './ledger';
 import { getPublicFromWallet, generatePrivateKey, getPrivateFromWallet } from './wallet';
 import { Pod } from './pod';
@@ -12,7 +11,6 @@ import {
   handleMessage, MessageType
 } from './p2p';
 import { selectRandom } from './rngTool';
-import { getCurrentTimestamp } from './block';
 import { Server } from 'socket.io';
 
 const ec = new ecdsa.ec('secp256k1');
@@ -367,6 +365,10 @@ const getPublicKey = (aPrivateKey: string): string => {
   return ec.keyFromPrivate(aPrivateKey, 'hex').getPublic().encode('hex');
 };
 
+const getCurrentTimestamp = (): number => {
+  return Math.round(new Date().getTime() / 1000);
+};
+
 // Might be used for something else later
 // io.clients((err, clients) => {
 //   console.log('Starting client for loop...');
@@ -385,6 +387,7 @@ const getPublicKey = (aPrivateKey: string): string => {
 
 export {
   Transaction, getTransactionId, Result, requestValidateTransaction, genesisTransaction,
-  getPublicKey, validateTransaction, validateTransactionHash, isValidAddress, getGenesisAddress
+  getPublicKey, validateTransaction, validateTransactionHash, isValidAddress, getGenesisAddress,
+  getCurrentTimestamp
 }
 

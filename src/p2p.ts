@@ -4,10 +4,6 @@ import { Socket } from 'socket.io-client';
 import * as http from 'http';
 import * as minimist from 'minimist';
 import { Pod, createPod, podType } from './pod';
-import {
-  Block, getBlockchain, getLastBlock,
-  isStructureValid, generateNextBlock
-} from './block';
 import { Transaction, validateTransaction, Result, validateTransactionHash } from './transaction';
 import { Ledger, updateLedger, getEntryByTransactionId } from './ledger';
 import { getPublicFromWallet } from './wallet';
@@ -18,18 +14,13 @@ const isSeed: boolean = argv.s === 'true';
 let pods: Pod[] = [];
 
 enum MessageType {
-  QUERY_LATEST = 0,
-  QUERY_ALL = 1,
-  RESPONSE_BLOCKCHAIN = 2,
-  QUERY_TRANSACTION_POOL = 3,
-  RESPONSE_TRANSACTION_POOL = 4,
-  SELECTED_FOR_VALIDATION = 5,
-  RESPONSE_IDENTITY = 6,
-  VALIDATION_RESULT = 7,
-  POD_LIST_UPDATED = 8,
-  KILL_SERVER_PROCESS = 9,
-  TRANSACTION_CONFIRMATION_REQUEST = 10,
-  TRANSACTION_CONFIRMATION_RESULT = 11
+  SELECTED_FOR_VALIDATION = 1,
+  RESPONSE_IDENTITY = 2,
+  VALIDATION_RESULT = 3,
+  POD_LIST_UPDATED = 4,
+  KILL_SERVER_PROCESS = 5,
+  TRANSACTION_CONFIRMATION_REQUEST = 6,
+  TRANSACTION_CONFIRMATION_RESULT = 7
 };
 
 class Message {
@@ -78,10 +69,6 @@ const initP2PNode = (server: http.Server) => {
       console.log(`Received Message: ${message.type}`);
       handleMessage(socket, message);
     });
-    const getAll: Message = new Message();
-    getAll.type = MessageType.QUERY_ALL;
-    getAll.data = null;
-    write(socket, getAll);
   });
 };
 
@@ -113,12 +100,6 @@ const handleMessage = (socket: Socket, message: Message): Result => {
     let result: Result;
     // console.log('Received message: %s', JSON.stringify(message));
     switch (message.type) {
-      case MessageType.QUERY_LATEST:
-        write(socket, responseLatestMsg());
-        break;
-      case MessageType.QUERY_ALL:
-        write(socket, responseChainMsg());
-        break;
       case MessageType.RESPONSE_IDENTITY:
         console.log('Received Pod Identity');
         if (getPodIndexByPublicKey(message.data.address) === null) {
@@ -248,26 +229,6 @@ const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[] = pods): number 
   return index;
 };
 
-
-
-const queryChainLengthMsg = (): Message => ({ 'type': MessageType.QUERY_LATEST, 'data': null });
-
-const queryAllMsg = (): Message => ({ 'type': MessageType.QUERY_ALL, 'data': null });
-
-const responseChainMsg = (): Message => ({
-  'type': MessageType.RESPONSE_BLOCKCHAIN, 'data': JSON.stringify(getBlockchain())
-});
-
-const responseLatestMsg = (): Message => ({
-  'type': MessageType.RESPONSE_BLOCKCHAIN,
-  'data': JSON.stringify([getLastBlock()])
-});
-
-const queryTransactionPoolMsg = (): Message => ({
-  'type': MessageType.QUERY_TRANSACTION_POOL,
-  'data': null
-});
-
 const responseIdentityMsg = (pod: Pod): Message => ({
   'type': MessageType.RESPONSE_IDENTITY,
   'data': JSON.stringify(pod)
@@ -309,26 +270,6 @@ const killMsg = (): Message => ({
   'data': null
 });
 
-const handleBlockchainResponse = (socket: Socket, receivedBlocks: Block[]) => {
-  if (receivedBlocks.length === 0) {
-    console.log('received block chain size of 0');
-    return;
-  }
-  const latestBlockReceived: Block = receivedBlocks[receivedBlocks.length - 1];
-  if (!isStructureValid(latestBlockReceived)) {
-    console.log('block structuture not valid');
-    return;
-  }
-};
-
-const broadcastLatest = (): void => {
-  console.log('Broadcasting latest blockchain');
-  io.clients((err, clients) => {
-    console.log(clients);
-  });
-  io.emit('message', responseLatestMsg());
-};
-
 const killAll = (): void => {
   io.emit('message', killMsg());
 };
@@ -344,6 +285,6 @@ const killAll = (): void => {
 // };
 
 export {
-  initP2PServer, initP2PNode, getPods, getIo, broadcastLatest, write, handleMessage, Message,
+  initP2PServer, initP2PNode, getPods, getIo, write, handleMessage, Message,
   queryIsTransactionValid, killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType
 }
