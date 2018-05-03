@@ -2,7 +2,8 @@ import { ec } from 'elliptic';
 import { mkdirSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 import * as _ from 'lodash';
 import * as minimist from 'minimist';
-import { getPublicKey, getTransactionId, Transaction } from './transaction';
+import { getPublicKey, getTransactionId, Transaction, genesisTransaction } from './transaction';
+import { updateLedger, initLedger } from './ledger';
 
 const EC = new ec('secp256k1');
 let privateKeyLocation = '';
@@ -30,7 +31,7 @@ const generatePrivateKey = (): string => {
   return privateKey.toString(16);
 };
 
-const initWallet = (port) => {
+const initWallet = (port: number) => {
   privateKeyLocation += `node/wallet/${port}`;
   createNodeDir();
   if (existsSync(privateKeyLocation)) {
@@ -41,12 +42,19 @@ const initWallet = (port) => {
   writeFileSync(privateKeyLocation, newPrivateKey);
   console.log('new wallet with private key created to : %s', privateKeyLocation);
   console.log(`Public address: ${getPublicFromWallet()}`);
+  initLedger(port);
+  fundWallet();
 };
 
 const deleteWallet = () => {
   if (existsSync(privateKeyLocation)) {
     unlinkSync(privateKeyLocation);
   }
+};
+
+const fundWallet = () => {
+  console.log(`Adding 50 value to wallet as part of wallet initiation.`);
+  updateLedger(genesisTransaction(getPublicFromWallet()), 0);
 };
 
 export {

@@ -1,4 +1,6 @@
 import { Pod } from './pod';
+import { getPodIndexByPublicKey } from './p2p';
+import { getPublicFromWallet } from './wallet';
 
 const selectRandom = (pods: Pod[]): Pod[] => {
   const randomNumbers: number[] = buildRandomSet(pods.length);
@@ -8,13 +10,14 @@ const selectRandom = (pods: Pod[]): Pod[] => {
 };
 
 const buildRandomSet = (podsLength: number): number[] => {
-  console.log('Building random set..');
+  console.log('Building random set...');
   const randomSet: number[] = [];
+  const myIndex = getPodIndexByPublicKey(getPublicFromWallet());
   let randomNumber;
   while (randomSet.length < 2) {
     randomNumber = Math.round(Math.random() * (podsLength - 1));
-    if (randomSet.indexOf(randomNumber) === -1) {
-      console.log('Random number not in set, adding');
+    if (randomSet.indexOf(randomNumber) === -1 && randomNumber !== myIndex) {
+      console.log('Random number not in set, adding.');
       randomSet.push(randomNumber);
     }
   }

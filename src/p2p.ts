@@ -9,7 +9,7 @@ import {
   isStructureValid, generateNextBlock
 } from './block';
 import { Transaction, validateTransaction, Result, validateTransactionHash } from './transaction';
-import { Ledger, updateLedger } from './ledger';
+import { Ledger, updateLedger, getEntryByTransactionId } from './ledger';
 import { getPublicFromWallet } from './wallet';
 
 const argv = minimist(process.argv.slice(2));
@@ -100,12 +100,13 @@ const handleNewConnection = (socket: Socket) => {
   socket.on('error', () => closeConnection(socket));
 };
 
-const handleMessage = (socket: Socket, message: Message) => {
+const handleMessage = (socket: Socket, message: Message): Result => {
   try {
     if (message === null) {
       console.log('could not parse received JSON message: ' + message);
       return;
     }
+    let result: Result;
     // console.log('Received message: %s', JSON.stringify(message));
     switch (message.type) {
       case MessageType.QUERY_LATEST:
@@ -127,22 +128,36 @@ const handleMessage = (socket: Socket, message: Message) => {
         console.log('Selected for validation. Validating...');
         const { transaction, senderLedger }:
           { transaction: Transaction, senderLedger: Ledger } = JSON.parse(message.data);
-        const result = validateTransaction(transaction, senderLedger);        
-        if (result.result) { 
-          transaction.generateHash();
-          updateLedger(transaction, 1);
-        }
-        io.emit('message', responseIsTransactionValid(result));
+        validateTransaction(transaction, senderLedger, (res) => {
+          const tx = new Transaction(
+            transaction.from,
+            transaction.address,
+            transaction.amount,
+            transaction.timestamp
+          );
+          const _tx = Object.assign(tx, transaction);
+
+          if (res.result) {
+            _tx.generateHash();
+            updateLedger(_tx, 1);
+          }
+          io.emit('message', responseIsTransactionValid(res, _tx));
+        });
         break;
       }
       case MessageType.VALIDATION_RESULT: {
-        const { result, reason, transaction }:
-          { result: boolean, reason: string, transaction: Transaction } = JSON.parse(message.data);
-        if (result) {
-          if (transaction.from === getPublicFromWallet() || transaction.address === getPublicFromWallet()) {
-            transaction.generateHash();
-            updateLedger(transaction, 0);
+        const { result, transaction }:
+          { result: Result, transaction: Transaction } = JSON.parse(message.data);
+        if (result.result) {          
+          if (transaction) {
+            if (transaction.from === getPublicFromWallet() || transaction.address === getPublicFromWallet()) {
+              transaction.generateHash();
+              updateLedger(transaction, 0);
+            }
           }
+        }
+        else {
+          console.log(`FAILED: ${result.reason}`);
         }
       }
       case MessageType.POD_LIST_UPDATED: {
@@ -157,15 +172,16 @@ const handleMessage = (socket: Socket, message: Message) => {
         io.close();
         process.exit();
         break;
-      case MessageType.TRANSACTION_CONFIRMATION_REQUEST:
+      case MessageType.TRANSACTION_CONFIRMATION_REQUEST: {
         console.log('Selected to confirm a valid transaction. Confirm...');
         const { transactionId, hash }:
           { transactionId: string, hash: string } = JSON.parse(message.data);
         const result = validateTransactionHash(transactionId, hash);        
-        io.emit('message', responseIsTransactionValid(result));
+        io.emit('message', responseIsTransactionHashValid(result));
         break;
+      }
       case MessageType.TRANSACTION_CONFIRMATION_RESULT:
-        break;
+        return JSON.parse(message.data);
     }
   } catch (e) {
     console.log(e);
@@ -239,9 +255,9 @@ const queryIsTransactionValid = (transactionData: {
   'data': JSON.stringify(transactionData)
 });
 
-const responseIsTransactionValid = (result: Result): Message => ({
+const responseIsTransactionValid = (result: Result, transaction: Transaction): Message => ({
   'type': MessageType.VALIDATION_RESULT,
-  'data': JSON.stringify(result)
+  'data': JSON.stringify({ result, transaction })
 });
 
 const isTransactionHashValid = (transactionData: {
@@ -302,6 +318,6 @@ const killAll = (): void => {
 // };
 
 export {
-  initP2PServer, initP2PNode, getPods, getIo, broadcastLatest, write,
-  queryIsTransactionValid, killAll, getPodIndexByPublicKey, isTransactionHashValid
+  initP2PServer, initP2PNode, getPods, getIo, broadcastLatest, write, handleMessage, Message,
+  queryIsTransactionValid, killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType
 }

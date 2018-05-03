@@ -1,5 +1,6 @@
 node_modules
 node/wallet
+node/ledger
 js
 src/*.js
 src/*.map

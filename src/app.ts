@@ -39,6 +39,7 @@ const initHttpServer = () => {
     );
     
     requestValidateTransaction(transaction, getLedger(ledgerType.MY_LEDGER));
+    res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.address}.`);
   });
   app.get('/blocks', (req, res) => {
     res.send(getBlockchain());
@@ -76,5 +77,4 @@ const initHttpServer = () => {
   });
 };
 
-console.log(getLedger(ledgerType.MY_LEDGER));
 initHttpServer();
