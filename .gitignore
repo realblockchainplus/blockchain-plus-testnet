@@ -3,3 +3,4 @@ node
 js
 src/*.js
 src/*.map
+bash.exe.stackdump

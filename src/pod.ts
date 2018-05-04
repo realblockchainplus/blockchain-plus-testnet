@@ -1,6 +1,7 @@
 import * as io from 'socket.io-client';
 import { Socket } from 'socket.io-client';
 import { getPublicFromWallet } from './wallet';
+import { getLocalIp } from './p2p';
 
 class Pod {
 
@@ -14,6 +15,7 @@ class Pod {
   public status: status;
   public name: string;
   public ip: string;
+  public localIp: string;
   public port: number;
   public address: string;
   public ws: Socket;
@@ -22,6 +24,7 @@ class Pod {
     this.type = type;
     this.location = location;
     this.name = name;
+    this.localIp = getLocalIp();
   }
 };
 

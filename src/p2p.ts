@@ -3,15 +3,37 @@ import * as ioClient from 'socket.io-client';
 import { Socket } from 'socket.io-client';
 import * as http from 'http';
 import * as minimist from 'minimist';
+import * as os from 'os';
+
 import { Pod, createPod, podType } from './pod';
 import { Transaction, validateTransaction, Result, validateTransactionHash } from './transaction';
 import { Ledger, updateLedger, getEntryByTransactionId } from './ledger';
 import { getPublicFromWallet } from './wallet';
+import { LogEvent, eventType, createLogEvent } from './logEntry';
 
 const argv = minimist(process.argv.slice(2));
 const type: number = parseInt(argv.t);
 const isSeed: boolean = argv.s === 'true';
 let pods: Pod[] = [];
+
+const interfaces = os.networkInterfaces();
+
+const getLocalIp = () => {
+  const keys = Object.keys(interfaces);
+  let localIp = '';
+  for (let i = 0; i < keys.length; i += 1) {
+    const key = keys[i];
+    const _interfaces = interfaces[key];
+    for (let k = 0; k < _interfaces.length; k += 1) {
+      const __interface = _interfaces[k];
+      const { address, internal, family } = __interface;
+      if (internal === false && address.substr(0, 7) === '192.168' && family === 'IPv4') {
+        localIp += address;
+      }
+    }
+  }
+  return localIp;
+};
 
 enum MessageType {
   SELECTED_FOR_VALIDATION = 1,
@@ -20,7 +42,8 @@ enum MessageType {
   POD_LIST_UPDATED = 4,
   KILL_SERVER_PROCESS = 5,
   TRANSACTION_CONFIRMATION_REQUEST = 6,
-  TRANSACTION_CONFIRMATION_RESULT = 7
+  TRANSACTION_CONFIRMATION_RESULT = 7,
+  LOG_EVENT = 8
 };
 
 class Message {
@@ -31,6 +54,7 @@ class Message {
 let io;
 let gServer;
 let localSocket;
+let localLogger;
 
 const initP2PServer = (server: http.Server): any => {
   io = socketIo(server);
@@ -54,6 +78,8 @@ const initP2PNode = (server: http.Server) => {
   const randomType: number = Math.floor(Math.random() * 10) >= 1 ? 0 : 1;
   const pod: Pod = createPod(type);
   const socket: Socket = ioClient('https://bcp-tn.now.sh');
+  const logger: Socket = ioClient('https://bcp-tn-logger.now.sh');
+  localLogger = logger;
   localSocket = socket;
   socket.on('connect', () => {
     pod.ws = socket.id;
@@ -103,6 +129,7 @@ const handleMessage = (socket: Socket, message: Message): Result => {
       case MessageType.RESPONSE_IDENTITY:
         console.log('Received Pod Identity');
         if (getPodIndexByPublicKey(message.data.address) === null) {
+          console.log(`Local IP of connecting node: ${message.data.localIp}`);
           message.data.ip = socket.handshake.headers['x-real-ip'];
           pods.push(message.data);
           io.emit('message', podListUpdated(pods));
@@ -237,10 +264,18 @@ const responseIdentityMsg = (pod: Pod): Message => ({
 const queryIsTransactionValid = (transactionData: {
   transaction: Transaction,
   senderLedger: Ledger
-}): Message => ({
-  'type': MessageType.SELECTED_FOR_VALIDATION,
-  'data': JSON.stringify(transactionData)
-});
+}): Message => {
+  const event = new LogEvent(
+    pods[getPodIndexByPublicKey(transactionData.transaction.from)],
+    pods[getPodIndexByPublicKey(transactionData.transaction.address)],
+    'has requested transaction validation from'
+  );
+  write(localLogger, createLogEvent(event));
+  return {
+    'type': MessageType.SELECTED_FOR_VALIDATION,
+    'data': JSON.stringify(transactionData)
+  };
+};
 
 const responseIsTransactionValid = (result: Result, transaction: Transaction): Message => ({
   'type': MessageType.VALIDATION_RESULT,
@@ -286,5 +321,6 @@ const killAll = (): void => {
 
 export {
   initP2PServer, initP2PNode, getPods, getIo, write, handleMessage, Message,
-  queryIsTransactionValid, killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType
+  queryIsTransactionValid, killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType,
+  getLocalIp
 }
