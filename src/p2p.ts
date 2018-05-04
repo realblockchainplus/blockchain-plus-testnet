@@ -107,6 +107,8 @@ const getIo = () => { return io; };
 
 const getServer = () => { return gServer; };
 
+const getLogger = () => { return localLogger; };
+
 const handleNewConnection = (socket: Socket) => {
   console.log('New connection, emitting [identity]');
   socket.emit('identity');
@@ -182,12 +184,6 @@ const handleMessage = (socket: Socket, message: Message): Result => {
               console.log('Transaction Hash generated');
               _tx.generateHash();
               console.log('Writing to ledger...');
-              const event = new LogEvent(
-                pods[getPodIndexByPublicKey(transaction.from)],
-                pods[getPodIndexByPublicKey(transaction.address)],
-                eventType.TRANSACTION_END
-              );
-              write(localLogger, createLogEvent(event));
               updateLedger(_tx, 0);
               socket.disconnect();
             }
@@ -281,12 +277,6 @@ const queryIsTransactionValid = (transactionData: {
   transaction: Transaction,
   senderLedger: Ledger
 }): Message => {
-  const event = new LogEvent(
-    pods[getPodIndexByPublicKey(transactionData.transaction.from)],
-    pods[getPodIndexByPublicKey(transactionData.transaction.address)],
-    eventType.TRANSACTION_START
-  );
-  write(localLogger, createLogEvent(event));
   return {
     'type': MessageType.SELECTED_FOR_VALIDATION,
     'data': JSON.stringify(transactionData)
@@ -340,5 +330,5 @@ const killAll = (): void => {
 export {
   initP2PServer, initP2PNode, getPods, getIo, write, handleMessage, Message,
   queryIsTransactionValid, killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType,
-  getLocalIp
+  getLocalIp, getLogger
 }

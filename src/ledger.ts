@@ -1,5 +1,7 @@
 import * as fs from 'fs';
 import { Transaction } from './transaction';
+import { LogEvent, createLogEvent, eventType } from './logEntry';
+import { write, getPodIndexByPublicKey, getLogger, getPods } from './p2p';
 
 let ledgerLocation = ``;
 let myLedgerFilename = 'my_ledger.json';
@@ -37,6 +39,16 @@ const updateLedger = (transaction: Transaction, type: ledgerType): void => {
   const ledger: Ledger = getLedger(type);
   const _ledger: Ledger = { ...ledger };
   if (getEntryInLedgerByTransactionId(_transaction.id, _ledger) === undefined) {
+    if (_ledger.entries.length > 0) {
+      const pods = getPods();    
+      const localLogger = getLogger();
+      const event = new LogEvent(
+        pods[getPodIndexByPublicKey(transaction.from)],
+        pods[getPodIndexByPublicKey(transaction.address)],
+        eventType.TRANSACTION_END
+      );
+      write(localLogger, createLogEvent(event));
+    }
     _ledger.entries.push(_transaction);
     writeLedger(_ledger, type);
   }

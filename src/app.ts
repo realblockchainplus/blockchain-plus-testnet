@@ -8,11 +8,12 @@ import * as http from 'http';
 import * as socketio from 'socket.io';
 
 import { Transaction, getTransactionId, requestValidateTransaction, getCurrentTimestamp } from './transaction';
-import { getPods, getIo, initP2PServer, initP2PNode, killAll } from './p2p';
+import { getPods, getIo, initP2PServer, initP2PNode, killAll, getPodIndexByPublicKey, write, getLogger } from './p2p';
 import { initWallet, getPublicFromWallet } from './wallet';
 import { Ledger, getLedger, ledgerType } from './ledger';
 import { Pod, createPod } from './pod';
 import { selectRandom } from './rngTool';
+import { LogEvent, eventType, createLogEvent } from './logEntry';
 
 const REGULAR_NODES = 0;
 const PARTNER_NODES = 0;
@@ -42,6 +43,14 @@ const initHttpServer = () => {
       getCurrentTimestamp()
     );
 
+    const pods = getPods();
+    const localLogger = getLogger();
+    const event = new LogEvent(
+      pods[getPodIndexByPublicKey(transaction.from)],
+      pods[getPodIndexByPublicKey(transaction.address)],
+      eventType.TRANSACTION_START
+    );
+    write(localLogger, createLogEvent(event));
     requestValidateTransaction(transaction, getLedger(ledgerType.MY_LEDGER));
     res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.address}.`);
   });
@@ -68,6 +77,7 @@ const initHttpServer = () => {
     killAll();
     res.send();
   });
+
   server.listen(randomPort, () => {
     console.log(`[Node] New Node created on port: ${server.address().port}`);
     initWallet(server.address().port);
