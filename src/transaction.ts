@@ -122,15 +122,18 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   console.log('Starting for loop for sending out validation checks...');
   for (let i = 0; i < selectedPods.length; i += 1) {
     const pod = selectedPods[i];
-    console.log(`Connecting to ${pod.ip}:${pod.port}`);
+    console.log(`Connecting to ${pod.localIp}:${pod.port}`);
     const promise: Promise<void> = new Promise((resolve, reject) => {
-      const socket = ioClient(`http://${pod.ip}:${pod.port}`);
+      const socket = ioClient(`http://${pod.localIp}:${pod.port}`);
       socket.on('connect', () => {
-        resolve(`Connected to ${pod.ip}:${pod.port}... sending transaction details.`);
+        resolve(`Connected to ${pod.localIp}:${pod.port}... sending transaction details.`);
         write(socket, queryIsTransactionValid({ transaction, senderLedger }));
       });
       socket.on('message', (message: Message) => {
         handleMessage(socket, message);
+      });
+      socket.on('disconnect', () => {
+        console.log('[requestValidateTransaction] socket disconnected.');
       });
       setTimeout(() => { reject(`Connection to ${pod.ip}:${pod.port} could not be made in 10 seconds.`) }, 10000);
     }).then((fulfilled) => {
@@ -222,6 +225,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             if (message.type === MessageType.TRANSACTION_CONFIRMATION_RESULT) {
               const result: Result = handleMessage(socket, message);
               console.log(`Received validation result from ${pod.ip}:${pod.port}... resolving promise.`);
+              socket.disconnect();
               resolve(result);
             }
           });

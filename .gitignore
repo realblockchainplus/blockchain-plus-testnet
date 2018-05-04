@@ -4,3 +4,4 @@ js
 src/*.js
 src/*.map
 bash.exe.stackdump
+.vscode/launch.json

@@ -78,7 +78,7 @@ const initP2PNode = (server: http.Server) => {
   const randomType: number = Math.floor(Math.random() * 10) >= 1 ? 0 : 1;
   const pod: Pod = createPod(type);
   const socket: Socket = ioClient('https://bcp-tn.now.sh');
-  const logger: Socket = ioClient('https://bcp-tn-logger.now.sh');
+  const logger: Socket = ioClient('http://192.168.0.14:3005');
   localLogger = logger;
   localSocket = socket;
   socket.on('connect', () => {
@@ -94,6 +94,9 @@ const initP2PNode = (server: http.Server) => {
     socket.on('message', (message: Message) => {
       console.log(`Received Message: ${message.type}`);
       handleMessage(socket, message);
+    });
+    socket.on('disconnect', () => {
+      console.log('[initP2PNode] socket disconnected');
     });
   });
 };
@@ -153,6 +156,8 @@ const handleMessage = (socket: Socket, message: Message): Result => {
             _tx.generateHash();
             updateLedger(_tx, 1);
           }
+          console.log('Sending out validation result.');
+          io.clients((err, clients) => { console.dir(clients); });
           io.emit('message', responseIsTransactionValid(res, _tx));
         });
         break;
@@ -177,12 +182,24 @@ const handleMessage = (socket: Socket, message: Message): Result => {
               console.log('Transaction Hash generated');
               _tx.generateHash();
               console.log('Writing to ledger...');
+              const event = new LogEvent(
+                pods[getPodIndexByPublicKey(transaction.from)],
+                pods[getPodIndexByPublicKey(transaction.address)],
+                eventType.TRANSACTION_END
+              );
+              write(localLogger, createLogEvent(event));
               updateLedger(_tx, 0);
               socket.disconnect();
             }
           }
         }
         else {
+          const event = new LogEvent(
+            pods[getPodIndexByPublicKey(transaction.from)],
+            pods[getPodIndexByPublicKey(transaction.address)],
+            eventType.TRANSACTION_END
+          );
+          write(localLogger, createLogEvent(event));
           console.log(`FAILED: ${result.reason}`);
         }
       }
@@ -214,7 +231,6 @@ const handleMessage = (socket: Socket, message: Message): Result => {
         break;
       }
       case MessageType.TRANSACTION_CONFIRMATION_RESULT:
-        socket.disconnect();
         return JSON.parse(message.data);
     }
   } catch (e) {
@@ -268,7 +284,7 @@ const queryIsTransactionValid = (transactionData: {
   const event = new LogEvent(
     pods[getPodIndexByPublicKey(transactionData.transaction.from)],
     pods[getPodIndexByPublicKey(transactionData.transaction.address)],
-    'has requested transaction validation from'
+    eventType.TRANSACTION_START
   );
   write(localLogger, createLogEvent(event));
   return {
@@ -277,10 +293,12 @@ const queryIsTransactionValid = (transactionData: {
   };
 };
 
-const responseIsTransactionValid = (result: Result, transaction: Transaction): Message => ({
-  'type': MessageType.VALIDATION_RESULT,
-  'data': JSON.stringify({ result, transaction })
-});
+const responseIsTransactionValid = (result: Result, transaction: Transaction): Message => {
+  return {
+    'type': MessageType.VALIDATION_RESULT,
+    'data': JSON.stringify({ result, transaction })
+  };
+};
 
 const isTransactionHashValid = (transactionData: {
   transactionId: string,
