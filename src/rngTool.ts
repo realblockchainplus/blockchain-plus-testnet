@@ -24,8 +24,8 @@ const buildRandomSet = (pods: Pod[]): number[] => {
   }
   console.log('While loop over, returning randomSet');
   return randomSet;
-}
+};
 
 export {
-  selectRandom
-}
+  selectRandom,
+};

@@ -1,9 +1,8 @@
 import { ec } from 'elliptic';
-import { mkdirSync, existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
-import * as _ from 'lodash';
-import * as minimist from 'minimist';
-import { getPublicKey, getTransactionId, Transaction, genesisTransaction } from './transaction';
-import { updateLedger, initLedger } from './ledger';
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
+
+import { initLedger, updateLedger } from './ledger';
+import { genesisTransaction } from './transaction';
 
 const EC = new ec('secp256k1');
 let privateKeyLocation = '';
@@ -13,7 +12,8 @@ const createNodeDir = (): void => {
     return;
   }
   mkdirSync('node/wallet');
-}
+};
+
 const getPrivateFromWallet = (): string => {
   const buffer = readFileSync(privateKeyLocation, 'utf8');
   return buffer.toString();
@@ -59,5 +59,5 @@ const fundWallet = () => {
 
 export {
   getPublicFromWallet, getPrivateFromWallet, generatePrivateKey,
-  initWallet, deleteWallet
+  initWallet, deleteWallet,
 };

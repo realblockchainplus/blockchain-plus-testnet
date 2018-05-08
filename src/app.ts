@@ -1,29 +1,24 @@
 import * as bodyParser from 'body-parser';
-import * as express from 'express';
-import * as _ from 'lodash';
-import * as kp from 'kill-port';
 import * as cors from 'cors';
-import * as minimist from 'minimist';
+import * as express from 'express';
 import * as http from 'http';
-import * as socketio from 'socket.io';
 
-import { Transaction, getTransactionId, requestValidateTransaction, getCurrentTimestamp } from './transaction';
-import { getPods, getIo, initP2PServer, initP2PNode, killAll, getPodIndexByPublicKey, write, getLogger } from './p2p';
-import { initWallet, getPublicFromWallet } from './wallet';
-import { Ledger, getLedger, ledgerType } from './ledger';
-import { Pod, createPod } from './pod';
-import { selectRandom } from './rngTool';
-import { LogEvent, eventType, createLogEvent } from './logEntry';
-
-const REGULAR_NODES = 0;
-const PARTNER_NODES = 0;
+import { getLedger, ledgerType } from './ledger';
+import { createLogEvent, eventType, LogEvent } from './logEntry';
+import {
+  getLogger, getPodIndexByPublicKey, getPods, initP2PNode,
+  initP2PServer, killAll, write,
+} from './p2p';
+import { Pod } from './pod';
+import { requestValidateTransaction, Transaction } from './transaction';
+import { getPublicFromWallet, initWallet } from './wallet';
+import { getCurrentTimestamp, randomNumberFromRange } from './utils';
 
 const portMin = 50000;
 const portMax = 65535;
-const randomPort = Math.floor((Math.random() * (portMax - portMin)) + portMin);
+const randomPort = randomNumberFromRange(portMin, portMax);
 
-
-const initHttpServer = () => {
+const initHttpServer = (): void => {
   const app = express();
   const server = new http.Server(app);
 
@@ -40,7 +35,7 @@ const initHttpServer = () => {
       getPublicFromWallet(),
       req.body.transaction.address,
       req.body.transaction.amount,
-      getCurrentTimestamp()
+      getCurrentTimestamp(),
     );
 
     const pods = getPods();
@@ -48,7 +43,7 @@ const initHttpServer = () => {
     const event = new LogEvent(
       pods[getPodIndexByPublicKey(transaction.from)],
       pods[getPodIndexByPublicKey(transaction.address)],
-      eventType.TRANSACTION_START
+      eventType.TRANSACTION_START,
     );
     write(localLogger, createLogEvent(event));
     requestValidateTransaction(transaction, getLedger(ledgerType.MY_LEDGER));
@@ -57,25 +52,12 @@ const initHttpServer = () => {
 
   app.get('/address', (req, res) => {
     const address: string = getPublicFromWallet();
-    res.send({ 'address': address });
-  });
-
-  app.get('/peers', (req, res) => {
-    res.send(getPods().map((p: Pod) => {
-      const returnObj = {
-        type: p.type,
-        name: p.name,
-        location: p.location,
-        id: `${p.ws}`,
-        publicAddress: p.address
-      };
-      return returnObj;
-    }));
+    res.send({ address });
   });
 
   app.get('/killAll', (req, res) => {
     killAll();
-    res.send();
+    res.send('Killed all nodes');
   });
 
   server.listen(randomPort, () => {

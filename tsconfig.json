@@ -8,12 +8,13 @@
   "compileOnSave": true,
   "include": [
     "src/app.ts",
-    "src/block.ts",
-    "src/transaction.ts",
-    "src/p2p.ts",
-    "src/pod.ts",
     "src/ledger.ts",
     "src/logEntry.ts",
+    "src/p2p.ts",
+    "src/pod.ts",
+    "src/rngTool.ts",
+    "src/transaction.ts",
+    "src/util.ts",
     "src/wallet.ts"
   ],
   "exclude": [

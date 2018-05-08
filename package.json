@@ -24,15 +24,20 @@
     "minimist": "^1.2.0",
     "socket.io": "^2.1.0",
     "ts-node": "^6.0.0",
+    "tslint-config-airbnb": "^5.8.0",
     "typescript": "^2.8.1",
     "ws": "^5.1.1"
   },
   "devDependencies": {
     "@types/body-parser": "^1.16.8",
+    "@types/cors": "^2.8.4",
     "@types/crypto-js": "^3.1.39",
     "@types/express": "^4.11.1",
     "@types/lodash": "^4.14.107",
+    "@types/minimist": "^1.2.0",
     "@types/node": "^9.6.5",
+    "@types/socket.io": "^1.4.33",
+    "@types/socket.io-client": "^1.4.32",
     "@types/ws": "^4.0.2",
     "tslint": "^5.9.1"
   },

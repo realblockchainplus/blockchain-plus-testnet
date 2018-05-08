@@ -7,6 +7,7 @@ class LogEvent {
   public description: string;
   public type: eventType;
   public timestamp: number;
+
   constructor(podOne: Pod, podTwo: Pod, type: eventType) {
     this.podOne = podOne;
     this.podTwo = podTwo;
@@ -21,12 +22,12 @@ enum eventType {
   TEST_START = 3,
   TEST_END = 4,
   TRANSACTION_START = 5,
-  TRANSACTION_END = 6
-};
+  TRANSACTION_END = 6,
+}
 
 const createLogEvent = (event: LogEvent): Message => ({
-  'type': MessageType.LOG_EVENT,
-  'data': JSON.stringify(event)
+  type: MessageType.LOG_EVENT,
+  data: JSON.stringify(event),
 });
 
 const eventToString = (event: LogEvent): string => {
@@ -81,5 +82,5 @@ const transactionEndString = (event: LogEvent): string => (
 );
 
 export {
-  LogEvent, eventType, createLogEvent, eventToString
-}
+  LogEvent, eventType, createLogEvent, eventToString,
+};
