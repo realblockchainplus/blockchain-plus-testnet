@@ -125,15 +125,7 @@ const getCurrentHoldings = (ledger: Ledger, publicKey: string): number => {
 
 const getExpectedTransactionId = (transaction: Transaction): string => {
   const { to, from, witnessOne, witnessTwo, partnerOne, partnerTwo, timestamp } = transaction;
-  return CryptoJS.SHA256(`
-    ${witnessOne}
-    ${witnessTwo}
-    ${partnerOne}
-    ${partnerTwo}
-    ${to}
-    ${from}
-    ${timestamp}
-  `).toString();
+  return CryptoJS.SHA256(`${witnessOne}${witnessTwo}${partnerOne}${partnerTwo}${to}${from}${timestamp}`).toString();
 };
 
 const getPublicKey = (privateKey: string): string => {
@@ -145,15 +137,7 @@ const getTransactionId = (transaction: Transaction): string => {
   // const lastreceiverId: number = parseInt(''); // Last TransactionId in receiver's ledger
   // const transactionId = `${lastSenderId + 1}-${lastreceiverId + 1}`;
   const { to, from, witnessOne, witnessTwo, partnerOne, partnerTwo } = transaction;
-  return CryptoJS.SHA256(`
-    ${witnessOne}
-    ${witnessTwo}
-    ${partnerOne}
-    ${partnerTwo}
-    ${to}
-    ${from}
-    ${getCurrentTimestamp()}
-  `).toString();
+  return CryptoJS.SHA256(`${witnessOne}${witnessTwo}${partnerOne}${partnerTwo}${to}${from}${getCurrentTimestamp()}`).toString();
 };
 
 const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledger): void => {
@@ -325,6 +309,7 @@ const validateTransaction = (transaction: Transaction, senderLedger: Ledger, cal
   if (expectedTransactionId !== transaction.id) {
     result.reason = `TransactionId is invalid.
      Expecting: ${expectedTransactionId}. Got: ${transaction.id}.`;
+    console.dir(transaction);
     console.log(result.reason);
     callback(result, transaction);
   } else {
