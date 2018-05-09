@@ -54,6 +54,7 @@ class Transaction {
     this.witnessTwo = selectedPods[1].address;
     this.partnerOne = selectedPods[2].address;
     this.partnerTwo = selectedPods[3].address;
+    this.setTransactionId(getTransactionId(this));
   }
 
   setTransactionId = (transactionId: string): void => {
@@ -66,7 +67,16 @@ class Transaction {
   }
 
   generateHash = (): void => {
-    this.hash = CryptoJS.SHA256(`${this.witnessOne}${this.witnessTwo}${this.partnerOne}${this.partnerTwo}${this.to}${this.from}${this.timestamp}`).toString();
+    this.hash = CryptoJS.SHA256(`
+      ${this.witnessOne}
+      ${this.witnessTwo}
+      ${this.partnerOne}
+      ${this.partnerTwo}
+      ${this.to}
+      ${this.amount}
+      ${this.from}
+      ${this.timestamp}
+    `).toString();
   }
 }
 
@@ -138,7 +148,6 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
   const selectedPods: Pod[] = [...selectRandom(regularPods, 2, transaction.to), ...selectRandom(partnerPods, 2, transaction.to)];
   transaction.assignValidatorsToTransaction(selectedPods);
-  transaction.setTransactionId(getTransactionId(transaction));
   transaction.generateSignature();
 
   const localLogger = getLogger();
