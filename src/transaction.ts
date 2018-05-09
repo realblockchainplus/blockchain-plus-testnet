@@ -54,7 +54,6 @@ class Transaction {
     this.witnessTwo = selectedPods[1].address;
     this.partnerOne = selectedPods[2].address;
     this.partnerTwo = selectedPods[3].address;
-    this.setTransactionId(getTransactionId(this));
   }
 
   setTransactionId = (transactionId: string): void => {
@@ -138,6 +137,7 @@ const getTransactionId = (transaction: Transaction): string => {
   // const lastreceiverId: number = parseInt(''); // Last TransactionId in receiver's ledger
   // const transactionId = `${lastSenderId + 1}-${lastreceiverId + 1}`;
   const { to, from, witnessOne, witnessTwo, partnerOne, partnerTwo } = transaction;
+  console.dir(transaction);
   return CryptoJS.SHA256(`${witnessOne}${witnessTwo}${partnerOne}${partnerTwo}${to}${from}${getCurrentTimestamp()}`).toString();
 };
 
@@ -149,6 +149,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   const selectedPods: Pod[] = [...selectRandom(regularPods, 2, transaction.to), ...selectRandom(partnerPods, 2, transaction.to)];
   transaction.assignValidatorsToTransaction(selectedPods);
   transaction.generateSignature();
+  transaction.setTransactionId(getTransactionId(transaction));
 
   const localLogger = getLogger();
   const event = new LogEvent(
