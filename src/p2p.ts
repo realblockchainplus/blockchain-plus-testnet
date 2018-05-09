@@ -50,7 +50,7 @@ const beginTest = (duration: number): void => {
     randomReceiver = pods[randomNumberFromRange(0, pods.length - 1, true)];
   }
   startTime = getCurrentTimestamp();
-  endTime = startTime + (duration * 1000);
+  endTime = startTime + duration;
 
   const transaction = new Transaction(
     getPublicFromWallet(),

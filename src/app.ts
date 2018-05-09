@@ -75,7 +75,7 @@ const initHttpServer = (): void => {
     const io = getIo();
     const pods: Pod[] = getPods();
     const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
-    const selectedPods: Pod[] = selectRandom(regularPods, 1, '');
+    const selectedPods: Pod[] = selectRandom(regularPods, 4, '');
     io.emit('message', sendTestConfig({ duration: 1200, selectedPods }));
     res.send('Test Started!');
   });
