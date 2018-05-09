@@ -79,7 +79,7 @@ const updateLedger = (transaction: Transaction, type: ledgerType): void => {
       event.transactionId = transaction.id;
       write(localLogger, createLogEvent(event));
     }
-    if (ledger.entries.length > 1 ) {
+    if (ledger.entries.length > 1 && type === ledgerType.MY_LEDGER ) {
       ledger.entries.pop();
     }
     ledger.entries.push(_transaction);

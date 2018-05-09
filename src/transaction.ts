@@ -183,7 +183,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
     const promise: Promise<void> = new Promise((resolve, reject) => {
       const socket = ioClient(`http://${pod.localIp}:${pod.port}`);
       socket.on('connect', () => {
-        resolve(`Connected to ${pod.localIp}:${pod.port}... sending transaction details.`);
+        resolve(`[requestValidateTransaction] Connected to ${pod.localIp}:${pod.port}... sending transaction details for transaction with id: ${transaction.id}.`);
         write(socket, isTransactionValid({ transaction, senderLedger }));
       });
       socket.on('message', (message: Message) => {
@@ -264,7 +264,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             reject(result);
           }, 10000);
           socket.on('connect', () => {
-            console.log(`Connected to ${pod.localIp}:${pod.port}... sending transaction details.`);
+            console.log(`[validateLedger] Connected to ${pod.localIp}:${pod.port}... sending transaction details.`);
             clearTimeout(connectTimeout);
             write(socket, isTransactionHashValid({ transactionId: entry.id, hash: entry.hash }));
           });
@@ -364,9 +364,15 @@ const validateTransactionHash = (id: string, hash: string): IResult => {
   const transaction: Transaction = getEntryByTransactionId(id, 1);
   let res: boolean = false;
   let reason: string = 'Transaction hash is valid';
-  if (!transaction) {
+  if (transaction === undefined) {
+    console.log(id, hash);
     res = false;
     reason = 'Transaction was not found in witnesses ledger';
+    return {
+      res,
+      reason,
+      id
+    }
   }
   if (transaction.hash === hash) {
     res = true;

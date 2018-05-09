@@ -272,7 +272,7 @@ const initP2PNode = (server: http.Server): void => {
   const randomType: number = Math.floor(Math.random() * 10) >= 1 ? 0 : 1;
   const pod: Pod = createPod(type);
   const socket: Socket = ioClient('https://bcp-tn.now.sh');
-  const logger: Socket = ioClient('http://localhost:3005');
+  const logger: Socket = ioClient('http://192.168.0.14:3005');
   localLogger = logger;
   localSocket = socket;
   socket.on('connect', () => {
