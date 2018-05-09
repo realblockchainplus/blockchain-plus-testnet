@@ -14,6 +14,23 @@ const createNodeDir = (): void => {
   mkdirSync('node/wallet');
 };
 
+const deleteWallet = (): void => {
+  if (existsSync(privateKeyLocation)) {
+    unlinkSync(privateKeyLocation);
+  }
+};
+
+const fundWallet = (): void => {
+  console.log(`Adding 50 value to wallet as part of wallet initiation.`);
+  updateLedger(genesisTransaction(getPublicFromWallet()), 0);
+};
+
+const generatePrivateKey = (): string => {
+  const keyPair = EC.genKeyPair();
+  const privateKey = keyPair.getPrivate();
+  return privateKey.toString(16);
+};
+
 const getPrivateFromWallet = (): string => {
   const buffer = readFileSync(privateKeyLocation, 'utf8');
   return buffer.toString();
@@ -25,13 +42,7 @@ const getPublicFromWallet = (): string => {
   return key.getPublic().encode('hex');
 };
 
-const generatePrivateKey = (): string => {
-  const keyPair = EC.genKeyPair();
-  const privateKey = keyPair.getPrivate();
-  return privateKey.toString(16);
-};
-
-const initWallet = (port: number) => {
+const initWallet = (port: number): void => {
   privateKeyLocation += `node/wallet/${port}`;
   createNodeDir();
   if (existsSync(privateKeyLocation)) {
@@ -44,17 +55,6 @@ const initWallet = (port: number) => {
   console.log(`Public address: ${getPublicFromWallet()}`);
   initLedger(port);
   fundWallet();
-};
-
-const deleteWallet = () => {
-  if (existsSync(privateKeyLocation)) {
-    unlinkSync(privateKeyLocation);
-  }
-};
-
-const fundWallet = () => {
-  console.log(`Adding 50 value to wallet as part of wallet initiation.`);
-  updateLedger(genesisTransaction(getPublicFromWallet()), 0);
 };
 
 export {

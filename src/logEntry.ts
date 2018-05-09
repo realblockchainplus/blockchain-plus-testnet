@@ -1,5 +1,6 @@
 import { Pod, podType } from './pod';
 import { Message, MessageType } from './p2p';
+import { Transaction } from './transaction';
 
 class LogEvent {
   public podOne: Pod;
@@ -7,6 +8,7 @@ class LogEvent {
   public description: string;
   public type: eventType;
   public timestamp: number;
+  public transactionId: string;
 
   constructor(podOne: Pod, podTwo: Pod, type: eventType) {
     this.podOne = podOne;
@@ -74,11 +76,11 @@ const testEndString = (event: LogEvent): string => (
 );
 
 const transactionStartString = (event: LogEvent): string => (
-  `${event.podOne.name} has initiated a transaction. Recipient: ${event.podTwo.name}`
+  `Transaction ID: ${event.transactionId} has started.`
 );
 
 const transactionEndString = (event: LogEvent): string => (
-  `The transaction from ${event.podOne.name} to ${event.podTwo.name} has been completed.`
+  `Transaction ID: ${event.transactionId} has been completed.`
 );
 
 export {

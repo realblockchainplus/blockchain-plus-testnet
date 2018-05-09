@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import * as ioClient from 'socket.io-client';
 
 import { Ledger } from './ledger';
+import { IResult, isTransactionValid } from './message';
 import {
   getIo,
   getPodIndexByPublicKey,
@@ -12,20 +13,22 @@ import {
   isTransactionHashValid,
   Message,
   MessageType,
-  queryIsTransactionValid,
   write,
+  getLogger,
 } from './p2p';
 import { Pod } from './pod';
 import { selectRandom } from './rngTool';
 import { getCurrentTimestamp, getEntryByTransactionId, getEntryInLedgerByTransactionId } from './utils';
 import { getPrivateFromWallet, getPublicFromWallet } from './wallet';
+import { isValidAddress, toHexString } from './utils';
+import { LogEvent, eventType, createLogEvent } from './logEntry';
 
 const ec = new ecdsa.ec('secp256k1');
 
 class Transaction {
   public id: string;
   public from: string;
-  public address: string;
+  public to: string;
   public amount: number;
   public witnessOne: string;
   public witnessTwo: string;
@@ -35,9 +38,9 @@ class Transaction {
   public timestamp: number;
   public hash: string;
 
-  constructor(from: string, address: string, amount: number, timestamp: number) {
+  constructor(from: string, to: string, amount: number, timestamp: number) {
     this.from = from;
-    this.address = address;
+    this.to = to;
     this.amount = amount;
     this.timestamp = timestamp;
     // this.witnessOne = witnessOne;
@@ -68,7 +71,7 @@ class Transaction {
       ${this.witnessTwo}
       ${this.partnerOne}
       ${this.partnerTwo}
-      ${this.address}
+      ${this.to}
       ${this.amount}
       ${this.from}
       ${this.timestamp}
@@ -76,17 +79,17 @@ class Transaction {
   }
 }
 
-interface IResult {
-  result: boolean;
-  reason: string;
-  id: string;
-}
-
 const genesisTimestamp: number = 1525278308842;
 const genesisAddress: string = `04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e
   7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a`;
-const genesisAmount: number = 50;
+const genesisAmount: number = 500;
 const getGenesisAddress = (): string => genesisAddress;
+
+const generateSignature = (transaction: Transaction, privateKey: string): string => {
+  const key = ec.keyFromPrivate(privateKey, 'hex');
+  const signature: string = toHexString(key.sign(transaction.id).toDER());
+  return signature;
+};
 
 const genesisTransaction = (publicKey: string): Transaction => {
   const transaction = new Transaction(
@@ -103,45 +106,12 @@ const genesisTransaction = (publicKey: string): Transaction => {
   return transaction;
 };
 
-const getTransactionId = (transaction: Transaction): string => {
-  // const lastSenderId: number = parseInt(''); // Last TransactionId in Sender's ledger
-  // const lastreceiverId: number = parseInt(''); // Last TransactionId in receiver's ledger
-  // const transactionId = `${lastSenderId + 1}-${lastreceiverId + 1}`;
-  const { address, from, witnessOne, witnessTwo, partnerOne, partnerTwo } = transaction;
-  return CryptoJS.SHA256(`
-    ${witnessOne}
-    ${witnessTwo}
-    ${partnerOne}
-    ${partnerTwo}
-    ${address}
-    ${from}
-    ${getCurrentTimestamp()}
-  `).toString();
-};
-
-const getExpectedTransactionId = (transaction: Transaction): string => {
-  const { address, from, witnessOne, witnessTwo, partnerOne, partnerTwo, timestamp } = transaction;
-  return CryptoJS.SHA256(`
-    ${witnessOne}
-    ${witnessTwo}
-    ${partnerOne}
-    ${partnerTwo}
-    ${address}
-    ${from}
-    ${timestamp}
-  `).toString();
-};
-
-const getPublicKey = (aPrivateKey: string): string => {
-  return ec.keyFromPrivate(aPrivateKey, 'hex').getPublic().encode('hex');
-};
-
 const getCurrentHoldings = (ledger: Ledger, publicKey: string): number => {
   let currentHoldings = 0;
   for (let i = 0; i < ledger.entries.length; i += 1) {
     const entry = ledger.entries[i];
     // console.dir(entry);
-    if (entry.address == publicKey) {
+    if (entry.to == publicKey) {
       console.log(`Address matches publicKey. Adding ${entry.amount} to currentHoldings.`);
       currentHoldings += entry.amount;
     }
@@ -153,15 +123,57 @@ const getCurrentHoldings = (ledger: Ledger, publicKey: string): number => {
   return currentHoldings;
 };
 
+const getExpectedTransactionId = (transaction: Transaction): string => {
+  const { to, from, witnessOne, witnessTwo, partnerOne, partnerTwo, timestamp } = transaction;
+  return CryptoJS.SHA256(`
+    ${witnessOne}
+    ${witnessTwo}
+    ${partnerOne}
+    ${partnerTwo}
+    ${to}
+    ${from}
+    ${timestamp}
+  `).toString();
+};
+
+const getPublicKey = (privateKey: string): string => {
+  return ec.keyFromPrivate(privateKey, 'hex').getPublic().encode('hex');
+};
+
+const getTransactionId = (transaction: Transaction): string => {
+  // const lastSenderId: number = parseInt(''); // Last TransactionId in Sender's ledger
+  // const lastreceiverId: number = parseInt(''); // Last TransactionId in receiver's ledger
+  // const transactionId = `${lastSenderId + 1}-${lastreceiverId + 1}`;
+  const { to, from, witnessOne, witnessTwo, partnerOne, partnerTwo } = transaction;
+  return CryptoJS.SHA256(`
+    ${witnessOne}
+    ${witnessTwo}
+    ${partnerOne}
+    ${partnerTwo}
+    ${to}
+    ${from}
+    ${getCurrentTimestamp()}
+  `).toString();
+};
+
 const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledger): void => {
   const pods: Pod[] = getPods();
   // console.dir(pods);
   const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
   const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
-  const selectedPods: Pod[] = [...selectRandom(regularPods), ...selectRandom(partnerPods)];
+  const selectedPods: Pod[] = [...selectRandom(regularPods, 2, transaction.to), ...selectRandom(partnerPods, 2, transaction.to)];
   transaction.assignValidatorsToTransaction(selectedPods);
   transaction.setTransactionId(getTransactionId(transaction));
   transaction.generateSignature();
+
+  const localLogger = getLogger();
+  const event = new LogEvent(
+    pods[getPodIndexByPublicKey(transaction.from)],
+    pods[getPodIndexByPublicKey(transaction.to)],
+    eventType.TRANSACTION_START,
+  );
+  event.transactionId = transaction.id;
+  write(localLogger, createLogEvent(event));
 
   const io: Server = getIo();
   console.log('Starting for loop for sending out validation checks...');
@@ -172,7 +184,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       const socket = ioClient(`http://${pod.localIp}:${pod.port}`);
       socket.on('connect', () => {
         resolve(`Connected to ${pod.localIp}:${pod.port}... sending transaction details.`);
-        write(socket, queryIsTransactionValid({ transaction, senderLedger }));
+        write(socket, isTransactionValid({ transaction, senderLedger }));
       });
       socket.on('message', (message: Message) => {
         handleMessage(socket, message);
@@ -199,11 +211,10 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
       return new Promise((resolve, reject) => {
         if (transaction.amount < genesisAmount) {
           const result: IResult = {
-            result: true,
+            res: true,
             reason: '',
-            id: null,
-          };
-          result.id = senderLedger.entries[0].id;
+            id: transaction.id,
+          };          
           resolve(result);
         } else {
           reject(
@@ -246,7 +257,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
           const socket = ioClient(`http://${pod.localIp}:${pod.port}`);
           const connectTimeout = setTimeout(() => {
             const result: IResult = {
-              result: false,
+              res: false,
               reason: `Connection to ${pod.localIp}:${pod.port} could not be made in 10 seconds.`,
               id: entry.id,
             };
@@ -279,14 +290,14 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
   return Promise.all(promiseArray).then((results) => {
     console.log('All promises complete. Checking current holdings of sender...');
     const validationResult: IResult = {
-      result: true,
+      res: true,
       reason: '',
       id: transaction.id,
     };
     for (let j = 0; j < results.length; j += 1) {
       const result = results[j];
-      if (!result.result) {
-        validationResult.result = false;
+      if (!result.res) {
+        validationResult.res = false;
         validationResult.reason = 'Needs to be filled with details of failed validation checks.';
       }
     }
@@ -294,20 +305,23 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
     if (currentHoldings < transaction.amount) {
       console.log(`Current Holdings: ${currentHoldings},
        Transaction Amount: ${transaction.amount}`);
-      validationResult.result = false;
+      validationResult.res = false;
       validationResult.reason = `Insufficient funds in wallet.
        Current Holdings: ${currentHoldings}, Transaction Amount: ${transaction.amount}`;
     }
-    if (validationResult.result) {
+    if (validationResult.res) {
       validationResult.reason = 'Needs to be filled with details of validation checks.';
     }
+    console.log(`[validateLedger]: resultId ${validationResult.id}`);
     return validationResult;
   });
 };
 
 const validateTransaction = (transaction: Transaction, senderLedger: Ledger, callback): void => {
+  console.log(`[validateTransaction] transactionId: ${transaction.id}`);
   const expectedTransactionId: string = getExpectedTransactionId(transaction);
-  let result: IResult = { result: false, reason: '', id: transaction.id };
+  let result: IResult = { res: false, reason: '', id: transaction.id };
+  console.log(`[validateTransaction] resultId: ${result.id}`);
   if (expectedTransactionId !== transaction.id) {
     result.reason = `TransactionId is invalid.
      Expecting: ${expectedTransactionId}. Got: ${transaction.id}.`;
@@ -315,14 +329,14 @@ const validateTransaction = (transaction: Transaction, senderLedger: Ledger, cal
     callback(result, transaction);
   } else {
     result = validateSignature(transaction); // Check if sender has proper access to funds
-    if (!result.result) {
+    if (!result.res) {
       console.log(result.reason);
       callback(result, transaction);
     }
     console.log('Signature was valid... validating ledger.');
     validateLedger(senderLedger, transaction).then((res) => {
       result = res;
-      console.log('validateLedger result:');
+      // console.log('validateLedger result:');
       // console.dir(result);
       callback(result, transaction);
     });
@@ -336,58 +350,34 @@ const validateSignature = (transaction: Transaction): IResult => {
   //  Parameters: { id: ${id}, from: ${from}, signature: ${signature} }`);
   const key = ec.keyFromPublic(from, 'hex');
   // console.log(`keyFromPublic: ${key}`);
-  const result = key.verify(id, signature);
+  const res = key.verify(id, signature);
   const reason = 'Transaction signature is invalid.';
+  console.log(`[validateSignature] resultId: ${res.id}`);
   return {
-    result,
+    res,
     reason,
     id,
   };
-};
-
-const generateSignature = (transaction: Transaction, privateKey: string): string => {
-  const key = ec.keyFromPrivate(privateKey, 'hex');
-  const signature: string = toHexString(key.sign(transaction.id).toDER());
-  return signature;
 };
 
 const validateTransactionHash = (id: string, hash: string): IResult => {
   const transaction: Transaction = getEntryByTransactionId(id, 1);
-  let result: boolean = false;
+  let res: boolean = false;
   let reason: string = 'Transaction hash is valid';
   if (!transaction) {
-    result = false;
+    res = false;
     reason = 'Transaction was not found in witnesses ledger';
   }
   if (transaction.hash === hash) {
-    result = true;
+    res = true;
   } else {
     reason = 'Transaction hash is invalid.';
   }
   return {
-    result,
+    res,
     reason,
     id,
   };
-};
-
-const toHexString = (byteArray): string => {
-  return Array.from(byteArray, (byte: any) => {
-    return ('0' + (byte & 0xFF).toString(16)).slice(-2);
-  }).join('');
-};
-
-const isValidAddress = (address: string): boolean => {
-  if (address.length !== 130) {
-    console.log(`Invalid public key length. Expected 130, got: ${address.length}`);
-  } else if (address.match('^[a-fA-F0-9]+$') === null) {
-    console.log('public key must contain only hex characters');
-    return false;
-  } else if (!address.startsWith('04')) {
-    console.log('public key must start with 04');
-    return false;
-  }
-  return true;
 };
 
 export {

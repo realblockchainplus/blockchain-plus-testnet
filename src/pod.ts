@@ -1,4 +1,5 @@
 import { getPublicFromWallet } from './wallet';
+import { getLocalIp } from './utils';
 
 type Socket = SocketIOClient.Socket;
 
@@ -22,7 +23,7 @@ class Pod {
     this.type = type;
     this.location = location;
     this.name = name;
-    this.localIp = '192.168.99.1';
+    this.localIp = getLocalIp();
   }
 }
 
