@@ -64,16 +64,14 @@ const beginTest = (duration: number): void => {
 
 const loopTest = (): void => {
   console.log(getCurrentTimestamp(), endTime);
-  if (getCurrentTimestamp() < endTime) {
-    const transaction = new Transaction(
-      getPublicFromWallet(),
-      randomReceiver.address,
-      1,
-      getCurrentTimestamp(),
-    );
+  const transaction = new Transaction(
+    getPublicFromWallet(),
+    randomReceiver.address,
+    1,
+    getCurrentTimestamp(),
+  );
 
-    requestValidateTransaction(transaction, getLedger(ledgerType.MY_LEDGER));
-  }
+  requestValidateTransaction(transaction, getLedger(ledgerType.MY_LEDGER));
 };
 
 const closeConnection = (socket: Socket): void => {
