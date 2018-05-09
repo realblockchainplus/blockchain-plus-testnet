@@ -66,16 +66,7 @@ class Transaction {
   }
 
   generateHash = (): void => {
-    this.hash = CryptoJS.SHA256(`
-      ${this.witnessOne}
-      ${this.witnessTwo}
-      ${this.partnerOne}
-      ${this.partnerTwo}
-      ${this.to}
-      ${this.amount}
-      ${this.from}
-      ${this.timestamp}
-    `).toString();
+    this.hash = CryptoJS.SHA256(`${this.witnessOne}${this.witnessTwo}${this.partnerOne}${this.partnerTwo}${this.to}${this.from}${this.timestamp}`).toString();
   }
 }
 
