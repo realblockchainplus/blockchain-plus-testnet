@@ -116,6 +116,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
         if (getPodIndexByPublicKey(message.data.address) === null) {
           // console.log(`Local IP of connecting node: ${message.data.localIp}`);
           message.data.ip = socket['handshake'].headers['x-real-ip']; // ts
+          console.log(message.data.ip);
           pods.push(message.data);
           io.emit('message', podListUpdated(pods));
         }
