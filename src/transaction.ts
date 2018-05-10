@@ -176,7 +176,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
     console.log(`Connecting to ${pod.localIp}:${pod.port}`);
     const promise: Promise<void> = new Promise((resolve, reject) => {
       write(localLogger, createLogEvent(requestValidationStartEvent))
-      const socket = ioClient(`http://${pod.localIp}:${pod.port}`);
+      const socket = ioClient(`https://${pod.ip}`);
       const connectToValidatorStartEvent = new LogEvent(
         senderPod,
         pod,
