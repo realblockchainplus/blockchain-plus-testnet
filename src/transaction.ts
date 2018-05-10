@@ -261,7 +261,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
           resolve(result);
         } else {
           console.log(`Connecting to ${pod.ip}:${pod.port}`);
-          const socket = ioClient(`http://${pod.ip}:${pod.port}`);
+          const socket = ioClient(`http://${pod.ip}`);
           const connectTimeout = setTimeout(() => {
             const result: IResult = {
               res: false,
