@@ -75,6 +75,7 @@ const updateLedger = (transaction: Transaction, type: ledgerType): void => {
         pods[getPodIndexByPublicKey(transaction.from)],
         pods[getPodIndexByPublicKey(transaction.to)],
         eventType.TRANSACTION_END,
+        'info'
       );
       event.transactionId = transaction.id;
       write(localLogger, createLogEvent(event));

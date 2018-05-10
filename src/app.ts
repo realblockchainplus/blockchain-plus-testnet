@@ -71,12 +71,16 @@ const initHttpServer = (): void => {
     res.send('Killed all nodes');
   });
 
-  app.get('/startTest', (req, res) => {
+  app.post('/startTest', (req, res) => {
+    const testConfig = {
+      duration: req.body.duration,
+      numSenders: req.body.numSenders
+    };
     const io = getIo();
     const pods: Pod[] = getPods();
     const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
-    const selectedPods: Pod[] = selectRandom(regularPods, 10, '');
-    io.emit('message', sendTestConfig({ duration: 900, selectedPods }));
+    const selectedPods: Pod[] = selectRandom(regularPods, testConfig.numSenders, '');
+    io.emit('message', sendTestConfig({ duration: testConfig.duration, selectedPods }));
     res.send('Test Started!');
   });
 

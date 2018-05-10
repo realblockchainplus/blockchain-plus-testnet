@@ -152,23 +152,45 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   transaction.generateSignature();
 
   const localLogger = getLogger();
-  const event = new LogEvent(
-    pods[getPodIndexByPublicKey(transaction.from)],
+  const senderPod = pods[getPodIndexByPublicKey(transaction.from)];
+  const transactionStartEvent = new LogEvent(
+    senderPod,
     pods[getPodIndexByPublicKey(transaction.to)],
     eventType.TRANSACTION_START,
+    'info'
   );
-  event.transactionId = transaction.id;
-  write(localLogger, createLogEvent(event));
+  transactionStartEvent.transactionId = transaction.id;
+  write(localLogger, createLogEvent(transactionStartEvent));
 
   const io: Server = getIo();
   console.log('Starting for loop for sending out validation checks...');
   for (let i = 0; i < selectedPods.length; i += 1) {
     const pod = selectedPods[i];
+    const requestValidationStartEvent = new LogEvent(
+      senderPod,
+      pod,
+      eventType.REQUEST_VALIDATION_START,
+      'verbose'
+    );
+
     console.log(`Connecting to ${pod.localIp}:${pod.port}`);
     const promise: Promise<void> = new Promise((resolve, reject) => {
+      write(localLogger, createLogEvent(requestValidationStartEvent))
       const socket = ioClient(`http://${pod.localIp}:${pod.port}`);
+      const connectToValidatorStartEvent = new LogEvent(
+        senderPod,
+        pod,
+        eventType.CONNECT_TO_VALIDATOR_START,
+        'verbose'
+      );
       socket.on('connect', () => {
         resolve(`[requestValidateTransaction] Connected to ${pod.localIp}:${pod.port}... sending transaction details for transaction with id: ${transaction.id}.`);
+        const connectToValidatorEndEvent = new LogEvent(
+          senderPod,
+          pod,
+          eventType.CONNECT_TO_VALIDATOR_END,
+          'verbose'
+        );
         write(socket, isTransactionValid({ transaction, senderLedger }));
       });
       socket.on('message', (message: Message) => {
