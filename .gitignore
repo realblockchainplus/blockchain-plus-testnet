@@ -1,5 +1,5 @@
 node_modules
-node
+node/ledger
 docs
 js
 src/*.js
