@@ -45,6 +45,7 @@ const getPublicFromWallet = (): string => {
 const initWallet = (port: number): void => {
   privateKeyLocation += `node/wallet/${port}`;
   createNodeDir();
+  initLedger(port);
   if (existsSync(privateKeyLocation)) {
     return;
   }
@@ -53,7 +54,6 @@ const initWallet = (port: number): void => {
   writeFileSync(privateKeyLocation, newPrivateKey);
   console.log('new wallet with private key created to : %s', privateKeyLocation);
   console.log(`Public address: ${getPublicFromWallet()}`);
-  initLedger(port);
   fundWallet();
 };
 
