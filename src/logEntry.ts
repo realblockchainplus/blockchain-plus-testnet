@@ -13,9 +13,10 @@ class LogEvent {
   public transactionId: string;
   public logLevel: winston.NPMLoggingLevel;
 
-  constructor(podOne: Pod, podTwo: Pod, type: eventType, logLevel: winston.NPMLoggingLevel) {
+  constructor(podOne: Pod, podTwo: Pod, transactionId: string, type: eventType, logLevel: winston.NPMLoggingLevel) {
     this.podOne = podOne;
     this.podTwo = podTwo;
+    this.transactionId = transactionId;
     this.type = type;
     this.logLevel = logLevel;
     this.timestamp = Math.round(new Date().getTime() / 1000);
@@ -36,6 +37,11 @@ enum eventType {
   WRITE_TO_MY_LEDGER = 11
 }
 
+enum Status {
+  START = 0,
+  END = 1,
+}
+
 const createLogEvent = (event: LogEvent): Message => ({
   type: MessageType.LOG_EVENT,
   data: JSON.stringify(event),
@@ -43,36 +49,42 @@ const createLogEvent = (event: LogEvent): Message => ({
 
 const eventToString = (event: LogEvent): string => {
   let result = '';
+  let status = Status.START;
   switch (event.type) {
     case eventType.POD_JOINED:
-      result = podJoinedString(event);
+      result = podStatusString(event, status);
       break;
     case eventType.POD_LEFT:
-      result = podLeftString(event);
+      status = Status.END;
+      result = podStatusString(event, status);
       break;
     case eventType.TEST_START:
-      result = testStartString(event);
+      result = testStatusString(event, status);
       break;
     case eventType.TEST_END:
-      result = testEndString(event);
+      status = Status.END;
+      result = testStatusString(event, status);
       break;
     case eventType.TRANSACTION_START:
-      result = transactionStartString(event);
+      result = transactionStatusString(event, status);
       break;
     case eventType.TRANSACTION_END:
-      result = transactionEndString(event);
+      status = Status.END;
+      result = transactionStatusString(event, status);
       break;
     case eventType.REQUEST_VALIDATION_START:
-      result = requestValidationStartString(event);
+      result = requestValidationStatusString(event, status);
       break;
     case eventType.REQUEST_VALIDATION_END:
-      result = requestValidationEndString(event);
+      status = Status.END;
+      result = requestValidationStatusString(event, status);
       break;
     case eventType.CONNECT_TO_VALIDATOR_START:
-      result = connectToValidatorStartString(event);
+      result = connectToValidatorStatusString(event, status);
       break;
     case eventType.CONNECT_TO_VALIDATOR_END:
-      result = connectToValidatorEndString(event);
+      status = Status.END;
+      result = connectToValidatorStatusString(event, status);
       break;
     default:
       break;
@@ -80,50 +92,26 @@ const eventToString = (event: LogEvent): string => {
   return result;
 };
 
-const podJoinedString = (event: LogEvent): string => (
-  `${event.podOne.name} has joined the network.`
+const podStatusString = (event: LogEvent, status: Status): string => (
+  `Type: ${event.type}, Pod IP: ${event.podOne.ip}, Status: ${status}`
 );
 
-const podLeftString = (event: LogEvent): string => (
-  `${event.podOne.name} has left the network.`
+const testStatusString = (event: LogEvent, status: Status): string => (
+  `Type: ${event.type}, Status: ${status}`
 );
 
-const testStartString = (event: LogEvent): string => (
-  `Test has started.`
+const transactionStatusString = (event: LogEvent, status: Status): string => (
+  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Status: ${status}`
 );
 
-const testEndString = (event: LogEvent): string => (
-  `Test has ended.`
+const requestValidationStatusString = (event: LogEvent, status: Status): string => (
+  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}:${event.podTwo.port}, Status: ${status}`
 );
 
-const transactionStartString = (event: LogEvent): string => (
-  `Transaction ID: ${event.transactionId} has started.`
+const connectToValidatorStatusString = (event: LogEvent, status: Status): string => (
+  `[${event.type}] - Connecting to validator: ${event.podTwo.ip}:${event.podTwo.port}.`
 );
-
-const transactionEndString = (event: LogEvent): string => (
-  `Transaction ID: ${event.transactionId} has been completed.`
-);
-
-const requestValidationStartString = (event: LogEvent): string => (
-  `Validation Request sent to: ${event.podTwo.ip}:${event.podTwo.port}.`
-);
-
-const requestValidationEndString = (event: LogEvent): string => (
-  `Validation Result received from: ${event.podTwo.ip}:${event.podTwo.port}.`
-);
-
-const connectToValidatorStartString = (event: LogEvent): string => (
-  `Connecting to validator: ${event.podTwo.ip}:${event.podTwo.port}.`
-);
-
-const connectToValidatorEndString = (event: LogEvent): string => (
-  `Connected to validator: ${event.podTwo.ip}:${event.podTwo.port}.`
-);
-
-
-
-
 
 export {
-  LogEvent, eventType, createLogEvent, eventToString,
+  LogEvent, eventType, createLogEvent, eventToString, Status,
 };

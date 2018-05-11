@@ -74,10 +74,10 @@ const updateLedger = (transaction: Transaction, type: ledgerType): void => {
       const event = new LogEvent(
         pods[getPodIndexByPublicKey(transaction.from)],
         pods[getPodIndexByPublicKey(transaction.to)],
+        transaction.id,
         eventType.TRANSACTION_END,
         'info'
       );
-      event.transactionId = transaction.id;
       write(localLogger, createLogEvent(event));
     }
     if (ledger.entries.length > 1 && type === ledgerType.MY_LEDGER ) {

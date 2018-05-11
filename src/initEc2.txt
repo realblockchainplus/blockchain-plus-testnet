@@ -1,0 +1,13 @@
+ssh -i for_blockchain_testing.pem ubuntu@
+yes
+curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -
+sudo apt-get install -y nodejs
+git clone https://github.com/villith/blockchain-plus-testnet.git
+cd blockchain-plus-testnet
+npm install
+npm run compile
+npm run start-regular
+
+curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -;sudo apt-get install -y nodejs;git clone https://github.com/villith/blockchain-plus-testnet.git;cd blockchain-plus-testnet;npm install;npm run compile;npm run start-partner
+
+git config credential.helper store;git push https://github.com/villith/blockchain-plus-testnet.git

@@ -44,7 +44,7 @@ const getIo = (): Server => io;
 const getServer = (): http.Server => gServer;
 const getLogger = (): Socket => localLogger;
 
-const beginTest = (duration: number): void => {
+const beginTest = (duration: number, local: boolean): void => {
   randomReceiver = pods[randomNumberFromRange(0, pods.length - 1, true)];
   while (randomReceiver.address === getPublicFromWallet()) {
     randomReceiver = pods[randomNumberFromRange(0, pods.length - 1, true)];
@@ -158,6 +158,13 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
         }
         validationResults[transaction.id].push({ socket, message });
         if (Object.keys(validationResults[transaction.id]).length === 4) {
+          const requestValidationEndEvent = new LogEvent(
+            pods[getPodIndexByPublicKey(transaction.from)],
+            pods[getPodIndexByPublicKey(transaction.to)],
+            transaction.id,
+            eventType.REQUEST_VALIDATION_END,
+            'verbose'
+          );
           handleValidationResults(transaction.id);
         }
       }
@@ -192,7 +199,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
         return JSON.parse(message.data);
       case MessageType.TEST_CONFIG:
         const data = JSON.parse(message.data);
-        const { duration, selectedPods }: { duration: number, selectedPods: Pod[] } = data;
+        const { duration, selectedPods, local }: { duration: number, selectedPods: Pod[], local: boolean } = data;
         let isSelected = false;
         for (let i = 0; i < selectedPods.length; i += 1) {
           const pod = selectedPods[i];
@@ -202,7 +209,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
           }
         }
         if (isSelected) {
-          beginTest(duration);
+          beginTest(duration, local);
         }
     }
   } catch (e) {

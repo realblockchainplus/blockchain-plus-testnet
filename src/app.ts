@@ -74,7 +74,7 @@ const initHttpServer = (): void => {
   app.post('/startTest', (req, res) => {
     const testConfig = {
       duration: req.body.duration,
-      numSenders: req.body.numSenders
+      numSenders: req.body.numSenders,
     };
     const io = getIo();
     const pods: Pod[] = getPods();
