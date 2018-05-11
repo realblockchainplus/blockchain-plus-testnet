@@ -72,11 +72,11 @@ const isTransactionValid = (transactionData: {
 
 const sendTestConfig = (testConfig): Message => ({
   type: MessageType.TEST_CONFIG,
-  data: JSON.stringify(testConfig)
+  data: JSON.stringify(testConfig),
 });
 
 export {
   Message, MessageType, IResult, isTransactionHashValid, isTransactionValid, killMsg,
   podListUpdated, responseIdentityMsg, responseIsTransactionHashValid,
-  responseIsTransactionValid, sendTestConfig
-}
+  responseIsTransactionValid, sendTestConfig,
+};

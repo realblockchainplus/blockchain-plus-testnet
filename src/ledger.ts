@@ -5,7 +5,7 @@ import { getLogger, getPodIndexByPublicKey, getPods, write, loopTest } from './p
 import { Transaction } from './transaction';
 import { getEntryInLedgerByTransactionId } from './utils';
 
-let ledgerLocation = ``;
+let ledgerLocation = `node/ledger`;
 const myLedgerFilename = 'my_ledger.json';
 const witnessLedgerFilename = 'witness_ledger.json';
 
@@ -53,7 +53,7 @@ const getLedger = (type: ledgerType): Ledger => {
 const initLedger = (port: number): void => {
   const myLedger = new Ledger([], 0);
   const witnessLedger = new Ledger([], 1);
-  ledgerLocation += `node/ledger-${port}`;
+  // ledgerLocation += `node/ledger-${port}`;
   if (!fs.existsSync(ledgerLocation)) {
     fs.mkdirSync(ledgerLocation);
     fs.writeFileSync(`${ledgerLocation}/${myLedgerFilename}`, JSON.stringify(myLedger));
@@ -76,11 +76,11 @@ const updateLedger = (transaction: Transaction, type: ledgerType): void => {
         pods[getPodIndexByPublicKey(transaction.to)],
         transaction.id,
         eventType.TRANSACTION_END,
-        'info'
+        'info',
       );
       write(localLogger, createLogEvent(event));
     }
-    if (ledger.entries.length > 1 && type === ledgerType.MY_LEDGER ) {
+    if (ledger.entries.length > 1 && type === ledgerType.MY_LEDGER) {
       ledger.entries.pop();
     }
     ledger.entries.push(_transaction);

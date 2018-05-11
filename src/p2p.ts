@@ -120,9 +120,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
           pods.push(message.data);
           io.emit('message', podListUpdated(pods));
         }
-        else { 
-          // console.log('Pod already exists in Pods, do nothing.');
-        }
+        else { /* console.log('Pod already exists in Pods, do nothing.'); */ }
         break;
       case MessageType.SELECTED_FOR_VALIDATION: {
         console.log('Selected for validation. Validating...');
