@@ -312,18 +312,18 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
         validationResult.reason = 'Needs to be filled with details of failed validation checks.';
       }
     }
-    const currentHoldings = getCurrentHoldings(senderLedger, publicKey);
-    if (currentHoldings < transaction.amount) {
-      console.log(`Current Holdings: ${currentHoldings},
-       Transaction Amount: ${transaction.amount}`);
-      validationResult.res = false;
-      validationResult.reason = `Insufficient funds in wallet.
-       Current Holdings: ${currentHoldings}, Transaction Amount: ${transaction.amount}`;
-    }
-    if (validationResult.res) {
-      validationResult.reason = 'Needs to be filled with details of validation checks.';
-    }
-    console.log(`[validateLedger]: resultId ${validationResult.id}`);
+    // const currentHoldings = getCurrentHoldings(senderLedger, publicKey);
+    // if (currentHoldings < transaction.amount) {
+    //   console.log(`Current Holdings: ${currentHoldings},
+    //    Transaction Amount: ${transaction.amount}`);
+    //   validationResult.res = false;
+    //   validationResult.reason = `Insufficient funds in wallet.
+    //    Current Holdings: ${currentHoldings}, Transaction Amount: ${transaction.amount}`;
+    // }
+    // if (validationResult.res) {
+    //   validationResult.reason = 'Needs to be filled with details of validation checks.';
+    // }
+    // console.log(`[validateLedger]: resultId ${validationResult.id}`);
     return validationResult;
   });
 };
