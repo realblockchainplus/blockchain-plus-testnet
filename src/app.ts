@@ -84,7 +84,7 @@ const initHttpServer = (): void => {
     res.send('Test Started!');
   });
 
-  server.listen(randomPort, () => {
+  server.listen(80, () => {
     console.log(`[Node] New Node created on port: ${server.address().port}`);
     initWallet(server.address().port);
     initP2PServer(server);
