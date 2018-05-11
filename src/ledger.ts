@@ -67,7 +67,7 @@ const initLedger = (port: number): void => {
 const updateLedger = (transaction: Transaction, type: ledgerType): void => {
   const _transaction = updateTransaction(transaction, type);
   const ledger: Ledger = getLedger(type);
-  if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined) {
+  if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined && ledger.entries.length > 1) {
     if (ledger.entries.length > 0) {
       const pods = getPods();
       const localLogger = getLogger();

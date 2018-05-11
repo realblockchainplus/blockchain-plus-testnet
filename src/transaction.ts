@@ -184,7 +184,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
         pod,
         transaction.id,
         eventType.CONNECT_TO_VALIDATOR_START,
-        'verbose'
+        'verbose',
       );
       socket.on('connect', () => {
         resolve(`[requestValidateTransaction] Connected to ${pod.ip}:${pod.port}... sending transaction details for transaction with id: ${transaction.id}.`);
@@ -193,7 +193,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
           pod,
           transaction.id,
           eventType.CONNECT_TO_VALIDATOR_END,
-          'verbose'
+          'verbose',
         );
         write(socket, isTransactionValid({ transaction, senderLedger }));
       });
