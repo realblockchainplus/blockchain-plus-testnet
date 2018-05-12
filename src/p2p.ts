@@ -44,11 +44,10 @@ const getIo = (): Server => io;
 const getServer = (): http.Server => gServer;
 const getLogger = (): Socket => localLogger;
 
-const beginTest = (duration: number, local: boolean): void => {
-  randomReceiver = pods[randomNumberFromRange(0, pods.length - 1, true)];
-  while (randomReceiver.address === getPublicFromWallet()) {
-    randomReceiver = pods[randomNumberFromRange(0, pods.length - 1, true)];
-  }
+const beginTest = (duration: number, local: boolean, selectedPods: Pod[]): void => {
+  const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
+  regularPods.filter(pod => !selectedPods.includes(pod));
+  randomReceiver = regularPods[randomNumberFromRange(0, regularPods.length - 1, true)];
   startTime = getCurrentTimestamp();
   endTime = startTime + duration;
 
@@ -140,7 +139,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
             updateLedger(_tx, 1);
           }
           console.log('Sending out validation result.');
-          io.clients((err, clients) => { console.dir(clients); });
+          // io.clients((err, clients) => { console.dir(clients); });
           // console.log(res.id);
           // console.log(_tx.id);
           io.emit('message', responseIsTransactionValid(res, _tx));
@@ -161,8 +160,9 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
             pods[getPodIndexByPublicKey(transaction.to)],
             transaction.id,
             eventType.REQUEST_VALIDATION_END,
-            'verbose'
+            'info',
           );
+          write(localLogger, createLogEvent(requestValidationEndEvent));
           handleValidationResults(transaction.id);
         }
       }
@@ -207,7 +207,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
           }
         }
         if (isSelected) {
-          beginTest(duration, local);
+          beginTest(duration, local, selectedPods);
         }
     }
   } catch (e) {
@@ -276,7 +276,7 @@ const initP2PNode = (server: http.Server): void => {
   const randomType: number = Math.floor(Math.random() * 10) >= 1 ? 0 : 1;
   const pod: Pod = createPod(type);
   const socket: Socket = ioClient('https://bcp-tn.now.sh');
-  const logger: Socket = ioClient('https://bcp-tn-logger.now.sh');
+  const logger: Socket = ioClient('http://192.168.1.207:3005');
   localLogger = logger;
   localSocket = socket;
   socket.on('connect', () => {

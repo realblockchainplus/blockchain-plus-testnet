@@ -2,7 +2,6 @@ import * as winston from 'winston';
 
 import { Pod, podType } from './pod';
 import { Message, MessageType } from './p2p';
-import { Transaction } from './transaction';
 
 class LogEvent {
   public podOne: Pod;
@@ -37,11 +36,6 @@ enum eventType {
   WRITE_TO_MY_LEDGER = 11,
 }
 
-enum Status {
-  START = 0,
-  END = 1,
-}
-
 const createLogEvent = (event: LogEvent): Message => ({
   type: MessageType.LOG_EVENT,
   data: JSON.stringify(event),
@@ -49,42 +43,36 @@ const createLogEvent = (event: LogEvent): Message => ({
 
 const eventToString = (event: LogEvent): string => {
   let result = '';
-  let status = Status.START;
   switch (event.type) {
     case eventType.POD_JOINED:
-      result = podStatusString(event, status);
+      result = podStatusString(event);
       break;
     case eventType.POD_LEFT:
-      status = Status.END;
-      result = podStatusString(event, status);
+      result = podStatusString(event);
       break;
     case eventType.TEST_START:
-      result = testStatusString(event, status);
+      result = testStatusString(event);
       break;
     case eventType.TEST_END:
-      status = Status.END;
-      result = testStatusString(event, status);
+      result = testStatusString(event);
       break;
     case eventType.TRANSACTION_START:
-      result = transactionStatusString(event, status);
+      result = transactionStatusString(event);
       break;
     case eventType.TRANSACTION_END:
-      status = Status.END;
-      result = transactionStatusString(event, status);
+      result = transactionStatusString(event);
       break;
     case eventType.REQUEST_VALIDATION_START:
-      result = requestValidationStatusString(event, status);
+      result = requestValidationStatusString(event);
       break;
     case eventType.REQUEST_VALIDATION_END:
-      status = Status.END;
-      result = requestValidationStatusString(event, status);
+      result = requestValidationStatusString(event);
       break;
     case eventType.CONNECT_TO_VALIDATOR_START:
-      result = connectToValidatorStatusString(event, status);
+      result = connectToValidatorStatusString(event);
       break;
     case eventType.CONNECT_TO_VALIDATOR_END:
-      status = Status.END;
-      result = connectToValidatorStatusString(event, status);
+      result = connectToValidatorStatusString(event);
       break;
     default:
       break;
@@ -92,26 +80,26 @@ const eventToString = (event: LogEvent): string => {
   return result;
 };
 
-const podStatusString = (event: LogEvent, status: Status): string => (
-  `Type: ${event.type}, Pod IP: ${event.podOne.ip}, Status: ${status}`
+const podStatusString = (event: LogEvent): string => (
+  `Type: ${event.type}, Pod IP: ${event.podOne.ip}`
 );
 
-const testStatusString = (event: LogEvent, status: Status): string => (
-  `Type: ${event.type}, Status: ${status}`
+const testStatusString = (event: LogEvent): string => (
+  `Type: ${event.type}`
 );
 
-const transactionStatusString = (event: LogEvent, status: Status): string => (
-  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Status: ${status}`
+const transactionStatusString = (event: LogEvent): string => (
+  `Type: ${event.type}, Transaction ID: ${event.transactionId}`
 );
 
-const requestValidationStatusString = (event: LogEvent, status: Status): string => (
-  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}:${event.podTwo.port}, Status: ${status}`
+const requestValidationStatusString = (event: LogEvent): string => (
+  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}:${event.podTwo.port}`
 );
 
-const connectToValidatorStatusString = (event: LogEvent, status: Status): string => (
-  `[${event.type}] - Connecting to validator: ${event.podTwo.ip}:${event.podTwo.port}.`
+const connectToValidatorStatusString = (event: LogEvent): string => (
+  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}:${event.podTwo.port}`
 );
 
 export {
-  LogEvent, eventType, createLogEvent, eventToString, Status,
+  LogEvent, eventType, createLogEvent, eventToString,
 };

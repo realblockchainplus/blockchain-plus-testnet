@@ -4,7 +4,7 @@ import { getLedger, Ledger, ledgerType } from './ledger';
 import { Transaction } from './transaction';
 
 const getCurrentTimestamp = (): number => {
-  return Math.round(new Date().getTime() / 1000);
+  return new Date().getTime();
 };
 
 const getEntryByTransactionId = (transactionId: string, type: ledgerType): Transaction => {
@@ -32,21 +32,22 @@ const getEntryInLedgerByTransactionId = (transactionId: string, ledger: Ledger):
 };
 
 const getLocalIp = () => {
-  const interfaces = os.networkInterfaces();
-  const keys = Object.keys(interfaces);
-  let localIp = '';
-  for (let i = 0; i < keys.length; i += 1) {
-    const key = keys[i];
-    const _interfaces = interfaces[key];
-    for (let k = 0; k < _interfaces.length; k += 1) {
-      const __interface = _interfaces[k];
-      const { address, internal, family } = __interface;
-      if (internal === false && address.substr(0, 7) === '192.168' && family === 'IPv4') {
-        localIp += address;
-      }
-    }
-  }
-  return localIp;
+  // const interfaces = os.networkInterfaces();
+  // const keys = Object.keys(interfaces);
+  // let localIp = '';
+  // for (let i = 0; i < keys.length; i += 1) {
+  //   const key = keys[i];
+  //   const _interfaces = interfaces[key];
+  //   for (let k = 0; k < _interfaces.length; k += 1) {
+  //     const __interface = _interfaces[k];
+  //     const { address, internal, family } = __interface;
+  //     if (internal === false && address.substr(0, 7) === '192.168' && family === 'IPv4') {
+  //       localIp += address;
+  //     }
+  //   }
+  // }
+  // return localIp;
+  return '192.168.1.207';
 };
 
 const isValidAddress = (address: string): boolean => {

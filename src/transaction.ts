@@ -108,9 +108,11 @@ const genesisTransaction = (publicKey: string): Transaction => {
 
 const getCurrentHoldings = (ledger: Ledger, publicKey: string): number => {
   let currentHoldings = 0;
+  console.dir(ledger);
   for (let i = 0; i < ledger.entries.length; i += 1) {
     const entry = ledger.entries[i];
     // console.dir(entry);
+    console.log(entry.to, publicKey);
     if (entry.to == publicKey) {
       console.log(`Address matches publicKey. Adding ${entry.amount} to currentHoldings.`);
       currentHoldings += entry.amount;
@@ -137,7 +139,6 @@ const getTransactionId = (transaction: Transaction): string => {
   // const lastreceiverId: number = parseInt(''); // Last TransactionId in receiver's ledger
   // const transactionId = `${lastSenderId + 1}-${lastreceiverId + 1}`;
   const { to, from, witnessOne, witnessTwo, partnerOne, partnerTwo, timestamp } = transaction;
-  console.dir(transaction);
   return CryptoJS.SHA256(`${witnessOne}${witnessTwo}${partnerOne}${partnerTwo}${to}${from}${timestamp}`).toString();
 };
 
@@ -172,29 +173,31 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       pod,
       transaction.id,
       eventType.REQUEST_VALIDATION_START,
-      'verbose',
+      'info',
     );
 
-    console.log(`Connecting to ${pod.ip}:${pod.port}`);
+    console.log(`Connecting to ${pod.localIp}:${pod.port}`);
     const promise: Promise<void> = new Promise((resolve, reject) => {
-      write(localLogger, createLogEvent(requestValidationStartEvent))
-      const socket = ioClient(`http://${pod.ip}:${pod.port}`);
+      write(localLogger, createLogEvent(requestValidationStartEvent));
+      const socket = ioClient(`http://${pod.localIp}:${pod.port}`);
       const connectToValidatorStartEvent = new LogEvent(
         senderPod,
         pod,
         transaction.id,
         eventType.CONNECT_TO_VALIDATOR_START,
-        'verbose',
+        'info',
       );
+      write(localLogger, createLogEvent(connectToValidatorStartEvent));
       socket.on('connect', () => {
-        resolve(`[requestValidateTransaction] Connected to ${pod.ip}:${pod.port}... sending transaction details for transaction with id: ${transaction.id}.`);
+        resolve(`[requestValidateTransaction] Connected to ${pod.localIp}:${pod.port}... sending transaction details for transaction with id: ${transaction.id}.`);
         const connectToValidatorEndEvent = new LogEvent(
           senderPod,
           pod,
           transaction.id,
           eventType.CONNECT_TO_VALIDATOR_END,
-          'verbose',
+          'info',
         );
+        write(localLogger, createLogEvent(connectToValidatorEndEvent));
         write(socket, isTransactionValid({ transaction, senderLedger }));
       });
       socket.on('message', (message: Message) => {
@@ -203,7 +206,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       socket.on('disconnect', () => {
         console.log('[requestValidateTransaction] socket disconnected.');
       });
-      setTimeout(() => { reject(`Connection to ${pod.ip}:${pod.port} could not be made in 10 seconds.`); }, 10000);
+      setTimeout(() => { reject(`Connection to ${pod.localIp}:${pod.port} could not be made in 10 seconds.`); }, 10000);
     }).then((fulfilled) => {
       console.log(fulfilled);
     },      (rejected) => {
@@ -264,18 +267,18 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
           const result = validateTransactionHash(entry.id, entry.hash);
           resolve(result);
         } else {
-          console.log(`Connecting to ${pod.ip}:${pod.port}`);
-          const socket = ioClient(`http://${pod.ip}:${pod.port}`);
+          console.log(`Connecting to ${pod.localIp}:${pod.port}`);
+          const socket = ioClient(`http://${pod.localIp}:${pod.port}`);
           const connectTimeout = setTimeout(() => {
             const result: IResult = {
               res: false,
-              reason: `Connection to ${pod.ip}:${pod.port} could not be made in 10 seconds.`,
+              reason: `Connection to ${pod.localIp}:${pod.port} could not be made in 10 seconds.`,
               id: entry.id,
             };
             reject(result);
           }, 10000);
           socket.on('connect', () => {
-            console.log(`[validateLedger] Connected to ${pod.ip}:${pod.port}... sending transaction details.`);
+            console.log(`[validateLedger] Connected to ${pod.localIp}:${pod.port}... sending transaction details.`);
             clearTimeout(connectTimeout);
             write(socket, isTransactionHashValid({ transactionId: entry.id, hash: entry.hash }));
           });
@@ -286,7 +289,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             console.log('[validateLedger] handleMessage');
             if (message.type === MessageType.TRANSACTION_CONFIRMATION_RESULT) {
               const result: IResult = handleMessage(socket, message);
-              console.log(`Received validation result from ${pod.ip}:${pod.port}...
+              console.log(`Received validation result from ${pod.localIp}:${pod.port}...
                resolving promise.`);
               socket.disconnect();
               resolve(result);
@@ -312,18 +315,18 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
         validationResult.reason = 'Needs to be filled with details of failed validation checks.';
       }
     }
-    // const currentHoldings = getCurrentHoldings(senderLedger, publicKey);
-    // if (currentHoldings < transaction.amount) {
-    //   console.log(`Current Holdings: ${currentHoldings},
-    //    Transaction Amount: ${transaction.amount}`);
-    //   validationResult.res = false;
-    //   validationResult.reason = `Insufficient funds in wallet.
-    //    Current Holdings: ${currentHoldings}, Transaction Amount: ${transaction.amount}`;
-    // }
-    // if (validationResult.res) {
-    //   validationResult.reason = 'Needs to be filled with details of validation checks.';
-    // }
-    // console.log(`[validateLedger]: resultId ${validationResult.id}`);
+    const currentHoldings = getCurrentHoldings(senderLedger, publicKey);
+    if (currentHoldings < transaction.amount) {
+      console.log(`Current Holdings: ${currentHoldings},
+       Transaction Amount: ${transaction.amount}`);
+      validationResult.res = false;
+      validationResult.reason = `Insufficient funds in wallet.
+       Current Holdings: ${currentHoldings}, Transaction Amount: ${transaction.amount}`;
+    }
+    if (validationResult.res) {
+      validationResult.reason = 'Needs to be filled with details of validation checks.';
+    }
+    console.log(`[validateLedger]: resultId ${validationResult.id}`);
     return validationResult;
   });
 };

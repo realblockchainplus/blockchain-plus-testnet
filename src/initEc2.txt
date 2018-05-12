@@ -11,3 +11,28 @@ npm run start-regular
 curl -sL https://deb.nodesource.com/setup_8.x | sudo -E bash -;sudo apt-get install -y nodejs;git clone https://github.com/villith/blockchain-plus-testnet.git;cd blockchain-plus-testnet;npm install;npm run compile;npm run start-partner
 
 git config credential.helper store;git push https://github.com/villith/blockchain-plus-testnet.git
+git pull origin master;npm run compile
+
+instances:
+  regular:
+    ec2-18-191-43-210.us-east-2.compute.amazonaws.com -
+    ec2-18-191-11-24.us-east-2.compute.amazonaws.com -
+    ec2-13-59-138-187.us-east-2.compute.amazonaws.com -
+    ec2-18-217-177-17.us-east-2.compute.amazonaws.com -
+    ec2-18-191-56-178.us-east-2.compute.amazonaws.com -
+    ec2-18-188-192-30.us-east-2.compute.amazonaws.com
+    ec2-18-188-254-183.us-east-2.compute.amazonaws.com
+    ec2-18-222-48-248.us-east-2.compute.amazonaws.com
+    ec2-18-188-104-53.us-east-2.compute.amazonaws.com
+    ec2-18-219-122-0.us-east-2.compute.amazonaws.com
+    ec2-18-188-28-131.us-east-2.compute.amazonaws.com
+    ec2-13-58-8-93.us-east-2.compute.amazonaws.com
+    ec2-18-221-156-53.us-east-2.compute.amazonaws.com
+    ec2-18-188-107-55.us-east-2.compute.amazonaws.com
+  partner:
+    ec2-52-14-112-205.us-east-2.compute.amazonaws.com -
+    ec2-13-59-41-196.us-east-2.compute.amazonaws.com - 
+    ec2-18-188-194-249.us-east-2.compute.amazonaws.com -
+    ec2-18-216-209-60.us-east-2.compute.amazonaws.com -
+    ec2-18-218-24-38.us-east-2.compute.amazonaws.com -
+    ec2-18-191-85-90.us-east-2.compute.amazonaws.com

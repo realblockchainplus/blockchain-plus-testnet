@@ -17,7 +17,6 @@ import { getPublicFromWallet, initWallet } from './wallet';
 import { getCurrentTimestamp, randomNumberFromRange } from './utils';
 import { sendTestConfig } from './message';
 
-
 const argv = minimist(process.argv.slice(2));
 const portMin = 50000;
 const portMax = 65535;
@@ -84,7 +83,7 @@ const initHttpServer = (): void => {
     res.send('Test Started!');
   });
 
-  server.listen(80, () => {
+  server.listen(randomPort, () => {
     console.log(`[Node] New Node created on port: ${server.address().port}`);
     initWallet(server.address().port);
     initP2PServer(server);

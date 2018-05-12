@@ -5,7 +5,7 @@ import { getLogger, getPodIndexByPublicKey, getPods, write, loopTest } from './p
 import { Transaction } from './transaction';
 import { getEntryInLedgerByTransactionId } from './utils';
 
-let ledgerLocation = `node/ledger`;
+let ledgerLocation = ``;
 const myLedgerFilename = 'my_ledger.json';
 const witnessLedgerFilename = 'witness_ledger.json';
 
@@ -53,7 +53,7 @@ const getLedger = (type: ledgerType): Ledger => {
 const initLedger = (port: number): void => {
   const myLedger = new Ledger([], 0);
   const witnessLedger = new Ledger([], 1);
-  // ledgerLocation += `node/ledger-${port}`;
+  ledgerLocation += `node/ledger-${port}`;
   if (!fs.existsSync(ledgerLocation)) {
     fs.mkdirSync(ledgerLocation);
     fs.writeFileSync(`${ledgerLocation}/${myLedgerFilename}`, JSON.stringify(myLedger));
@@ -67,26 +67,18 @@ const initLedger = (port: number): void => {
 const updateLedger = (transaction: Transaction, type: ledgerType): void => {
   const _transaction = updateTransaction(transaction, type);
   const ledger: Ledger = getLedger(type);
-  if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined && ledger.entries.length > 1) {
-    if (ledger.entries.length > 0) {
-      const pods = getPods();
-      const localLogger = getLogger();
-      const event = new LogEvent(
-        pods[getPodIndexByPublicKey(transaction.from)],
-        pods[getPodIndexByPublicKey(transaction.to)],
-        transaction.id,
-        eventType.TRANSACTION_END,
-        'info',
-      );
-      write(localLogger, createLogEvent(event));
-    }
+  console.log(getEntryInLedgerByTransactionId(_transaction.id, ledger));
+  if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined) {
     if (ledger.entries.length > 1 && type === ledgerType.MY_LEDGER) {
       ledger.entries.pop();
     }
     ledger.entries.push(_transaction);
     writeLedger(ledger, type);
   }
-  else { console.log('Entry already exists. TEMPORARY CHECK.'); }
+  else {
+    if (type === ledgerType.MY_LEDGER) { loopTest(); }
+    console.log('Entry already exists. TEMPORARY CHECK.');
+  }
 };
 
 /**
@@ -107,6 +99,17 @@ const writeLedger = (ledger: Ledger, type: ledgerType): void => {
   fs.writeFileSync(`${ledgerLocation}/${ledgerFilename}`, JSON.stringify(ledger));
   if (ledger.entries.length > 1 && type === ledgerType.MY_LEDGER) {
     console.log('Looping...');
+    const transaction = ledger.entries[1];
+    const pods = getPods();
+    const localLogger = getLogger();
+    const event = new LogEvent(
+      pods[getPodIndexByPublicKey(transaction.from)],
+      pods[getPodIndexByPublicKey(transaction.to)],
+      transaction.id,
+      eventType.TRANSACTION_END,
+      'info',
+    );
+    write(localLogger, createLogEvent(event));
     loopTest();
   }
 };
