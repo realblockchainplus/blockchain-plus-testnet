@@ -9,9 +9,11 @@ let privateKeyLocation = '';
 
 const createNodeDir = (): void => {
   if (existsSync('node')) {
-    return;
+    if (existsSync('node/wallet')) {
+      return;
+    }
+    mkdirSync('node/wallet');
   }
-  mkdirSync('node/wallet');
 };
 
 const deleteWallet = (): void => {
