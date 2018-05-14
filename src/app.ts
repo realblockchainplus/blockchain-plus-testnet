@@ -4,18 +4,14 @@ import * as express from 'express';
 import * as http from 'http';
 import * as minimist from 'minimist';
 
-import { getLedger, ledgerType } from './ledger';
-import { createLogEvent, eventType, LogEvent } from './logEntry';
-import {
-  getIo, getLogger, getPodIndexByPublicKey, getPods, initP2PNode,
-  initP2PServer, killAll, write,
-} from './p2p';
+import { getLedger, LedgerType } from './ledger';
+import { sendTestConfig } from './message';
+import { getIo, getPods, initP2PNode, initP2PServer, killAll } from './p2p';
 import { Pod } from './pod';
 import { selectRandom } from './rngTool';
 import { requestValidateTransaction, Transaction } from './transaction';
-import { getPublicFromWallet, initWallet } from './wallet';
 import { getCurrentTimestamp, randomNumberFromRange } from './utils';
-import { sendTestConfig } from './message';
+import { getPublicFromWallet, initWallet } from './wallet';
 
 const argv = minimist(process.argv.slice(2));
 const portMin = 50000;
@@ -56,7 +52,7 @@ const initHttpServer = (): void => {
       getCurrentTimestamp(),
     );
 
-    requestValidateTransaction(transaction, getLedger(ledgerType.MY_LEDGER));
+    requestValidateTransaction(transaction, getLedger(LedgerType.MY_LEDGER));
     res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.to}.`);
   });
 
@@ -79,7 +75,7 @@ const initHttpServer = (): void => {
     const pods: Pod[] = getPods();
     const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
     const selectedPods: Pod[] = selectRandom(regularPods, testConfig.numSenders, '');
-    io.emit('message', sendTestConfig({ duration: testConfig.duration, selectedPods }));
+    io.emit('message', sendTestConfig({ selectedPods, duration: testConfig.duration }));
     res.send('Test Started!');
   });
 

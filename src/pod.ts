@@ -1,17 +1,17 @@
-import { getPublicFromWallet } from './wallet';
 import { getLocalIp } from './utils';
+import { getPublicFromWallet } from './wallet';
 
 type Socket = SocketIOClient.Socket;
 
 class Pod {
   public id: number;
-  public type: podType;
+  public type: PodType;
   public spawnTimestamp: number;
   public location: object;
   public ram: number;
   public storage: number;
   public uptime: number;
-  public status: status;
+  public status: Status;
   public name: string;
   public ip: string;
   public localIp: string;
@@ -19,7 +19,7 @@ class Pod {
   public address: string;
   public socketId: string;
 
-  constructor(type: podType, location: object, name: string) {
+  constructor(type: PodType, location: object, name: string) {
     this.type = type;
     this.location = location;
     this.name = name;
@@ -27,13 +27,13 @@ class Pod {
   }
 }
 
-enum status {
+enum Status {
   ONLINE = 2,
   BUSY = 1,
   OFFLINE = 0,
 }
 
-enum podType {
+enum PodType {
   REGULAR_POD = 0,
   PARTNER_POD = 1,
 }
@@ -108,7 +108,7 @@ const partnerPodSpecs = {
   uptime: 99.97,
 };
 
-const createPod = (type: podType) => {
+const createPod = (type: PodType) => {
   const randomName = randomNames.splice(Math.floor(Math.random() * randomNames.length), 1)[0];
   const randomLocation = {
     x: Math.floor(Math.random() * 5000),
@@ -117,7 +117,7 @@ const createPod = (type: podType) => {
   const pod: Pod = new Pod(type, randomLocation, randomName);
   pod.address = getPublicFromWallet();
   pod.spawnTimestamp = Math.round(new Date().getTime() / 1000);
-  type === podType.REGULAR_POD ?
+  type === PodType.REGULAR_POD ?
     Object.assign(pod, regularPodSpecs) : Object.assign(pod, partnerPodSpecs);
   pod.ram = gbToMb(pod.ram);
   pod.storage = gbToMb(pod.storage);
@@ -129,17 +129,17 @@ const gbToMb = (gb: number) => {
   return gb * 1024;
 };
 
-const manageUptime = (pod: Pod): status => {
+const manageUptime = (pod: Pod): Status => {
   const changeStatus = () => {
     const randomNumber = Math.random() * 100;
     if (randomNumber >= pod.uptime) {
-      return status.OFFLINE;
+      return Status.OFFLINE;
     }
-    return status.ONLINE;
+    return Status.ONLINE;
   };
 
   setInterval(() => changeStatus(), 3600000);
   return changeStatus();
 };
 
-export { Pod, createPod, podType };
+export { Pod, createPod, PodType };

@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 
-import { createLogEvent, eventType, LogEvent } from './logEntry';
-import { getLogger, getPodIndexByPublicKey, getPods, write, loopTest } from './p2p';
+import { createLogEvent, EventType, LogEvent } from './logEntry';
+import { getLogger, getPodIndexByPublicKey, getPods, loopTest, write } from './p2p';
 import { Transaction } from './transaction';
 import { getEntryInLedgerByTransactionId } from './utils';
 
@@ -11,16 +11,16 @@ const witnessLedgerFilename = 'witness_ledger.json';
 
 /**
  * Definition of a Ledger. There are two types of ledger:
- * * [[ledgerType.MY_LEDGER]]
- * * [[ledgerType.WITNESS_LEDGER]]
+ * * [[LedgerType.MY_LEDGER]]
+ * * [[LedgerType.WITNESS_LEDGER]]
  */
 class Ledger {
   public entries: Transaction[];
-  public ledgerType: ledgerType;
+  public LedgerType: LedgerType;
 
-  constructor(entries: Transaction[], ledgerType: ledgerType) {
+  constructor(entries: Transaction[], LedgerType: LedgerType) {
     this.entries = entries;
-    this.ledgerType = ledgerType;
+    this.LedgerType = LedgerType;
   }
 }
 
@@ -33,16 +33,16 @@ class Ledger {
  * 
  * Transactions where the node is a witness are stored in [[WITNESS_LEDGER]]. Transaction amount is NOT stored.
  */
-enum ledgerType {
+enum LedgerType {
   MY_LEDGER = 0,
   WITNESS_LEDGER = 1,
 }
 
 /**
- * Returns a copy of a [[Ledger]] based on the specified [[ledgerType]].
+ * Returns a copy of a [[Ledger]] based on the specified [[LedgerType]].
  */
-const getLedger = (type: ledgerType): Ledger => {
-  const ledgerFilename: string = type === ledgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
+const getLedger = (type: LedgerType): Ledger => {
+  const ledgerFilename: string = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
   const ledger: Ledger = JSON.parse(fs.readFileSync(`${ledgerLocation}/${ledgerFilename}`, 'utf-8'));
   return ledger;
 };
@@ -62,42 +62,42 @@ const initLedger = (port: number): void => {
 };
 
 /**
- * Updates a [[Ledger]] based on the specified [[ledgerType]].
+ * Updates a [[Ledger]] based on the specified [[LedgerType]].
  */
-const updateLedger = (transaction: Transaction, type: ledgerType): void => {
+const updateLedger = (transaction: Transaction, type: LedgerType): void => {
   const _transaction = updateTransaction(transaction, type);
   const ledger: Ledger = getLedger(type);
   console.log(getEntryInLedgerByTransactionId(_transaction.id, ledger));
   if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined) {
-    if (ledger.entries.length > 1 && type === ledgerType.MY_LEDGER) {
+    if (ledger.entries.length > 1 && type === LedgerType.MY_LEDGER) {
       ledger.entries.pop();
     }
     ledger.entries.push(_transaction);
     writeLedger(ledger, type);
   }
   else {
-    if (type === ledgerType.MY_LEDGER) { loopTest(); }
+    if (type === LedgerType.MY_LEDGER) { loopTest(); }
     console.log('Entry already exists. TEMPORARY CHECK.');
   }
 };
 
 /**
- * Updates [[Transaction.amount]] based on the specified [[ledgerType]].
+ * Updates [[Transaction.amount]] based on the specified [[LedgerType]].
  * 
- * Used to set [[Transaction.amount]] to null if [[ledgerType.WITNESS_LEDGER]].
+ * Used to set [[Transaction.amount]] to null if [[LedgerType.WITNESS_LEDGER]].
  */
-const updateTransaction = (transaction: Transaction, type: ledgerType): Transaction => {
+const updateTransaction = (transaction: Transaction, type: LedgerType): Transaction => {
   const _transaction: Transaction = { ...transaction };
-  _transaction.amount = type === ledgerType.MY_LEDGER ? _transaction.amount : null;
+  _transaction.amount = type === LedgerType.MY_LEDGER ? _transaction.amount : null;
   console.log(`Updated transaction amount based on ledger type. Ledger Type: ${type}, Amount: ${_transaction.amount}.`);
   return _transaction;
 };
 
-const writeLedger = (ledger: Ledger, type: ledgerType): void => {
-  const ledgerFilename = type === ledgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
+const writeLedger = (ledger: Ledger, type: LedgerType): void => {
+  const ledgerFilename = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
   console.log(`Ledger File Name: ${ledgerFilename}`);
   fs.writeFileSync(`${ledgerLocation}/${ledgerFilename}`, JSON.stringify(ledger));
-  if (ledger.entries.length > 1 && type === ledgerType.MY_LEDGER) {
+  if (ledger.entries.length > 1 && type === LedgerType.MY_LEDGER) {
     console.log('Looping...');
     const transaction = ledger.entries[1];
     const pods = getPods();
@@ -106,7 +106,7 @@ const writeLedger = (ledger: Ledger, type: ledgerType): void => {
       pods[getPodIndexByPublicKey(transaction.from)],
       pods[getPodIndexByPublicKey(transaction.to)],
       transaction.id,
-      eventType.TRANSACTION_END,
+      EventType.TRANSACTION_END,
       'info',
     );
     write(localLogger, createLogEvent(event));
@@ -114,10 +114,10 @@ const writeLedger = (ledger: Ledger, type: ledgerType): void => {
   }
 };
 
-const deleteEntry = (ledger: Ledger, type: ledgerType): void => {
+const deleteEntry = (ledger: Ledger, type: LedgerType): void => {
 };
 
 
 export {
-  Ledger, updateLedger, getLedger, ledgerType, initLedger,
+  Ledger, updateLedger, getLedger, LedgerType, initLedger,
 };

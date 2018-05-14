@@ -1,5 +1,5 @@
-import { Pod } from './pod';
 import { getPodIndexByPublicKey } from './p2p';
+import { Pod } from './pod';
 import { getPublicFromWallet } from './wallet';
 
 const selectRandom = (pods: Pod[], num: number, to: string = ''): Pod[] => {

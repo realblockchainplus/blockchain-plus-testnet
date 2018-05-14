@@ -1,13 +1,11 @@
-import * as os from 'os';
-
-import { getLedger, Ledger, ledgerType } from './ledger';
+import { getLedger, Ledger, LedgerType } from './ledger';
 import { Transaction } from './transaction';
 
 const getCurrentTimestamp = (): number => {
   return new Date().getTime();
 };
 
-const getEntryByTransactionId = (transactionId: string, type: ledgerType): Transaction => {
+const getEntryByTransactionId = (transactionId: string, type: LedgerType): Transaction => {
   const { entries }: { entries: Transaction[] } = getLedger(type);
   let index = null;
   for (let i = 0; i < entries.length; i += 1) {
@@ -76,5 +74,5 @@ const toHexString = (byteArray): string => {
 
 export {
   getCurrentTimestamp, getEntryByTransactionId, getEntryInLedgerByTransactionId,
-  getLocalIp, isValidAddress, randomNumberFromRange, toHexString
+  getLocalIp, isValidAddress, randomNumberFromRange, toHexString,
 };

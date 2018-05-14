@@ -4,9 +4,11 @@ import { Server } from 'socket.io';
 import * as ioClient from 'socket.io-client';
 
 import { Ledger } from './ledger';
+import { createLogEvent, EventType, LogEvent } from './logEntry';
 import { IResult, isTransactionValid } from './message';
 import {
   getIo,
+  getLogger,
   getPodIndexByPublicKey,
   getPods,
   handleMessage,
@@ -14,14 +16,11 @@ import {
   Message,
   MessageType,
   write,
-  getLogger,
 } from './p2p';
 import { Pod } from './pod';
 import { selectRandom } from './rngTool';
-import { getCurrentTimestamp, getEntryByTransactionId, getEntryInLedgerByTransactionId } from './utils';
+import { getEntryByTransactionId, isValidAddress, toHexString } from './utils';
 import { getPrivateFromWallet, getPublicFromWallet } from './wallet';
-import { isValidAddress, toHexString } from './utils';
-import { LogEvent, eventType, createLogEvent } from './logEntry';
 
 const ec = new ecdsa.ec('secp256k1');
 
@@ -158,7 +157,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
     senderPod,
     pods[getPodIndexByPublicKey(transaction.to)],
     transaction.id,
-    eventType.TRANSACTION_START,
+    EventType.TRANSACTION_START,
     'info',
   );
   transactionStartEvent.transactionId = transaction.id;
@@ -172,7 +171,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       senderPod,
       pod,
       transaction.id,
-      eventType.REQUEST_VALIDATION_START,
+      EventType.REQUEST_VALIDATION_START,
       'info',
     );
 
@@ -184,7 +183,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
         senderPod,
         pod,
         transaction.id,
-        eventType.CONNECT_TO_VALIDATOR_START,
+        EventType.CONNECT_TO_VALIDATOR_START,
         'info',
       );
       write(localLogger, createLogEvent(connectToValidatorStartEvent));
@@ -194,7 +193,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
           senderPod,
           pod,
           transaction.id,
-          eventType.CONNECT_TO_VALIDATOR_END,
+          EventType.CONNECT_TO_VALIDATOR_END,
           'info',
         );
         write(localLogger, createLogEvent(connectToValidatorEndEvent));
@@ -386,8 +385,8 @@ const validateTransactionHash = (id: string, hash: string): IResult => {
     return {
       res,
       reason,
-      id
-    }
+      id,
+    };
   }
   if (transaction.hash === hash) {
     res = true;

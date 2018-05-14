@@ -3,18 +3,27 @@ import * as minimist from 'minimist';
 import * as socketIo from 'socket.io';
 import * as ioClient from 'socket.io-client';
 
-import { Ledger, updateLedger, getLedger, ledgerType } from './ledger';
-import { createLogEvent, eventType, LogEvent } from './logEntry';
-import { 
-  Message, MessageType, isTransactionHashValid,
-  isTransactionValid, killMsg, podListUpdated,
-  responseIdentityMsg, responseIsTransactionHashValid,
-  responseIsTransactionValid
+import { getLedger, Ledger, LedgerType, updateLedger } from './ledger';
+import { createLogEvent, EventType, LogEvent } from './logEntry';
+import {
+  isTransactionHashValid,
+  killMsg,
+  Message,
+  MessageType,
+  podListUpdated,
+  responseIsTransactionHashValid,
+  responseIsTransactionValid,
 } from './message';
-import { createPod, Pod, podType } from './pod';
-import { IResult, Transaction, validateTransaction, validateTransactionHash, requestValidateTransaction } from './transaction';
+import { createPod, Pod } from './pod';
+import {
+  IResult,
+  requestValidateTransaction,
+  Transaction,
+  validateTransaction,
+  validateTransactionHash,
+} from './transaction';
+import { getCurrentTimestamp, randomNumberFromRange } from './utils';
 import { getPublicFromWallet } from './wallet';
-import { randomNumberFromRange, getCurrentTimestamp } from './utils';
 
 type Socket = SocketIOClient.Socket;
 type Server = socketIo.Server;
@@ -34,10 +43,11 @@ let endTime;
 let randomReceiver;
 
 const validationResults: { [txId: string]: IValidationResult[] } = {};
+
 interface IValidationResult {
-  socket: Socket,
-  message: Message
-};
+  socket: Socket;
+  message: Message;
+}
 
 const getPods = (): Pod[] => pods;
 const getIo = (): Server => io;
@@ -58,7 +68,7 @@ const beginTest = (duration: number, local: boolean, selectedPods: Pod[]): void 
     getCurrentTimestamp(),
   );
 
-  requestValidateTransaction(transaction, getLedger(ledgerType.MY_LEDGER));
+  requestValidateTransaction(transaction, getLedger(LedgerType.MY_LEDGER));
 };
 
 const loopTest = (): void => {
@@ -70,7 +80,7 @@ const loopTest = (): void => {
     getCurrentTimestamp(),
   );
 
-  requestValidateTransaction(transaction, getLedger(ledgerType.MY_LEDGER));
+  requestValidateTransaction(transaction, getLedger(LedgerType.MY_LEDGER));
 };
 
 const closeConnection = (socket: Socket): void => {
@@ -159,7 +169,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
             pods[getPodIndexByPublicKey(transaction.from)],
             pods[getPodIndexByPublicKey(transaction.to)],
             transaction.id,
-            eventType.REQUEST_VALIDATION_END,
+            EventType.REQUEST_VALIDATION_END,
             'info',
           );
           write(localLogger, createLogEvent(requestValidationEndEvent));
@@ -265,7 +275,7 @@ const handleValidationResults = (transactionId: string): void => {
       }
     }
   }
-}
+};
 
 const initP2PNode = (server: http.Server): void => {
   gServer = server;
