@@ -56,9 +56,9 @@ const initLedger = (port: number): void => {
   ledgerLocation += `node/ledger-${port}`;
   if (!fs.existsSync(ledgerLocation)) {
     fs.mkdirSync(ledgerLocation);
-    fs.writeFileSync(`${ledgerLocation}/${myLedgerFilename}`, JSON.stringify(myLedger));
-    fs.writeFileSync(`${ledgerLocation}/${witnessLedgerFilename}`, JSON.stringify(witnessLedger));
   }
+  fs.writeFileSync(`${ledgerLocation}/${myLedgerFilename}`, JSON.stringify(myLedger));
+  fs.writeFileSync(`${ledgerLocation}/${witnessLedgerFilename}`, JSON.stringify(witnessLedger));
 };
 
 /**
