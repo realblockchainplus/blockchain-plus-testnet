@@ -70,6 +70,7 @@ const initHttpServer = (): void => {
     const testConfig = {
       duration: req.body.duration,
       numSenders: req.body.numSenders,
+      local: req.body.local
     };
     const io = getIo();
     const pods: Pod[] = getPods();
@@ -79,7 +80,7 @@ const initHttpServer = (): void => {
     res.send('Test Started!');
   });
 
-  server.listen(randomPort, () => {
+  server.listen(80, () => {
     console.log(`[Node] New Node created on port: ${server.address().port}`);
     initWallet(server.address().port);
     initP2PServer(server);
