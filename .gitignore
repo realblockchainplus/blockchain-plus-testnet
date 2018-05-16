@@ -1,5 +1,7 @@
 node_modules
-node/ledger
+node
+*.txt
+*.pem
 docs
 js
 src/*.js

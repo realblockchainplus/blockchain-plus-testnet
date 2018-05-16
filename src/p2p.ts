@@ -15,6 +15,7 @@ import {
   responseIsTransactionValid,
 } from './message';
 import { createPod, Pod } from './pod';
+import { TestConfig } from './testConfig';
 import {
   IResult,
   requestValidateTransaction,
@@ -42,6 +43,8 @@ let startTime;
 let endTime;
 let randomReceiver;
 
+let localTestConfig = new TestConfig(60, 2, true, 1);
+
 const validationResults: { [txId: string]: IValidationResult[] } = {};
 
 interface IValidationResult {
@@ -53,13 +56,14 @@ const getPods = (): Pod[] => pods;
 const getIo = (): Server => io;
 const getServer = (): http.Server => gServer;
 const getLogger = (): Socket => localLogger;
+const getTestConfig = (): TestConfig => localTestConfig;
 
-const beginTest = (duration: number, local: boolean, selectedPods: Pod[]): void => {
+const beginTest = (selectedPods: Pod[]): void => {
   const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
   regularPods.filter(pod => !selectedPods.includes(pod));
-  randomReceiver = regularPods[randomNumberFromRange(0, regularPods.length - 1, true)];
+  randomReceiver = regularPods[randomNumberFromRange(0, regularPods.length, true)];
   startTime = getCurrentTimestamp();
-  endTime = startTime + duration;
+  endTime = startTime + localTestConfig.duration;
 
   const transaction = new Transaction(
     getPublicFromWallet(),
@@ -72,8 +76,8 @@ const beginTest = (duration: number, local: boolean, selectedPods: Pod[]): void 
 };
 
 const loopTest = (): void => {
-  console.log(getCurrentTimestamp(), endTime);
-  if (endTime > getCurrentTimestamp()) {
+  // console.log(endTime, getCurrentTimestamp());
+  if (endTime < getCurrentTimestamp()) {
     const transaction = new Transaction(
       getPublicFromWallet(),
       randomReceiver.address,
@@ -83,11 +87,14 @@ const loopTest = (): void => {
 
     requestValidateTransaction(transaction, getLedger(LedgerType.MY_LEDGER));
   }
+  else { 
+    // console.log('Time is up!') 
+  }
 };
 
 const closeConnection = (socket: Socket): void => {
   const pod = pods[getPodIndexBySocket(socket)];
-  console.log(`Connection failed to peer: ${pod.name} / ${pod.address}`);
+  // console.log(`Connection failed to peer: ${pod.name} / ${pod.address}`);
   pods.splice(pods.indexOf(pod), 1);
   io.emit('message', podListUpdated(pods));
 };
@@ -117,7 +124,7 @@ const getPodIndexBySocket = (socket: Socket): number => {
 const handleMessage = (socket: Socket, message: Message): IResult => {
   try {
     if (message === null) {
-      console.log('could not parse received JSON message: ' + message);
+      // console.log('could not parse received JSON message: ' + message);
       return;
     }
     // console.log('Received message: %s', JSON.stringify(message));
@@ -127,14 +134,14 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
         if (getPodIndexByPublicKey(message.data.address) === null) {
           // console.log(`Local IP of connecting node: ${message.data.localIp}`);
           message.data.ip = socket['handshake'].headers['x-real-ip']; // ts
-          console.log(message.data.ip);
+          // console.log(message.data.ip);
           pods.push(message.data);
           io.emit('message', podListUpdated(pods));
         }
-        else { /* console.log('Pod already exists in Pods, do nothing.'); */ }
+        else { /* // console.log('Pod already exists in Pods, do nothing.'); */ }
         break;
       case MessageType.SELECTED_FOR_VALIDATION: {
-        console.log('Selected for validation. Validating...');
+        // console.log('Selected for validation. Validating...');
         const { transaction, senderLedger }:
           { transaction: Transaction, senderLedger: Ledger } = JSON.parse(message.data);
         validateTransaction(transaction, senderLedger, (res: IResult) => {
@@ -150,7 +157,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
             _tx.generateHash();
             updateLedger(_tx, 1);
           }
-          console.log('Sending out validation result.');
+          // console.log('Sending out validation result.');
           // io.clients((err, clients) => { console.dir(clients); });
           // console.log(res.id);
           // console.log(_tx.id);
@@ -187,18 +194,18 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
           break;
         }
         pods = data;
-        console.log(`Number of pods: ${pods.length}`);
+        // console.log(`Number of pods: ${pods.length}`);
         break;
       }
       case MessageType.KILL_SERVER_PROCESS:
-        console.log('Kill command received, killing process');
+        // console.log('Kill command received, killing process');
         gServer.close();
         localSocket.close();
         io.close();
         process.exit();
         break;
       case MessageType.TRANSACTION_CONFIRMATION_REQUEST: {
-        console.log('Selected to confirm a valid transaction. Confirming...');
+        // console.log('Selected to confirm a valid transaction. Confirming...');
         const { transactionId, hash }:
           { transactionId: string, hash: string } = JSON.parse(message.data);
         const result = validateTransactionHash(transactionId, hash);
@@ -209,29 +216,34 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
         return JSON.parse(message.data);
       case MessageType.TEST_CONFIG:
         const data = JSON.parse(message.data);
-        const { duration, selectedPods, local }: { duration: number, selectedPods: Pod[], local: boolean } = data;
+        const { testConfig, selectedPods }: { testConfig: TestConfig, selectedPods: Pod[] } = data;
+        let localTestConfig = testConfig;
+        console.dir(localTestConfig);
+        console.dir(testConfig);
         let isSelected = false;
         for (let i = 0; i < selectedPods.length; i += 1) {
           const pod = selectedPods[i];
-          if (pod.address === getPublicFromWallet()) {
-            isSelected = true;
-            break;
+          if (pod) {
+            if (pod.address === getPublicFromWallet()) {
+              isSelected = true;
+              break;
+            }
           }
         }
         if (isSelected) {
-          beginTest(duration, local, selectedPods);
+          beginTest(selectedPods);
         }
     }
   } catch (e) {
-    console.log(e);
+    // console.log(e);
   }
 };
 
 const handleNewConnection = (socket: Socket): void => {
-  console.log('New connection, emitting [identity]');
+  // console.log('New connection, emitting [identity]');
   socket.emit('identity');
   socket.on('message', (message: Message) => {
-    console.log('[handleNewConnection] handleMessage');
+    // console.log('[handleNewConnection] handleMessage');
     handleMessage(socket, message);
   });
   if (isSeed) {
@@ -249,12 +261,12 @@ const handleValidationResults = (transactionId: string): void => {
     const { result, transaction }:
       { result: IResult, transaction: Transaction } = JSON.parse(message.data);
     if (result.res) {
-      console.log(`Validation Result returned ${result.res}`);
+      // console.log(`Validation Result returned ${result.res}`);
     }
     else { 
       isValid = false;
-      console.log(`Validation Result returned ${result.res}`);
-      console.log(`Reason: ${result.reason}`);
+      // console.log(`Validation Result returned ${result.res}`);
+      // console.log(`Reason: ${result.reason}`);
     }
     socket.disconnect();
   }
@@ -270,9 +282,9 @@ const handleValidationResults = (transactionId: string): void => {
     if (_tx) {
       // console.log(`Transaction From: ${_tx.from}. My Public Key: ${getPublicFromWallet()}`);
       if (_tx.from === getPublicFromWallet() || _tx.to === getPublicFromWallet()) {
-        console.log('Transaction Hash generated');
+        // console.log('Transaction Hash generated');
         _tx.generateHash();
-        console.log('Writing to ledger...');
+        // console.log('Writing to ledger...');
         updateLedger(_tx, 0);
       }
     }
@@ -282,7 +294,7 @@ const handleValidationResults = (transactionId: string): void => {
 const initP2PNode = (server: http.Server): void => {
   gServer = server;
   if (isSeed) {
-    console.log('Process is a seed server, node will not be created.');
+    // console.log('Process is a seed server, node will not be created.');
     return;
   }
   const randomType: number = Math.floor(Math.random() * 10) >= 1 ? 0 : 1;
@@ -298,15 +310,15 @@ const initP2PNode = (server: http.Server): void => {
     message.type = MessageType.RESPONSE_IDENTITY;
     message.data = pod;
     socket.on('identity', () => {
-      console.log('Received [identity]');
+      // console.log('Received [identity]');
       write(socket, message);
     });
     socket.on('message', (msg: Message) => {
-      console.log(`Received Message: ${msg.type}`);
+      // console.log(`Received Message: ${msg.type}`);
       handleMessage(socket, msg);
     });
     socket.on('disconnect', () => {
-      console.log('[initP2PNode] socket disconnected');
+      // console.log('[initP2PNode] socket disconnected');
     });
   });
 };
@@ -314,7 +326,7 @@ const initP2PNode = (server: http.Server): void => {
 const initP2PServer = (server: http.Server): any => {
   io = socketIo(server);
   io.on('connection', (socket) => {
-    console.log('[initP2PServer] handleMessage');
+    // console.log('[initP2PServer] handleMessage');
     handleNewConnection(socket);
   });
   if (isSeed) {
@@ -334,7 +346,7 @@ const killAll = (): void => {
 };
 
 export {
-  beginTest, loopTest, initP2PServer, initP2PNode, getPods, getIo, write, handleMessage, Message,
+  beginTest, loopTest, initP2PServer, initP2PNode, getPods, getIo, getTestConfig, write, handleMessage, Message,
   killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType,
   getLogger,
 };

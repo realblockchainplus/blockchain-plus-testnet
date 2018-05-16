@@ -12,15 +12,12 @@ import { selectRandom } from './rngTool';
 import { requestValidateTransaction, Transaction } from './transaction';
 import { getCurrentTimestamp, randomNumberFromRange } from './utils';
 import { getPublicFromWallet, initWallet } from './wallet';
+import { TestConfig } from './testConfig';
 
 const argv = minimist(process.argv.slice(2));
 const portMin = 50000;
 const portMax = 65535;
-
-/**
- * Gets a random port. See [[randomNumberFromRange]]
- */
-const randomPort = randomNumberFromRange(portMin, portMax);
+const port = argv.p || randomNumberFromRange(portMin, portMax, true);
 
 
 /**
@@ -44,17 +41,17 @@ const initHttpServer = (): void => {
     }
   });
 
-  app.post('/postTransaction', (req, res) => {
-    const transaction = new Transaction(
-      getPublicFromWallet(),
-      req.body.transaction.to,
-      req.body.transaction.amount,
-      getCurrentTimestamp(),
-    );
+  // app.post('/postTransaction', (req, res) => {
+  //   const transaction = new Transaction(
+  //     getPublicFromWallet(),
+  //     req.body.transaction.to,
+  //     req.body.transaction.amount,
+  //     getCurrentTimestamp(),
+  //   );
 
-    requestValidateTransaction(transaction, getLedger(LedgerType.MY_LEDGER));
-    res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.to}.`);
-  });
+  //   requestValidateTransaction(transaction, getLedger(LedgerType.MY_LEDGER));
+  //   res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.to}.`);
+  // });
 
   app.get('/getAddress', (req, res) => {
     const address: string = getPublicFromWallet();
@@ -67,21 +64,22 @@ const initHttpServer = (): void => {
   });
 
   app.post('/startTest', (req, res) => {
-    const testConfig = {
-      duration: req.body.duration,
-      numSenders: req.body.numSenders,
-      local: req.body.local
-    };
+    const testConfig = new TestConfig(
+      req.body.duration,
+      req.body.numSenders,
+      req.body.local,
+      req.body.maxLedgerLength
+    );
     const io = getIo();
     const pods: Pod[] = getPods();
     const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
     const selectedPods: Pod[] = selectRandom(regularPods, testConfig.numSenders, '');
-    io.emit('message', sendTestConfig({ selectedPods, duration: testConfig.duration }));
+    io.emit('message', sendTestConfig({ selectedPods, testConfig }));
     res.send('Test Started!');
   });
 
-  server.listen(80, () => {
-    console.log(`[Node] New Node created on port: ${server.address().port}`);
+  server.listen(port, () => {
+    // console.log(`[Node] New Node created on port: ${server.address().port}`);
     initWallet(server.address().port);
     initP2PServer(server);
     initP2PNode(server);

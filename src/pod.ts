@@ -1,4 +1,4 @@
-import { getLocalIp } from './utils';
+import { getLocalIp, getCurrentTimestamp } from './utils';
 import { getPublicFromWallet } from './wallet';
 
 type Socket = SocketIOClient.Socket;
@@ -116,7 +116,7 @@ const createPod = (type: PodType) => {
   };
   const pod: Pod = new Pod(type, randomLocation, randomName);
   pod.address = getPublicFromWallet();
-  pod.spawnTimestamp = Math.round(new Date().getTime() / 1000);
+  pod.spawnTimestamp = getCurrentTimestamp();
   type === PodType.REGULAR_POD ?
     Object.assign(pod, regularPodSpecs) : Object.assign(pod, partnerPodSpecs);
   pod.ram = gbToMb(pod.ram);

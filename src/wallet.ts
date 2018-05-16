@@ -23,7 +23,7 @@ const deleteWallet = (): void => {
 };
 
 const fundWallet = (): void => {
-  console.log(`Adding 50 value to wallet as part of wallet initiation.`);
+  // console.log(`Adding 50 value to wallet as part of wallet initiation.`);
   updateLedger(genesisTransaction(getPublicFromWallet()), 0);
 };
 
@@ -54,8 +54,8 @@ const initWallet = (port: number): void => {
   const newPrivateKey = generatePrivateKey();
 
   writeFileSync(privateKeyLocation, newPrivateKey);
-  console.log('new wallet with private key created to : %s', privateKeyLocation);
-  console.log(`Public address: ${getPublicFromWallet()}`);
+  // console.log('new wallet with private key created to : %s', privateKeyLocation);
+  // console.log(`Public address: ${getPublicFromWallet()}`);
   fundWallet();
 };
 

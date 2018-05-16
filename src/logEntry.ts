@@ -18,7 +18,6 @@ class LogEvent {
     this.transactionId = transactionId;
     this.type = type;
     this.logLevel = logLevel;
-    this.timestamp = Math.round(new Date().getTime() / 1000);
   }
 }
 
@@ -34,6 +33,8 @@ enum EventType {
   CONNECT_TO_VALIDATOR_START = 9,
   CONNECT_TO_VALIDATOR_END = 10,
   WRITE_TO_MY_LEDGER = 11,
+  CONNECT_TO_PREVIOUS_VALIDATOR_START = 12,
+  CONNECT_TO_PREVIOUS_VALIDATOR_END = 13,
 }
 
 const createLogEvent = (event: LogEvent): Message => ({
@@ -74,6 +75,12 @@ const eventToString = (event: LogEvent): string => {
     case EventType.CONNECT_TO_VALIDATOR_END:
       result = connectToValidatorStatusString(event);
       break;
+    case EventType.CONNECT_TO_PREVIOUS_VALIDATOR_START:
+      result = connectToPreviousValidatorStatusString(event);
+      break;
+    case EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END:
+      result = connectToPreviousValidatorStatusString(event);
+      break;
     default:
       break;
   }
@@ -97,6 +104,10 @@ const requestValidationStatusString = (event: LogEvent): string => (
 );
 
 const connectToValidatorStatusString = (event: LogEvent): string => (
+  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}:${event.podTwo.port}`
+);
+
+const connectToPreviousValidatorStatusString = (event: LogEvent): string => (
   `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}:${event.podTwo.port}`
 );
 
