@@ -95,7 +95,10 @@ const updateTransaction = (transaction: Transaction, type: LedgerType): Transact
   return _transaction;
 };
 
-const writeLedger = (ledger: Ledger, type: LedgerType): void => {
+/**
+ * Writes to the ledger specified by [[LedgerType]].
+ */
+const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): void => {
   const ledgerFilename = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
   // console.log(`Ledger File Name: ${ledgerFilename}`);
   fs.writeFileSync(`${ledgerLocation}/${ledgerFilename}`, JSON.stringify(ledger));
@@ -111,6 +114,7 @@ const writeLedger = (ledger: Ledger, type: LedgerType): void => {
       EventType.TRANSACTION_END,
       'info',
     );
+    console.timeEnd('transaction');
     write(localLogger, createLogEvent(event));
     loopTest();
   }

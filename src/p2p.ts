@@ -77,7 +77,7 @@ const beginTest = (selectedPods: Pod[]): void => {
 
 const loopTest = (): void => {
   // console.log(endTime, getCurrentTimestamp());
-  if (endTime < getCurrentTimestamp()) {
+  if (endTime > getCurrentTimestamp()) {
     const transaction = new Transaction(
       getPublicFromWallet(),
       randomReceiver.address,
@@ -88,7 +88,8 @@ const loopTest = (): void => {
     requestValidateTransaction(transaction, getLedger(LedgerType.MY_LEDGER));
   }
   else { 
-    // console.log('Time is up!') 
+    console.log(endTime, getCurrentTimestamp());
+    console.log('Time is up!'); 
   }
 };
 
@@ -100,6 +101,7 @@ const closeConnection = (socket: Socket): void => {
 };
 
 const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[] = pods): number => {
+  console.time('getPodIndexByPublicKey');
   let index = null;
   for (let i = 0; i < _pods.length; i += 1) {
     const _pod = _pods[i];
@@ -107,6 +109,7 @@ const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[] = pods): number 
       index = i;
     }
   }
+  console.timeEnd('getPodIndexByPublicKey');
   return index;
 };
 
@@ -181,6 +184,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
             EventType.REQUEST_VALIDATION_END,
             'info',
           );
+          console.timeEnd('requestValidation');
           write(localLogger, createLogEvent(requestValidationEndEvent));
           handleValidationResults(transaction.id);
         }
@@ -194,7 +198,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
           break;
         }
         pods = data;
-        // console.log(`Number of pods: ${pods.length}`);
+        console.log(`Number of pods: ${pods.length}`);
         break;
       }
       case MessageType.KILL_SERVER_PROCESS:
@@ -217,7 +221,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
       case MessageType.TEST_CONFIG:
         const data = JSON.parse(message.data);
         const { testConfig, selectedPods }: { testConfig: TestConfig, selectedPods: Pod[] } = data;
-        let localTestConfig = testConfig;
+        localTestConfig = testConfig;
         console.dir(localTestConfig);
         console.dir(testConfig);
         let isSelected = false;

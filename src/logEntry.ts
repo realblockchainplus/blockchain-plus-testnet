@@ -2,6 +2,7 @@ import * as winston from 'winston';
 
 import { Message, MessageType } from './p2p';
 import { Pod } from './pod';
+import { TestConfig } from './testConfig';
 
 class LogEvent {
   public podOne: Pod;
@@ -11,13 +12,15 @@ class LogEvent {
   public timestamp: number;
   public transactionId: string;
   public logLevel: winston.NPMLoggingLevel;
+  public testConfig: TestConfig;
 
-  constructor(podOne: Pod, podTwo: Pod, transactionId: string, type: EventType, logLevel: winston.NPMLoggingLevel) {
+  constructor(podOne: Pod, podTwo: Pod, transactionId: string, type: EventType, logLevel: winston.NPMLoggingLevel, testConfig?: TestConfig) {
     this.podOne = podOne;
     this.podTwo = podTwo;
     this.transactionId = transactionId;
     this.type = type;
     this.logLevel = logLevel;
+    this.testConfig = testConfig;
   }
 }
 
@@ -92,7 +95,7 @@ const podStatusString = (event: LogEvent): string => (
 );
 
 const testStatusString = (event: LogEvent): string => (
-  `Type: ${event.type}`
+  `Type: ${event.type}, Duration: ${event.testConfig.duration}, NumSenders: ${event.testConfig.numSenders}, Local: ${event.testConfig.local}, MaxLedgerLength: ${event.testConfig.maxLedgerLength}`
 );
 
 const transactionStatusString = (event: LogEvent): string => (

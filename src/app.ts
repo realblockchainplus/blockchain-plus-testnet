@@ -68,7 +68,7 @@ const initHttpServer = (): void => {
       req.body.duration,
       req.body.numSenders,
       req.body.local,
-      req.body.maxLedgerLength
+      req.body.maxLedgerLength,
     );
     const io = getIo();
     const pods: Pod[] = getPods();

@@ -89,8 +89,10 @@ const genesisAmount: number = 500;
 const getGenesisAddress = (): string => genesisAddress;
 
 const generateSignature = (transaction: Transaction, privateKey: string): string => {
+  console.time('generateSignature');
   const key = ec.keyFromPrivate(privateKey, 'hex');
   const signature: string = toHexString(key.sign(transaction.id).toDER());
+  console.timeEnd('generateSignature');
   return signature;
 };
 
@@ -111,7 +113,6 @@ const genesisTransaction = (publicKey: string): Transaction => {
 
 const getCurrentHoldings = (ledger: Ledger, publicKey: string): number => {
   let currentHoldings = 0;
-  console.dir(ledger);
   for (let i = 0; i < ledger.entries.length; i += 1) {
     const entry = ledger.entries[i];
     // console.dir(entry);
@@ -151,11 +152,9 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   // console.dir(pods);
   const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
   const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
+  console.time('selectRandomPods');
   const selectedPods: Pod[] = [...selectRandom(regularPods, 2, transaction.to), ...selectRandom(partnerPods, 2, transaction.to)];
-  transaction.assignValidatorsToTransaction(selectedPods);
-  transaction.setTransactionId(getTransactionId(transaction));
-  transaction.generateSignature();
-
+  console.timeEnd('selectRandomPods');
   const localLogger = getLogger();
   const senderPod = pods[getPodIndexByPublicKey(transaction.from)];
   const transactionStartEvent = new LogEvent(
@@ -165,8 +164,16 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
     EventType.TRANSACTION_START,
     'info',
   );
+  console.time('transaction');
   transactionStartEvent.transactionId = transaction.id;
   write(localLogger, createLogEvent(transactionStartEvent));
+  transaction.assignValidatorsToTransaction(selectedPods);
+  console.time('generateTransactionId');
+  transaction.setTransactionId(getTransactionId(transaction));
+  console.timeEnd('generateTransactionId');
+  console.time('generateSignature');
+  transaction.generateSignature();
+  console.timeEnd('generateSignature');
 
   const io: Server = getIo();
   // console.log('Starting for loop for sending out validation checks...');
@@ -180,7 +187,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       EventType.REQUEST_VALIDATION_START,
       'info',
     );
-
+    console.time('requestValidation');
     // console.log(`Connecting to ${podIp}`);
     const promise: Promise<void> = new Promise((resolve, reject) => {
       write(localLogger, createLogEvent(requestValidationStartEvent));
@@ -192,6 +199,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
         EventType.CONNECT_TO_VALIDATOR_START,
         'info',
       );
+      console.time(`connectValidator-${i}`);
       write(localLogger, createLogEvent(connectToValidatorStartEvent));
       socket.on('connect', () => {
         resolve(`[requestValidateTransaction] Connected to ${podIp}... sending transaction details for transaction with id: ${transaction.id}.`);
@@ -202,6 +210,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
           EventType.CONNECT_TO_VALIDATOR_END,
           'info',
         );
+        console.timeEnd(`connectValidator-${i}`);
         write(localLogger, createLogEvent(connectToValidatorEndEvent));
         write(socket, isTransactionValid({ transaction, senderLedger }));
       });
@@ -238,9 +247,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
           };          
           resolve(result);
         } else {
-          reject(
-            `Insufficient funds in wallet.
-             Current Holdings: ${genesisAmount}, Transaction Amount: ${transaction.amount}`);
+          reject(`Insufficient funds in wallet. Current Holdings: ${genesisAmount}, Transaction Amount: ${transaction.amount}`);
         }
       });
     }
@@ -265,7 +272,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
     });
     for (let k = 0; k < validatingPods.length; k += 1) {
       // console.log('Iterating over validating pods.');
-      const pod = validatingPods[k];
+      const pod: Pod = validatingPods[k];
       // console.dir(pod);
       const promise: Promise<IResult> = new Promise((resolve, reject) => {
         if (pod.address === getPublicFromWallet()) {
@@ -282,6 +289,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             EventType.CONNECT_TO_PREVIOUS_VALIDATOR_START,
             'info',
           );
+          console.time(`connectPreviousValidator-${k}`);
           write(localLogger, createLogEvent(connectToPreviousValidatorStartEvent));
           const socket = ioClient(`http://${podIp}`);
           const connectTimeout = setTimeout(() => {
@@ -300,6 +308,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
               EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END,
               'info',
             );
+            console.timeEnd(`connectPreviousValidator-${k}`);
             write(localLogger, createLogEvent(connectToPreviousValidatorEndEvent));
             // console.log(`[validateLedger] Connected to ${podIp}... sending transaction details.`);
             clearTimeout(connectTimeout);
