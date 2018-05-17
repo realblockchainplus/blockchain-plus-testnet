@@ -42,7 +42,6 @@
   "now": {
     "alias": "",
     "files": [
-      "node",
       "js"
     ]
   }

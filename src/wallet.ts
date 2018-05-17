@@ -8,10 +8,14 @@ const EC = new ec('secp256k1');
 let privateKeyLocation = '';
 
 const createNodeDir = (): void => {
-  if (existsSync('node')) {
-    if (existsSync('node/wallet')) {
-      return;
-    }
+  if (!existsSync('node')) {
+    mkdirSync('node');
+  }
+  createWalletDir();
+};
+
+const createWalletDir = (): void => {
+  if (!existsSync('node/wallet')) {
     mkdirSync('node/wallet');
   }
 };
@@ -48,12 +52,10 @@ const initWallet = (port: number): void => {
   privateKeyLocation += `node/wallet/${port}`;
   createNodeDir();
   initLedger(port);
-  if (existsSync(privateKeyLocation)) {
-    return;
+  if (!existsSync(privateKeyLocation)) {
+    const newPrivateKey = generatePrivateKey();
+    writeFileSync(privateKeyLocation, newPrivateKey);
   }
-  const newPrivateKey = generatePrivateKey();
-
-  writeFileSync(privateKeyLocation, newPrivateKey);
   // console.log('new wallet with private key created to : %s', privateKeyLocation);
   // console.log(`Public address: ${getPublicFromWallet()}`);
   fundWallet();

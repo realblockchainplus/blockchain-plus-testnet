@@ -72,6 +72,16 @@ const beginTest = (selectedPods: Pod[]): void => {
     getCurrentTimestamp(),
   );
 
+  const testStartEvent = new LogEvent(
+    pods[getPodIndexByPublicKey(transaction.from)],
+    pods[getPodIndexByPublicKey(transaction.to)],
+    '',
+    EventType.TEST_START,
+    'info',
+    localTestConfig,
+  );
+
+  write(localLogger, createLogEvent(testStartEvent));
   requestValidateTransaction(transaction, getLedger(LedgerType.MY_LEDGER));
 };
 
