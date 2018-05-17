@@ -99,19 +99,19 @@ const testStatusString = (event: LogEvent): string => (
 );
 
 const transactionStatusString = (event: LogEvent): string => (
-  `Type: ${event.type}, Transaction ID: ${event.transactionId}`
+  `Type: ${event.type}, Transaction ID: ${event.transactionId} Pod IP: ${event.podOne.ip}`
 );
 
 const requestValidationStatusString = (event: LogEvent): string => (
-  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}:${event.podTwo.port}`
+  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}`
 );
 
 const connectToValidatorStatusString = (event: LogEvent): string => (
-  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}:${event.podTwo.port}`
+  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}`
 );
 
 const connectToPreviousValidatorStatusString = (event: LogEvent): string => (
-  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}:${event.podTwo.port}`
+  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podTwo.ip}`
 );
 
 export {

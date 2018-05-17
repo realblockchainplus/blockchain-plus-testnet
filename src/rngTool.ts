@@ -6,7 +6,9 @@ import { randomNumberFromRange } from './utils';
 const selectRandom = (pods: Pod[], num: number, to: string = ''): Pod[] => {
   const randomNumbers: number[] = buildRandomSet(pods, num, to);
   const _pods: Pod[] = [];
-  _pods.push(pods[randomNumbers[0]], pods[randomNumbers[1]]);
+  for (let i = 0; i < randomNumbers.length; i += 1) {
+    _pods.push(pods[randomNumbers[i]]);
+  }
   return _pods;
 };
 
