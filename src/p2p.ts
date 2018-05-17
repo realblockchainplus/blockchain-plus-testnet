@@ -143,15 +143,17 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
     // console.log('Received message: %s', JSON.stringify(message));
     switch (message.type) {
       case MessageType.RESPONSE_IDENTITY:
-        // console.log('Received Pod Identity');
+        console.log('Received Pod Identity');
         if (getPodIndexByPublicKey(message.data.address) === null) {
           // console.log(`Local IP of connecting node: ${message.data.localIp}`);
           message.data.ip = socket['handshake'].headers['x-real-ip']; // ts
-          // console.log(message.data.ip);
+          console.log(message.data.ip);
           pods.push(message.data);
           io.emit('message', podListUpdated(pods));
         }
-        else { /* // console.log('Pod already exists in Pods, do nothing.'); */ }
+        else {
+          console.log('Pod already exists in Pods, do nothing.');
+        }
         break;
       case MessageType.SELECTED_FOR_VALIDATION: {
         // console.log('Selected for validation. Validating...');
