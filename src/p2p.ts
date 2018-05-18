@@ -3,7 +3,7 @@ import * as minimist from 'minimist';
 import * as socketIo from 'socket.io';
 import * as ioClient from 'socket.io-client';
 
-import { getLedger, Ledger, LedgerType, updateLedger } from './ledger';
+import { getLedger, Ledger, LedgerType, updateLedger, initLedger } from './ledger';
 import { createLogEvent, EventType, LogEvent } from './logEntry';
 import {
   isTransactionHashValid,
@@ -13,6 +13,7 @@ import {
   podListUpdated,
   responseIsTransactionHashValid,
   responseIsTransactionValid,
+  wipeLedgersMsg,
 } from './message';
 import { createPod, Pod } from './pod';
 import { TestConfig } from './testConfig';
@@ -247,8 +248,13 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
           }
         }
         if (isSelected) {
-          beginTest(selectedPods);
+          beginTest(selectedPods);          
         }
+        break;
+      case MessageType.WIPE_LEDGER:
+        console.log(gServer.address().port);
+        initLedger(gServer.address().port);
+        break;
     }
   } catch (e) {
     // console.log(e);
@@ -361,8 +367,11 @@ const killAll = (): void => {
   io.emit('message', killMsg());
 };
 
+const wipeLedgers = (): void => {
+  io.emit('message', wipeLedgersMsg());
+};
+
 export {
   beginTest, loopTest, initP2PServer, initP2PNode, getPods, getIo, getTestConfig, write, handleMessage, Message,
-  killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType,
-  getLogger,
+  killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType, getLogger, wipeLedgers
 };

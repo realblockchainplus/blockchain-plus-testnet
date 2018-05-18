@@ -53,7 +53,7 @@ const getLedger = (type: LedgerType): Ledger => {
 const initLedger = (port: number): void => {
   const myLedger = new Ledger([], 0);
   const witnessLedger = new Ledger([], 1);
-  ledgerLocation += `node/ledger-${port}`;
+  ledgerLocation = `node/ledger-${port}`;
   if (!fs.existsSync(ledgerLocation)) {
     fs.mkdirSync(ledgerLocation);
   }

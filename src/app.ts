@@ -6,7 +6,7 @@ import * as minimist from 'minimist';
 
 import { getLedger, LedgerType } from './ledger';
 import { sendTestConfig } from './message';
-import { getIo, getPods, initP2PNode, initP2PServer, killAll } from './p2p';
+import { getIo, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers } from './p2p';
 import { Pod } from './pod';
 import { selectRandom } from './rngTool';
 import { requestValidateTransaction, Transaction } from './transaction';
@@ -63,6 +63,11 @@ const initHttpServer = (): void => {
     res.send('Killed all nodes');
   });
 
+  app.get('/wipeLedgers', (req, res) => {
+    wipeLedgers();
+    res.send('Wiped all ledgers');
+  });
+
   app.post('/startTest', (req, res) => {
     const testConfig = new TestConfig(
       req.body.duration,
@@ -79,7 +84,7 @@ const initHttpServer = (): void => {
   });
 
   server.listen(port, () => {
-    // console.log(`[Node] New Node created on port: ${server.address().port}`);
+    console.log(`[Node] New Node created on port: ${server.address().port}`);
     initWallet(server.address().port);
     initP2PServer(server);
     initP2PNode(server);

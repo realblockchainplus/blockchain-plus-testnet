@@ -83,8 +83,7 @@ class Transaction {
 }
 
 const genesisTimestamp: number = 1525278308842;
-const genesisAddress: string = `04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e
-  7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a`;
+const genesisAddress: string = `04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a`;
 const genesisAmount: number = 500;
 const getGenesisAddress = (): string => genesisAddress;
 

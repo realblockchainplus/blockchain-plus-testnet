@@ -17,6 +17,7 @@ enum MessageType {
   TRANSACTION_CONFIRMATION_RESULT = 7,
   LOG_EVENT = 8,
   TEST_CONFIG = 9,
+  WIPE_LEDGER = 10,
 }
 
 interface IResult {
@@ -75,8 +76,13 @@ const sendTestConfig = (testConfig): Message => ({
   data: JSON.stringify(testConfig),
 });
 
+const wipeLedgersMsg = (): Message => ({
+  type: MessageType.WIPE_LEDGER,
+  data: null,
+});
+
 export {
   Message, MessageType, IResult, isTransactionHashValid, isTransactionValid, killMsg,
   podListUpdated, responseIdentityMsg, responseIsTransactionHashValid,
-  responseIsTransactionValid, sendTestConfig,
+  responseIsTransactionValid, sendTestConfig, wipeLedgersMsg,
 };
