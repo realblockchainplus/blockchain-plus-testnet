@@ -99,7 +99,7 @@ const testStatusString = (event: LogEvent): string => (
 );
 
 const transactionStatusString = (event: LogEvent): string => (
-  `Type: ${event.type}, Transaction ID: ${event.transactionId} Pod IP: ${event.podOne.ip}`
+  `Type: ${event.type}, Transaction ID: ${event.transactionId}, Pod IP: ${event.podOne.ip}`
 );
 
 const requestValidationStatusString = (event: LogEvent): string => (

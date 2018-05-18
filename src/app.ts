@@ -6,7 +6,7 @@ import * as minimist from 'minimist';
 
 import { getLedger, LedgerType } from './ledger';
 import { sendTestConfig } from './message';
-import { getIo, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers } from './p2p';
+import { getIo, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers, getPodIndexByPublicKey } from './p2p';
 import { Pod } from './pod';
 import { selectRandom } from './rngTool';
 import { requestValidateTransaction, Transaction } from './transaction';
@@ -15,8 +15,13 @@ import { getPublicFromWallet, initWallet } from './wallet';
 import { TestConfig } from './testConfig';
 
 const argv = minimist(process.argv.slice(2));
+
+// Arbitrary range
 const portMin = 50000;
 const portMax = 65535;
+
+// Either a port is passed through the npm run command, or a random port is selected
+// For non-local tests the port 80 is passed through npm run
 const port = argv.p || randomNumberFromRange(portMin, portMax, true);
 
 
@@ -63,10 +68,14 @@ const initHttpServer = (): void => {
     res.send('Killed all nodes');
   });
 
+  // Wipes both ledgers.
+  // TODO: Also wipe the wallet? Currently the genesis transaction isn't added to ledger again
+  // because wallet already exists.
   app.get('/wipeLedgers', (req, res) => {
     wipeLedgers();
     res.send('Wiped all ledgers');
   });
+
 
   app.post('/startTest', (req, res) => {
     const testConfig = new TestConfig(
@@ -75,16 +84,30 @@ const initHttpServer = (): void => {
       req.body.local,
       req.body.maxLedgerLength,
     );
-    const io = getIo();
     const pods: Pod[] = getPods();
-    const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
-    const selectedPods: Pod[] = selectRandom(regularPods, testConfig.numSenders, '');
+    const io = getIo();
+    let selectedPods: Pod[] = [];
+    if (req.body.senderAddresses > 0) {
+      if (req.body.numSenders !== req.body.senderAddresses) {
+        res.send('numSenders must equal the length of senderAddresses');
+        return;
+      }
+      for (let i = 0; i < req.body.senderAddresses.length; i += 1) {
+        const address = req.body.senderAddresses[i];
+        const pod = pods[getPodIndexByPublicKey(address)];
+        selectedPods.push(pod);
+      }
+    }
+    else {
+      const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
+      selectedPods = selectRandom(regularPods, testConfig.numSenders * 2, '');
+    }
     io.emit('message', sendTestConfig({ selectedPods, testConfig }));
     res.send('Test Started!');
   });
 
   server.listen(port, () => {
-    console.log(`[Node] New Node created on port: ${server.address().port}`);
+    // console.log(`[Node] New Node created on port: ${server.address().port}`);
     initWallet(server.address().port);
     initP2PServer(server);
     initP2PNode(server);
