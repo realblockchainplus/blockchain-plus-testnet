@@ -1,7 +1,7 @@
 {
   "name": "blockchain-plus-testnet",
-  "version": "1.0.0",
-  "description": "",
+  "version": "1.0.0-alpha.0",
+  "description": "Typescript implementation of the blockchain network laid out in the Blockchain+ whitepaper.",
   "scripts": {
     "compile": "tsc",
     "docs": "typedoc --name \"Blockchain Plus Testnet\" --mode file --hideGenerator --out docs src",
