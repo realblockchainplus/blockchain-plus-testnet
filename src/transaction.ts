@@ -89,10 +89,10 @@ const genesisAmount: number = 500;
 const getGenesisAddress = (): string => genesisAddress;
 
 const generateSignature = (transaction: Transaction, privateKey: string): string => {
-  // console.time('generateSignature');
+  console.time('generateSignature');
   const key = ec.keyFromPrivate(privateKey, 'hex');
   const signature: string = toHexString(key.sign(transaction.id).toDER());
-  // console.timeEnd('generateSignature');
+  console.timeEnd('generateSignature');
   return signature;
 };
 
@@ -154,16 +154,16 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
   const _regularPods = regularPods.filter(pod => !localSelectedPods.find(selectedPod => selectedPod.address === pod.address));
   const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
-  // console.time('selectRandomPods');
+  console.time('selectRandomPods');
   const selectedPods: Pod[] = [...selectRandom(_regularPods, 2, transaction.to), ...selectRandom(partnerPods, 2, transaction.to)];
-  // console.timeEnd('selectRandomPods');
+  console.timeEnd('selectRandomPods');
   const localLogger = getLogger();
   const senderPod = pods[getPodIndexByPublicKey(transaction.from)];
-  // console.time('transaction');
+  console.time('transaction');
   transaction.assignValidatorsToTransaction(selectedPods);
-  // console.time('generateTransactionId');
+  console.time('generateTransactionId');
   transaction.setTransactionId(getTransactionId(transaction));
-  // console.timeEnd('generateTransactionId');
+  console.timeEnd('generateTransactionId');
   const transactionStartEvent = new LogEvent(
     senderPod,
     pods[getPodIndexByPublicKey(transaction.to)],
@@ -172,9 +172,9 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
     'info',
   );
   write(localLogger, createLogEvent(transactionStartEvent));
-  // console.time('generateSignature');
+  console.time('generateSignature');
   transaction.generateSignature();
-  // console.timeEnd('generateSignature');
+  console.timeEnd('generateSignature');
 
   const io: Server = getIo();
   // console.log('Starting for loop for sending out validation checks...');
@@ -188,7 +188,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       EventType.REQUEST_VALIDATION_START,
       'info',
     );
-    // console.time('requestValidation');
+    console.time('requestValidation');
     // console.log(`Connecting to ${podIp}`);
     const promise: Promise<void> = new Promise((resolve, reject) => {
       write(localLogger, createLogEvent(requestValidationStartEvent));
@@ -200,10 +200,10 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
         EventType.CONNECT_TO_VALIDATOR_START,
         'info',
       );
-      // console.time(`connectValidator-${i}-${transaction.id}`);
+      console.time(`connectValidator-${i}-${transaction.id}`);
       write(localLogger, createLogEvent(connectToValidatorStartEvent));
       socket.on('connect', () => {
-        // console.timeEnd(`connectValidator-${i}-${transaction.id}`);
+        console.timeEnd(`connectValidator-${i}-${transaction.id}`);
         const connectToValidatorEndEvent = new LogEvent(
           senderPod,
           pod,
@@ -231,7 +231,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
 };
 
 const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise<IResult> => {
-  // console.time(`validateLedger-${transaction.id}`);
+  console.time(`validateLedger-${transaction.id}`);
   const io: Server = getIo();
   const localLogger = getLogger();
   const pods: Pod[] = getPods();
@@ -279,8 +279,8 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
       const promise: Promise<IResult> = new Promise((resolve, reject) => {        
         if (pod.address === getPublicFromWallet()) {
           // console.log(`This node was a validator for this transaction. Checking hash against witness ledger entry...`);
-          // console.time(`connectPreviousValidator-${k}-${entry.id}`);
-          // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
+          console.time(`connectPreviousValidator-${k}-${entry.id}`);
+          console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
           const result = validateTransactionHash(entry.id, entry.hash);
           resolve(result);
         } else {
@@ -294,7 +294,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             'info',
           );          
           write(localLogger, createLogEvent(connectToPreviousValidatorStartEvent));
-          // console.time(`connectPreviousValidator-${k}-${entry.id}`);
+          console.time(`connectPreviousValidator-${k}-${entry.id}`);
           const socket = ioClient(`http://${podIp}`);
           const connectTimeout = setTimeout(() => {
             const result: IResult = {
@@ -305,7 +305,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             reject(result);
           }, 10000);
           socket.on('connect', () => {
-            // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
+            console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
             const connectToPreviousValidatorEndEvent = new LogEvent(
               pods[getPodIndexByPublicKey(getPublicFromWallet())],
               pod,
@@ -364,12 +364,13 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
       validationResult.reason = 'Needs to be filled with details of validation checks.';
     }
     // console.log(`[validateLedger]: resultId ${validationResult.id}`);
-    // console.timeEnd(`validateLedger-${transaction.id}`);
+    console.timeEnd(`validateLedger-${transaction.id}`);
     return validationResult;
   });
 };
 
-const validateTransaction = (transaction: Transaction, senderLedger: Ledger, callback): void => {
+const validateTransaction = (transaction: Transaction, senderLedger: Ledger,
+  callback: (result: IResult, transaction: Transaction) => void): void => {
   // console.log(`[validateTransaction] transactionId: ${transaction.id}`);
   const expectedTransactionId: string = getExpectedTransactionId(transaction);
   let result: IResult = { res: false, reason: '', id: transaction.id };

@@ -1,18 +1,17 @@
 import * as bodyParser from 'body-parser';
 import * as cors from 'cors';
+// import * as dotenv from 'dotenv';
 import * as express from 'express';
 import * as http from 'http';
 import * as minimist from 'minimist';
 
-import { getLedger, LedgerType } from './ledger';
 import { sendTestConfig } from './message';
-import { getIo, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers, getPodIndexByPublicKey } from './p2p';
+import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers } from './p2p';
 import { Pod } from './pod';
 import { selectRandom } from './rngTool';
-import { requestValidateTransaction, Transaction } from './transaction';
-import { getCurrentTimestamp, randomNumberFromRange } from './utils';
-import { getPublicFromWallet, initWallet } from './wallet';
 import { TestConfig } from './testConfig';
+import { randomNumberFromRange } from './utils';
+import { getPublicFromWallet, initWallet } from './wallet';
 
 const argv = minimist(process.argv.slice(2));
 
@@ -30,8 +29,9 @@ const port = argv.p || randomNumberFromRange(portMin, portMax, true);
  * user commands.
  * 
  * Commands: 
- * * postTransaction
+ * * getAddress
  * * killAll
+ * * wipeLedgers
  * * getAddress
  */
 const initHttpServer = (): void => {
@@ -40,7 +40,7 @@ const initHttpServer = (): void => {
 
   app.use(bodyParser.json());
   app.use(cors());
-  app.use((err, req, res, next) => {
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (err) {
       res.status(400).send(err.message);
     }
@@ -63,6 +63,7 @@ const initHttpServer = (): void => {
     res.send({ address });
   });
 
+  // Kills all nodes connected to this server
   app.get('/killAll', (req, res) => {
     killAll();
     res.send('Killed all nodes');
@@ -76,13 +77,14 @@ const initHttpServer = (): void => {
     res.send('Wiped all ledgers');
   });
 
-
+  // Starts a test
   app.post('/startTest', (req, res) => {
+    const { duration, numSenders, local, maxLedgerLength, senderAddresses } = req.body;
     const testConfig = new TestConfig(
-      req.body.duration,
-      req.body.numSenders,
-      req.body.local,
-      req.body.maxLedgerLength,
+      duration,
+      numSenders,
+      local,
+      maxLedgerLength,
     );
     const pods: Pod[] = getPods();
     const io = getIo();

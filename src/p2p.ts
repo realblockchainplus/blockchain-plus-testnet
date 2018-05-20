@@ -27,7 +27,8 @@ import {
 import { getCurrentTimestamp, randomNumberFromRange } from './utils';
 import { getPublicFromWallet } from './wallet';
 
-type Socket = SocketIOClient.Socket;
+type ClientSocket = SocketIOClient.Socket;
+type ServerSocket = socketIo.Socket;
 type Server = socketIo.Server;
 
 let pods: Pod[] = [];
@@ -37,27 +38,27 @@ const argv = minimist(process.argv.slice(2));
 const type = parseInt(argv.t, 10);
 const isSeed = argv.s === 'true';
 
-let io;
-let gServer;
-let localSocket;
-let localLogger;
-let startTime;
-let endTime;
-let selectedReceiver;
+let io: Server;
+let gServer: http.Server;
+let localSocket: ClientSocket;
+let localLogger: ClientSocket;
+let startTime: number;
+let endTime: number;
+let selectedReceiver: Pod;
 
 let localTestConfig = new TestConfig(60, 2, true, 1);
 
 const validationResults: { [txId: string]: IValidationResult[] } = {};
 
 interface IValidationResult {
-  socket: Socket;
+  socket: ClientSocket | ServerSocket;
   message: Message;
 }
 
 const getPods = (): Pod[] => pods;
 const getIo = (): Server => io;
 const getServer = (): http.Server => gServer;
-const getLogger = (): Socket => localLogger;
+const getLogger = (): ClientSocket => localLogger;
 const getTestConfig = (): TestConfig => localTestConfig;
 const getSelectedPods = (): Pod[] => localSelectedPods;
 
@@ -107,7 +108,7 @@ const loopTest = (): void => {
   }
 };
 
-const closeConnection = (socket: Socket): void => {
+const closeConnection = (socket: ServerSocket): void => {
   const pod = pods[getPodIndexBySocket(socket)];
   // console.log(`Connection failed to peer: ${pod.name} / ${pod.address}`);
   pods.splice(pods.indexOf(pod), 1);
@@ -117,7 +118,7 @@ const closeConnection = (socket: Socket): void => {
 };
 
 const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[] = pods): number => {
-  // // console.time('getPodIndexByPublicKey');
+  // console.time('getPodIndexByPublicKey');
   let index = null;
   for (let i = 0; i < _pods.length; i += 1) {
     const _pod = _pods[i];
@@ -125,11 +126,11 @@ const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[] = pods): number 
       index = i;
     }
   }
-  // // console.timeEnd('getPodIndexByPublicKey');
+  // console.timeEnd('getPodIndexByPublicKey');
   return index;
 };
 
-const getPodIndexBySocket = (socket: Socket): number => {
+const getPodIndexBySocket = (socket: ClientSocket | ServerSocket): number => {
   let index = null;
   for (let i = 0; i < pods.length; i += 1) {
     const _pod = pods[i];
@@ -140,7 +141,7 @@ const getPodIndexBySocket = (socket: Socket): number => {
   return index;
 };
 
-const handleMessage = (socket: Socket, message: Message): IResult => {
+const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): IResult => {
   try {
     if (message === null) {
       // console.log('could not parse received JSON message: ' + message);
@@ -153,7 +154,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
         // console.log('Received Pod Identity');
         if (getPodIndexByPublicKey(data.address) === null) {
           // console.log(`Local IP of connecting node: ${data.localIp}`);
-          data.ip = socket['handshake'].headers['x-real-ip']; // ts
+          data.ip = (<ServerSocket>socket).handshake.address;
           // console.log(data.ip);
           pods.push(data);
           if (isSeed) {
@@ -211,7 +212,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
             EventType.REQUEST_VALIDATION_END,
             'info',
           );
-          // console.timeEnd('requestValidation');
+          console.timeEnd('requestValidation');
           write(localLogger, createLogEvent(requestValidationEndEvent));
           handleValidationResults(transaction.id);          
         }
@@ -282,7 +283,7 @@ const handleMessage = (socket: Socket, message: Message): IResult => {
   }
 };
 
-const handleNewConnection = (socket: Socket): void => {
+const handleNewConnection = (socket: ServerSocket): void => {
   // console.log('New connection, emitting [identity]');
   socket.emit('identity');
   socket.on('message', (message: Message) => {
@@ -342,8 +343,8 @@ const initP2PNode = (server: http.Server): void => {
   }
   const randomType: number = Math.floor(Math.random() * 10) >= 1 ? 0 : 1;
   const pod: Pod = createPod(type);
-  const socket: Socket = ioClient('https://bcp-tn.now.sh');
-  const logger: Socket = ioClient('https://bcp-tn-logger.now.sh');
+  const socket: ClientSocket = ioClient('https://bcp-tn.now.sh');
+  const logger: ClientSocket = ioClient('http://localhost:3005');
   localLogger = logger;
   localSocket = socket;
   socket.on('connect', () => {
@@ -368,18 +369,18 @@ const initP2PNode = (server: http.Server): void => {
 
 const initP2PServer = (server: http.Server): any => {
   io = socketIo(server);
-  io.on('connection', (socket) => {
+  io.on('connection', (socket: ServerSocket) => {
     // console.log('[initP2PServer] handleMessage');
     handleNewConnection(socket);
   });
   if (isSeed) {
-    io.on('disconnect', (socket) => {
+    io.on('disconnect', (socket: ServerSocket) => {
       closeConnection(socket);
     });
   }
 };
 
-const write = (socket: Socket, message: Message): void => {
+const write = (socket: ClientSocket, message: Message): void => {
   // console.log('Before emit');
   socket.emit('message', message);
 };
@@ -394,5 +395,5 @@ const wipeLedgers = (): void => {
 
 export {
   beginTest, loopTest, initP2PServer, initP2PNode, getPods, getIo, getTestConfig, write, handleMessage, Message,
-  killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType, getLogger, wipeLedgers, getSelectedPods
+  killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType, getLogger, wipeLedgers, getSelectedPods,
 };

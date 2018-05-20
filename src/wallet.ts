@@ -32,7 +32,7 @@ const fundWallet = (): void => {
 };
 
 const generatePrivateKey = (): string => {
-  const keyPair = EC.genKeyPair();
+  const keyPair = EC.genKeyPair('');
   const privateKey = keyPair.getPrivate();
   return privateKey.toString(16);
 };

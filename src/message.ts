@@ -1,6 +1,7 @@
 import { Ledger } from './ledger';
 import { Pod } from './pod';
 import { Transaction } from './transaction';
+import { TestConfig } from './testConfig';
 
 class Message {
   public type: MessageType;
@@ -71,7 +72,10 @@ const isTransactionValid = (transactionData: {
   };
 };
 
-const sendTestConfig = (testConfig): Message => ({
+const sendTestConfig = (testConfig: {
+  selectedPods: Pod[],
+  testConfig: TestConfig,
+}): Message => ({
   type: MessageType.TEST_CONFIG,
   data: JSON.stringify(testConfig),
 });
