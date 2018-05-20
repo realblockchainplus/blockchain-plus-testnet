@@ -1,4 +1,5 @@
 import * as bodyParser from 'body-parser';
+import { spawn } from 'child_process';
 import * as cors from 'cors';
 // import * as dotenv from 'dotenv';
 import * as express from 'express';
@@ -13,6 +14,13 @@ import { TestConfig } from './testConfig';
 import { randomNumberFromRange } from './utils';
 import { getPublicFromWallet, initWallet } from './wallet';
 
+// Argument Options
+// * p = Port (number)
+// * s = isSeed (boolean)
+// * t = podType (podType)
+// * c = isCluster (boolean)
+// * np = numPartner (number)
+// * nr = numRegular (number)
 const argv = minimist(process.argv.slice(2));
 
 // Arbitrary range
@@ -23,6 +31,10 @@ const portMax = 65535;
 // For non-local tests the port 80 is passed through npm run
 const port = argv.p || randomNumberFromRange(portMin, portMax, true);
 
+// For local testing a cluster is created
+const localCluster = argv.c === 'true';
+const numRegular = argv.nr || 0;
+const numPartner = argv.np || 0;
 
 /**
  * Initializes a http server with a limited API to allow for
@@ -116,4 +128,16 @@ const initHttpServer = (): void => {
   });
 };
 
-initHttpServer();
+if (localCluster) {
+  for (let i = 0; i < numRegular; i += 1) {
+    console.log('Spawning Regular node...');
+    spawn('npm.cmd', ['run', 'start-regular-local']);
+  }
+  for (let i = 0; i < numPartner; i += 1) {
+    console.log('Spawning Partner node...');
+    spawn('npm.cmd', ['run', 'start-partner-local']);
+  }
+}
+else {
+  initHttpServer();
+}

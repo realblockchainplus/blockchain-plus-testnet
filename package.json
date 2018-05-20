@@ -16,7 +16,7 @@
     "start-regular": "node js/app.js -t 0 -s false -p 80",
     "start-partner-local": "node js/app.js -t 1 -s false",
     "start-regular-local": "node js/app.js -t 0 -s false",
-    "start-cluster-local": "node js/app.js -t 2 -s false",
+    "start-cluster-local": "node js/app.js -s false -c true --np=4 --nr=12",
     "test": "mocha -r ts-node/register tests/*.spec.ts"
   },
   "dependencies": {
