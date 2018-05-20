@@ -226,7 +226,7 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): I
           break;
         }
         pods = _data;
-        // console.log(`Number of pods: ${pods.length}`);
+        console.log(`Number of pods: ${pods.length}`);
         break;
       }
       case MessageType.KILL_SERVER_PROCESS: {
@@ -344,7 +344,7 @@ const initP2PNode = (server: http.Server): void => {
   const randomType: number = Math.floor(Math.random() * 10) >= 1 ? 0 : 1;
   const pod: Pod = createPod(type);
   const socket: ClientSocket = ioClient('https://bcp-tn.now.sh');
-  const logger: ClientSocket = ioClient('http://localhost:3005');
+  const logger: ClientSocket = ioClient('https://bcp-tn-logger.now.sh');
   localLogger = logger;
   localSocket = socket;
   socket.on('connect', () => {
