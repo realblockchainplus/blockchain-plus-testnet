@@ -1,6 +1,6 @@
 # Blockchain+ Testnet
 
-A starting point for testing claims made in our whitepaper.
+Typescript implementation of the blockchain network laid out in the Blockchain+ whitepaper.
 
 ## Built With
 
