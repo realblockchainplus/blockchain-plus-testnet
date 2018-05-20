@@ -2,22 +2,22 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "ES2016",
+    "noImplicitAny": true,    
     "sourceMap": true,
-    "outDir": "js"
+    "outDir": "js",
+    "baseUrl": ".",
+    "paths": {
+      "*": [
+        "types/*.d.ts"
+      ]
+    }
   },
   "compileOnSave": true,
   "include": [
-    "src/app.ts",
-    "src/ledger.ts",
-    "src/logEntry.ts",
-    "src/p2p.ts",
-    "src/pod.ts",
-    "src/rngTool.ts",
-    "src/transaction.ts",
-    "src/util.ts",
-    "src/wallet.ts"
+    "src/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "types"
   ]
 }
