@@ -304,19 +304,21 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             };
             reject(result);
           }, 10000);
+          const connectToPreviousValidatorEndEvent = new LogEvent(
+            pods[getPodIndexByPublicKey(getPublicFromWallet())],
+            pod,
+            transaction.id,
+            EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END,
+            'info',
+          );
+          const connectToPreviousValidatorLogEvent = createLogEvent(connectToPreviousValidatorEndEvent);
+          const isTransactionHashValidMsg = isTransactionHashValid({ transactionId: entry.id, hash: entry.hash });
           socket.on('connect', () => {
-            console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
-            const connectToPreviousValidatorEndEvent = new LogEvent(
-              pods[getPodIndexByPublicKey(getPublicFromWallet())],
-              pod,
-              transaction.id,
-              EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END,
-              'info',
-            );            
-            write(localLogger, createLogEvent(connectToPreviousValidatorEndEvent));
+            console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);        
+            write(localLogger, connectToPreviousValidatorLogEvent);
             // console.log(`[validateLedger] Connected to ${podIp}... sending transaction details.`);
             clearTimeout(connectTimeout);
-            write(socket, isTransactionHashValid({ transactionId: entry.id, hash: entry.hash }));
+            write(socket, isTransactionHashValidMsg);
           });
           socket.on('disconnect', () => {
             // console.log('Socket was disconnected.');
