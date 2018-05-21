@@ -368,7 +368,8 @@ const initP2PNode = (server: http.Server): void => {
 };
 
 const initP2PServer = (server: http.Server): any => {
-  io = socketIo(server);
+  io = socketIo({ wsEngine: 'ws' });
+  io.listen(server);
   io.on('connection', (socket: ServerSocket) => {
     // console.log('[initP2PServer] handleMessage');
     handleNewConnection(socket);

@@ -201,7 +201,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       );
       console.time(`connectValidator-${i}-${transaction.id}`);
       write(localLogger, createLogEvent(connectToValidatorStartEvent));      
-      const socket = ioClient(`http://${podIp}`);
+      const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
       socket.on('connect', () => {
         console.timeEnd(`connectValidator-${i}-${transaction.id}`);
         const connectToValidatorEndEvent = new LogEvent(
@@ -295,7 +295,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
           );
           console.time(`connectPreviousValidator-${k}-${entry.id}`);
           write(localLogger, createLogEvent(connectToPreviousValidatorStartEvent));          
-          const socket = ioClient(`http://${podIp}`);
+          const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
           const connectTimeout = setTimeout(() => {
             const result: IResult = {
               res: false,
