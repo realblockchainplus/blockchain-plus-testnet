@@ -154,7 +154,9 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): I
         // console.log('Received Pod Identity');
         if (getPodIndexByPublicKey(data.address) === null) {
           // console.log(`Local IP of connecting node: ${data.localIp}`);
-          data.ip = (<ServerSocket>socket).handshake.address;
+          // @ts-ignore
+          data.ip = socket['handshake'].headers['x-real-ip'];
+          // data.ip = (<ServerSocket>socket).handshake.address;
           // console.log(data.ip);
           pods.push(data);
           if (isSeed) {
