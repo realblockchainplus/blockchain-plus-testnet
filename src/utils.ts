@@ -7,7 +7,7 @@ const getCurrentTimestamp = (): number => {
 };
 
 const getEntryByTransactionId = (transactionId: string, type: LedgerType): Transaction => {
-  const { entries }: { entries: Transaction[] } = getLedger(type);
+  const { entries }: { entries: Transaction[] } = getLocalLedger(type);
   let index = null;
   for (let i = 0; i < entries.length; i += 1) {
     const entry = entries[i];
