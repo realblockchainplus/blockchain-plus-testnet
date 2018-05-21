@@ -287,7 +287,9 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): I
 
 const handleNewConnection = (socket: ServerSocket): void => {
   // console.log('New connection, emitting [identity]');
-  socket.emit('identity');
+  if (isSeed) {    
+    socket.emit('identity');
+  }
   socket.on('message', (message: Message) => {
     // console.log('[handleNewConnection] handleMessage');
     handleMessage(socket, message);
