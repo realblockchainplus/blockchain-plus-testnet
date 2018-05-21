@@ -122,7 +122,7 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
       EventType.TRANSACTION_END,
       'info',
     );
-    // console.timeEnd('transaction');
+    console.timeEnd('transaction');
     write(localLogger, createLogEvent(event));
     loopTest();
   }
