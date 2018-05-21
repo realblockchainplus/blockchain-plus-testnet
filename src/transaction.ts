@@ -152,10 +152,10 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   const localTestConfig: TestConfig = getTestConfig();
   // console.dir(pods);
   const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
-  const _regularPods = regularPods.filter(pod => !localSelectedPods.find(selectedPod => selectedPod.address === pod.address));
+  // const _regularPods = regularPods.filter(pod => !localSelectedPods.find(selectedPod => selectedPod.address === pod.address));
   const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
   console.time('selectRandomPods');
-  const selectedPods: Pod[] = [...selectRandom(_regularPods, 2, transaction.to), ...selectRandom(partnerPods, 2, transaction.to)];
+  const selectedPods: Pod[] = [...selectRandom(regularPods, 2, transaction.to), ...selectRandom(partnerPods, 2, transaction.to)];
   console.timeEnd('selectRandomPods');
   const localLogger = getLogger();
   const senderPod = pods[getPodIndexByPublicKey(transaction.from)];
