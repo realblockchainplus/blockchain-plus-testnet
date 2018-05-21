@@ -3,7 +3,7 @@ import * as minimist from 'minimist';
 import * as socketIo from 'socket.io';
 import * as ioClient from 'socket.io-client';
 
-import { getLedger, Ledger, LedgerType, updateLedger, initLedger } from './ledger';
+import { getLedger, getLocalLedger, Ledger, LedgerType, updateLedger, initLedger } from './ledger';
 import { createLogEvent, EventType, LogEvent } from './logEntry';
 import {
   isTransactionHashValid,
@@ -87,7 +87,7 @@ const beginTest = (receiver: Pod): void => {
   );
 
   write(localLogger, createLogEvent(testStartEvent));
-  requestValidateTransaction(transaction, getLedger(LedgerType.MY_LEDGER));
+  requestValidateTransaction(transaction, getLocalLedger(LedgerType.MY_LEDGER));
 };
 
 const loopTest = (): void => {
@@ -100,7 +100,7 @@ const loopTest = (): void => {
       getCurrentTimestamp(),
     );
 
-    requestValidateTransaction(transaction, getLedger(LedgerType.MY_LEDGER));
+    requestValidateTransaction(transaction, getLocalLedger(LedgerType.MY_LEDGER));
   }
   else { 
     // console.log(endTime, getCurrentTimestamp());
@@ -380,9 +380,8 @@ const initP2PServer = (server: http.Server): any => {
   }
 };
 
-const write = (socket: ClientSocket, message: Message): void => {
-  // console.log('Before emit');
-  socket.emit('message', message);
+const write = async (socket: ClientSocket, message: Message): Promise<void> => {
+  await socket.emit('message', message);
 };
 
 const killAll = (): void => {

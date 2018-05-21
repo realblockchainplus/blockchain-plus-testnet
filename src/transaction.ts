@@ -3,7 +3,7 @@ import * as ecdsa from 'elliptic';
 import { Server } from 'socket.io';
 import * as ioClient from 'socket.io-client';
 
-import { Ledger } from './ledger';
+import { Ledger, getLedger } from './ledger';
 import { createLogEvent, EventType, LogEvent } from './logEntry';
 import { IResult, isTransactionValid } from './message';
 import {

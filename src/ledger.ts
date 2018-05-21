@@ -9,6 +9,8 @@ let ledgerLocation = ``;
 const myLedgerFilename = 'my_ledger.json';
 const witnessLedgerFilename = 'witness_ledger.json';
 
+let ledgers: { myLedger: Ledger, witnessLedger: Ledger };
+
 /**
  * Definition of a Ledger. There are two types of ledger:
  * * [[LedgerType.MY_LEDGER]]
@@ -39,13 +41,18 @@ enum LedgerType {
 }
 
 /**
- * Returns a copy of a [[Ledger]] based on the specified [[LedgerType]].
+ * Returns a copy of a [[Ledger]] based on the specified [[LedgerType]] from the file system.
  */
 const getLedger = (type: LedgerType): Ledger => {
   const ledgerFilename: string = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
   const ledger: Ledger = JSON.parse(fs.readFileSync(`${ledgerLocation}/${ledgerFilename}`, 'utf-8'));
   return ledger;
 };
+
+/**
+ * Returns a copy of a [[Ledger]] based on the specified [[LedgerType]] from the current memory.
+ */
+const getLocalLedger = (ledgerType: LedgerType): Ledger => ledgerType === LedgerType.MY_LEDGER ? ledgers.myLedger : ledgers.witnessLedger;
 
 /**
  * Initializes the ledger folder and files.
@@ -59,6 +66,7 @@ const initLedger = (port: number): void => {
   }
   fs.writeFileSync(`${ledgerLocation}/${myLedgerFilename}`, JSON.stringify(myLedger));
   fs.writeFileSync(`${ledgerLocation}/${witnessLedgerFilename}`, JSON.stringify(witnessLedger));
+  ledgers = { myLedger: getLedger(0), witnessLedger: getLedger(1) };
 };
 
 /**
@@ -68,7 +76,7 @@ const updateLedger = (transaction: Transaction, type: LedgerType): void => {
   const localTestConfig = getTestConfig();
   const maxLedgerLength = localTestConfig.maxLedgerLength || 1;
   const _transaction = updateTransaction(transaction, type);
-  const ledger: Ledger = getLedger(type);
+  const ledger: Ledger = getLocalLedger(type);
   // console.log(getEntryInLedgerByTransactionId(_transaction.id, ledger));
   if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined) {
     if (ledger.entries.length > maxLedgerLength && type === LedgerType.MY_LEDGER) {
@@ -125,5 +133,5 @@ const deleteEntry = (ledger: Ledger, type: LedgerType): void => {
 
 
 export {
-  Ledger, updateLedger, getLedger, LedgerType, initLedger,
+  Ledger, updateLedger, getLedger, getLocalLedger, LedgerType, initLedger,
 };

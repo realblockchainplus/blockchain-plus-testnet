@@ -1,4 +1,4 @@
-import { getLedger, Ledger, LedgerType } from './ledger';
+import { getLedger, getLocalLedger, Ledger, LedgerType } from './ledger';
 import * as os from 'os';
 import { Transaction } from './transaction';
 

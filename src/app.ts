@@ -66,7 +66,7 @@ const initHttpServer = (): void => {
   //     getCurrentTimestamp(),
   //   );
 
-  //   requestValidateTransaction(transaction, getLedger(LedgerType.MY_LEDGER));
+  //   requestValidateTransaction(transaction, getLocalLedger(LedgerType.MY_LEDGER));
   //   res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.to}.`);
   // });
 
