@@ -149,10 +149,11 @@ const getTransactionId = (transaction: Transaction): string => {
 const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledger): void => {
   const pods: Pod[] = getPods();
   const localSelectedPods: Pod[] = getSelectedPods();
+  const localSenderPods = localSelectedPods.slice(0, localSelectedPods.length / 2)
   const localTestConfig: TestConfig = getTestConfig();
   // console.dir(pods);
   const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
-  // const _regularPods = regularPods.filter(pod => !localSelectedPods.find(selectedPod => selectedPod.address === pod.address));
+  const _regularPods = regularPods.filter(pod => !localSenderPods.find(senderPod => senderPod.address === pod.address));
   const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
   console.time('selectRandomPods');
   const selectedPods: Pod[] = [...selectRandom(regularPods, 2, transaction.to), ...selectRandom(partnerPods, 2, transaction.to)];
