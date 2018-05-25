@@ -27,8 +27,8 @@ const config = require('../node/config/config.json');
 const argv = minimist(process.argv.slice(2));
 
 // Arbitrary range
-const portMin = 50000;
-const portMax = 65535;
+const portMin = config.portMin;
+const portMax = config.portMax;
 
 // Either a port is passed through the npm run command, or a random port is selected
 // For non-local tests the port 80 is passed through npm run

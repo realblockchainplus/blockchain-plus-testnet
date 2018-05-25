@@ -25,6 +25,7 @@ import { getEntryByTransactionId, isValidAddress, toHexString } from './utils';
 import { getPrivateFromWallet, getPublicFromWallet } from './wallet';
 import { TestConfig } from './testConfig';
 
+const config = require('../node/config/config.json');
 const ec = new ecdsa.ec('secp256k1');
 
 class Transaction {

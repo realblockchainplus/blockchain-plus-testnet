@@ -27,6 +27,8 @@ import {
 import { getCurrentTimestamp, randomNumberFromRange } from './utils';
 import { getPublicFromWallet } from './wallet';
 
+const config = require('../node/config/config.json');
+
 type ClientSocket = SocketIOClient.Socket;
 type ServerSocket = socketIo.Socket;
 type Server = socketIo.Server;
@@ -347,10 +349,10 @@ const initP2PNode = (server: http.Server): void => {
   }
   const randomType: number = Math.floor(Math.random() * 10) >= 1 ? 0 : 1;
   const pod: Pod = createPod(type);
-  const socket: ClientSocket = ioClient('https://bcp-tn.now.sh');
-  const logger: ClientSocket = ioClient('https://bcp-tn-logger.now.sh');
-  localLogger = logger;
+  const socket: ClientSocket = ioClient(config.seedServerIp);
+  const logger: ClientSocket = ioClient(config.loggerServerIp);
   localSocket = socket;
+  localLogger = logger;
   socket.on('connect', () => {
     pod.socketId = socket.id;
     pod.port = server.address().port;
@@ -379,6 +381,9 @@ const initP2PServer = (server: http.Server): any => {
     handleNewConnection(socket);
   });
   if (isSeed) {
+    console.log('connecting to logger');
+    localLogger = ioClient(config.loggerPublicIp);
+    console.log('after connecting to logger');
     io.on('disconnect', (socket: ServerSocket) => {
       closeConnection(socket);
     });
