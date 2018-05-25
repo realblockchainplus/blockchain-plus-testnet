@@ -91,6 +91,16 @@ const getGenesisAddress = (): string => genesisAddress;
 
 const generateSignature = (transaction: Transaction, privateKey: string): string => {
   console.time('generateSignature');
+  const pods = getPods();
+  const localLogger = getLogger();
+  const generateSignatureStartEvent = new LogEvent(
+    pods[getPodIndexByPublicKey(transaction.from)],
+    pods[getPodIndexByPublicKey(transaction.to)],
+    transaction.id,
+    EventType.TRANSACTION_START,
+    'silly',
+  );
+  write(localLogger, createLogEventMsg(generateSignatureStartEvent));
   const key = ec.keyFromPrivate(privateKey, 'hex');
   const signature: string = toHexString(key.sign(transaction.id).toDER());
   console.timeEnd('generateSignature');
@@ -150,20 +160,47 @@ const getTransactionId = (transaction: Transaction): string => {
 const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledger): void => {
   const pods: Pod[] = getPods();
   const localSelectedPods: Pod[] = getSelectedPods();
-  const localSenderPods = localSelectedPods.slice(0, localSelectedPods.length / 2)
   const localTestConfig: TestConfig = getTestConfig();
-  // console.dir(pods);
-  const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
-  const _regularPods = regularPods.filter(pod => !localSenderPods.find(senderPod => senderPod.address === pod.address));
-  const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
-  console.time('selectRandomPods');
-  const selectedPods: Pod[] = [...selectRandom(regularPods, 2, transaction.to), ...selectRandom(partnerPods, 2, transaction.to)];
-  console.timeEnd('selectRandomPods');
   const localLogger = getLogger();
+  // console.dir(pods);
+  let regularPods: Pod[] = [];
+  if (config.sendersAsValidators) {
+    regularPods = pods.filter(pod => pod.type === 0);
+  }
+  else {
+    const localSenderPods = localSelectedPods.slice(0, localSelectedPods.length / 2);
+    regularPods = pods.filter(pod => pod.type === 0).filter(pod => !localSenderPods.find(senderPod => senderPod.address === pod.address));
+  }
+  const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
+  const selectRandomPodsStartEvent = new LogEvent(
+    pods[getPodIndexByPublicKey(transaction.from)],
+    pods[getPodIndexByPublicKey(transaction.to)],
+    transaction.id,
+    EventType.SELECT_RANDOM_PODS_START,
+    'silly',
+  );
+  write(localLogger, createLogEventMsg(selectRandomPodsStartEvent));
+  const selectedPods: Pod[] = [...selectRandom(regularPods, 2, transaction.to), ...selectRandom(partnerPods, 2, transaction.to)];
+  const selectRandomPodsEndEvent = new LogEvent(
+    pods[getPodIndexByPublicKey(transaction.from)],
+    pods[getPodIndexByPublicKey(transaction.to)],
+    transaction.id,
+    EventType.SELECT_RANDOM_PODS_END,
+    'silly',
+  );
+  write(localLogger, createLogEventMsg(selectRandomPodsEndEvent));
   const senderPod = pods[getPodIndexByPublicKey(transaction.from)];
   console.time('transaction');
   transaction.assignValidatorsToTransaction(selectedPods);
   console.time('generateTransactionId');
+  const generateTransactionIdEvent = new LogEvent(
+    pods[getPodIndexByPublicKey(transaction.from)],
+    pods[getPodIndexByPublicKey(transaction.to)],
+    transaction.id,
+    EventType.SELECT_RANDOM_PODS_END,
+    'silly',
+  );
+  write(localLogger, createLogEventMsg(selectRandomPodsEndEvent));
   transaction.setTransactionId(getTransactionId(transaction));
   console.timeEnd('generateTransactionId');
   const transactionStartEvent = new LogEvent(

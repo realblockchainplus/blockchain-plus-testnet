@@ -115,6 +115,9 @@ const closeConnection = (socket: ServerSocket): void => {
   // console.log(`Connection failed to peer: ${pod.name} / ${pod.address}`);
   pods.splice(pods.indexOf(pod), 1);
   if (isSeed) {
+    const numRegular = pods.filter(pod => pod.type === 0).length;
+    const numPartner = pods.filter(pod => pod.type === 1).length;
+    console.log(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
     io.emit('message', podListUpdated(pods));
   }
 };
@@ -162,6 +165,9 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): I
           // console.log(data.ip);
           pods.push(data);
           if (isSeed) {
+            const numRegular = pods.filter(pod => pod.type === 0).length;
+            const numPartner = pods.filter(pod => pod.type === 1).length;
+            console.log(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
             io.emit('message', podListUpdated(pods));          
           }
         }
@@ -391,7 +397,9 @@ const initP2PServer = (server: http.Server): any => {
 };
 
 const write = async (socket: ClientSocket, message: Message): Promise<void> => {
+  if (message.type === MessageType.LOG_EVENT) { console.time('writeToLogger'); }
   await socket.emit('message', message);
+  if (message.type === MessageType.LOG_EVENT) { console.timeEnd('writeToLogger'); }
 };
 
 const killAll = (): void => {
