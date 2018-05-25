@@ -4,7 +4,7 @@ import * as socketIo from 'socket.io';
 import * as ioClient from 'socket.io-client';
 
 import { getLedger, getLocalLedger, Ledger, LedgerType, updateLedger, initLedger } from './ledger';
-import { createLogEvent, EventType, LogEvent } from './logEntry';
+import { createLogEventMsg, EventType, LogEvent } from './logEvent';
 import {
   isTransactionHashValid,
   killMsg,
@@ -86,7 +86,7 @@ const beginTest = (receiver: Pod): void => {
     localTestConfig,
   );
 
-  write(localLogger, createLogEvent(testStartEvent));
+  write(localLogger, createLogEventMsg(testStartEvent));
   requestValidateTransaction(transaction, getLocalLedger(LedgerType.MY_LEDGER));
 };
 
@@ -215,7 +215,7 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): I
             'info',
           );
           console.timeEnd('requestValidation');
-          write(localLogger, createLogEvent(requestValidationEndEvent));
+          write(localLogger, createLogEventMsg(requestValidationEndEvent));
           handleValidationResults(transaction.id);          
         }
         break;

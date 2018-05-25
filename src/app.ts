@@ -6,13 +6,16 @@ import * as express from 'express';
 import * as http from 'http';
 import * as minimist from 'minimist';
 
-import { sendTestConfig } from './message';
-import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers } from './p2p';
+import { sendTestConfig, testStartMsg } from './message';
+import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers, write, getLogger } from './p2p';
 import { Pod } from './pod';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
 import { randomNumberFromRange } from './utils';
 import { getPublicFromWallet, initWallet } from './wallet';
+import { LogEvent, EventType, createLogEventMsg } from './logEvent';
+
+const config = require('../node/config/config.json');
 
 // Argument Options
 // * p = Port (number)
@@ -100,6 +103,7 @@ const initHttpServer = (): void => {
     );
     const pods: Pod[] = getPods();
     const io = getIo();
+    const localLogger = getLogger();
     let selectedPods: Pod[] = [];
     if (req.body.senderAddresses > 0) {
       if (req.body.numSenders !== req.body.senderAddresses) {
@@ -116,6 +120,8 @@ const initHttpServer = (): void => {
       const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
       selectedPods = selectRandom(regularPods, testConfig.numSenders * 2, '');
     }
+    console.log(localLogger);
+    write(localLogger, testStartMsg());
     io.emit('message', sendTestConfig({ selectedPods, testConfig }));
     res.send('Test Started!');
   });

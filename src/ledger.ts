@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 
-import { createLogEvent, EventType, LogEvent } from './logEntry';
+import { createLogEventMsg, EventType, LogEvent } from './logEvent';
 import { getLogger, getPodIndexByPublicKey, getPods, loopTest, write, getTestConfig } from './p2p';
 import { Transaction } from './transaction';
 import { getEntryInLedgerByTransactionId } from './utils';
@@ -123,7 +123,7 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
       'info',
     );
     // console.timeEnd('transaction');
-    write(localLogger, createLogEvent(event));
+    write(localLogger, createLogEventMsg(event));
     loopTest();
   }
 };

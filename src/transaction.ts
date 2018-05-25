@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 import * as ioClient from 'socket.io-client';
 
 import { Ledger, getLedger } from './ledger';
-import { createLogEvent, EventType, LogEvent } from './logEntry';
+import { createLogEventMsg, EventType, LogEvent } from './logEvent';
 import { IResult, isTransactionValid } from './message';
 import {
   getIo,
@@ -172,7 +172,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
     EventType.TRANSACTION_START,
     'info',
   );
-  write(localLogger, createLogEvent(transactionStartEvent));
+  write(localLogger, createLogEventMsg(transactionStartEvent));
   console.time('generateSignature');
   transaction.generateSignature();
   console.timeEnd('generateSignature');
@@ -192,7 +192,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
     console.time('requestValidation');
     // console.log(`Connecting to ${podIp}`);
     const promise: Promise<void> = new Promise((resolve, reject) => {
-      write(localLogger, createLogEvent(requestValidationStartEvent));          
+      write(localLogger, createLogEventMsg(requestValidationStartEvent));          
       const connectToValidatorStartEvent = new LogEvent(
         senderPod,
         pod,
@@ -201,7 +201,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
         'info',
       );
       console.time(`connectValidator-${i}-${transaction.id}`);
-      write(localLogger, createLogEvent(connectToValidatorStartEvent));      
+      write(localLogger, createLogEventMsg(connectToValidatorStartEvent));      
       const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
       socket.on('connect', () => {
         console.timeEnd(`connectValidator-${i}-${transaction.id}`);
@@ -212,7 +212,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
           EventType.CONNECT_TO_VALIDATOR_END,
           'info',
         );
-        write(localLogger, createLogEvent(connectToValidatorEndEvent));
+        write(localLogger, createLogEventMsg(connectToValidatorEndEvent));
         write(socket, isTransactionValid({ transaction, senderLedger }));
         resolve(`[requestValidateTransaction] Connected to ${podIp}... sending transaction details for transaction with id: ${transaction.id}.`);
       });
@@ -295,7 +295,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             'info',
           );
           console.time(`connectPreviousValidator-${k}-${entry.id}`);
-          write(localLogger, createLogEvent(connectToPreviousValidatorStartEvent));          
+          write(localLogger, createLogEventMsg(connectToPreviousValidatorStartEvent));          
           const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
           const connectTimeout = setTimeout(() => {
             const result: IResult = {
@@ -312,7 +312,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END,
             'info',
           );
-          const connectToPreviousValidatorLogEvent = createLogEvent(connectToPreviousValidatorEndEvent);
+          const connectToPreviousValidatorLogEvent = createLogEventMsg(connectToPreviousValidatorEndEvent);
           const isTransactionHashValidMsg = isTransactionHashValid({ transactionId: entry.id, hash: entry.hash });
           socket.on('connect', () => {
             console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);        
