@@ -19,6 +19,7 @@
     "start-partner-local-debug": "set DEBUG=* & node js/app.js -t 1 -s false",
     "start-regular-local-debug": "set DEBUG=* & node js/app.js -t 0 -s false",
     "start-cluster-local": "node js/app.js -s false -c true --np=4 --nr=12",
+    "deploy-seed": "echo y | now rm blockchain-plus-testnet & npm run compile & now deploy --public & now alias",
     "test": "mocha -r ts-node/register tests/*.spec.ts"
   },
   "dependencies": {
@@ -54,9 +55,10 @@
     "winston": "^2.4.2"
   },
   "now": {
-    "alias": "",
+    "alias": "bcp-tn",
     "files": [
-      "js"
+      "js",
+      "node/config"
     ]
   }
 }
