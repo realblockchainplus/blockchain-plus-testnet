@@ -18,7 +18,7 @@ import {
 import { createPod, Pod } from './pod';
 import { TestConfig } from './testConfig';
 import {
-  IResult,
+  Result,
   requestValidateTransaction,
   Transaction,
   validateTransaction,
@@ -85,6 +85,8 @@ const beginTest = (receiver: Pod): void => {
     '',
     EventType.TEST_START,
     'info',
+    undefined,
+    undefined,
     localTestConfig,
   );
 
@@ -146,7 +148,7 @@ const getPodIndexBySocket = (socket: ClientSocket | ServerSocket): number => {
   return index;
 };
 
-const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): IResult => {
+const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): Result => {
   try {
     if (message === null) {
       // console.log('could not parse received JSON message: ' + message);
@@ -180,7 +182,7 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): I
         // console.log('Selected for validation. Validating...');
         const { transaction, senderLedger }:
           { transaction: Transaction, senderLedger: Ledger } = JSON.parse(data);
-        validateTransaction(transaction, senderLedger, (res: IResult) => {
+        validateTransaction(transaction, senderLedger, (res: Result) => {
           const tx = new Transaction(
             transaction.from,
             transaction.to,
@@ -202,7 +204,7 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): I
         break;
       }
       case MessageType.VALIDATION_RESULT: {
-        const { result, transaction }: { result: IResult, transaction: Transaction } = JSON.parse(data);
+        const { result, transaction }: { result: Result, transaction: Transaction } = JSON.parse(data);
         // console.log(result.id);
         // console.log(transaction.id);
         if (!validationResults.hasOwnProperty(transaction.id)) {
@@ -210,20 +212,21 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): I
         }
         if (transaction.from === getPublicFromWallet()) {
           validationResults[transaction.id].push({ socket, message });
-        }
-        else {
-          // console.log('why');
-        }
-        if (Object.keys(validationResults[transaction.id]).length === 4) {
           const requestValidationEndEvent = new LogEvent(
             pods[getPodIndexByPublicKey(transaction.from)],
             pods[getPodIndexByPublicKey(transaction.to)],
             transaction.id,
             EventType.REQUEST_VALIDATION_END,
-            'info',
+            'info',            
+            pods[getPodIndexByPublicKey(result.validator)],
           );
           console.timeEnd('requestValidation');
           write(localLogger, createLogEventMsg(requestValidationEndEvent));
+        }
+        else {
+          // console.log('why');
+        }
+        if (Object.keys(validationResults[transaction.id]).length === 4) {
           handleValidationResults(transaction.id);          
         }
         break;
@@ -315,7 +318,7 @@ const handleValidationResults = (transactionId: string): void => {
     const validationResult = _validationResults[i];
     const { socket, message } = validationResult;
     const { result, transaction }:
-      { result: IResult, transaction: Transaction } = JSON.parse(message.data);
+      { result: Result, transaction: Transaction } = JSON.parse(message.data);
     if (result.res) {
       // console.log(`Validation Result returned ${result.res}`);
     }
@@ -396,10 +399,12 @@ const initP2PServer = (server: http.Server): any => {
   }
 };
 
-const write = async (socket: ClientSocket, message: Message): Promise<void> => {
-  if (message.type === MessageType.LOG_EVENT) { console.time('writeToLogger'); }
-  await socket.emit('message', message);
-  if (message.type === MessageType.LOG_EVENT) { console.timeEnd('writeToLogger'); }
+const write = (socket: ClientSocket, message: Message): void => {
+  if (socket) {
+    if (message.type === MessageType.LOG_EVENT) { console.time('writeToLogger'); }
+    socket.emit('message', message);
+    if (message.type === MessageType.LOG_EVENT) { console.timeEnd('writeToLogger'); }
+  }
 };
 
 const killAll = (): void => {

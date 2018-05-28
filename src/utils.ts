@@ -1,12 +1,24 @@
 import { getLedger, getLocalLedger, Ledger, LedgerType } from './ledger';
 import * as os from 'os';
 import { Transaction } from './transaction';
+import { getLogger, getPods, getPodIndexByPublicKey, write } from './p2p';
+import { LogEvent, EventType, createLogEventMsg } from './logEvent';
 
 const getCurrentTimestamp = (): number => {
   return new Date().getTime();
 };
 
 const getEntryByTransactionId = (transactionId: string, type: LedgerType): Transaction => {
+  const pods = getPods();
+  const localLogger = getLogger();
+  const getEntryFromLedgerStartEvent = new LogEvent(
+    undefined,
+    undefined,
+    transactionId,
+    EventType.GET_ENTRY_FROM_LEDGER_START,
+    'silly',
+  );
+  write(localLogger, createLogEventMsg(getEntryFromLedgerStartEvent));
   const { entries }: { entries: Transaction[] } = getLocalLedger(type);
   let index = null;
   for (let i = 0; i < entries.length; i += 1) {
@@ -15,6 +27,14 @@ const getEntryByTransactionId = (transactionId: string, type: LedgerType): Trans
       index = i;
     }
   }
+  const getEntryFromLedgerEndEvent = new LogEvent(
+    undefined,
+    undefined,
+    transactionId,
+    EventType.GET_ENTRY_FROM_LEDGER_END,
+    'silly',
+  );
+  write(localLogger, createLogEventMsg(getEntryFromLedgerEndEvent));
   return entries[index];
 };
 

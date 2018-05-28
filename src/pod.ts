@@ -19,10 +19,8 @@ class Pod {
   public address: string;
   public socketId: string;
 
-  constructor(type: PodType, location: object, name: string) {
+  constructor(type: PodType) {
     this.type = type;
-    this.location = location;
-    this.name = name;
     this.localIp = getLocalIp();
   }
 }
@@ -36,65 +34,9 @@ enum Status {
 enum PodType {
   REGULAR_POD = 0,
   PARTNER_POD = 1,
+  SEED_POD = 2,
+  DUMMY_POD = 3,
 }
-
-const randomNames = [
-  'Jeevan Singh',
-  'Jaswinder Singh',
-  'Gabor Levai',
-  'Rajah Vasjaragagag',
-  'Scott Donnelly',
-  'Gale Rott',
-  'Carleen Labarge',
-  'Mindy Rummage',
-  'Malena Imhoff',
-  'Layla Pfaff',
-  'Ashleigh Depaoli',
-  'Dimple Brockway',
-  'Cheryl Mckie',
-  'Voncile Rideout',
-  'Nanette Skinner',
-  'Wilburn Hetzel',
-  'Zack Ganey',
-  'Aleen Pilarski',
-  'Johnson Cribbs',
-  'Timothy Hottle',
-  'Kellye Loney',
-  'Iraida Browne',
-  'Shaun Burton',
-  'Brianne Honey',
-  'Ceola Cantrelle',
-  'Sheilah Thiede',
-  'Antoine Osterberg',
-  'Denese Bergin',
-  'Stacia Zobel',
-  'Trinity Meng',
-  'Christiana Barnes',
-  'Freddie Kin',
-  'Kai Reid',
-  'Marybeth Lavine',
-  'Vella Sachs',
-  'Cameron Abate',
-  'Shawanna Emanuel',
-  'Hilaria Gabourel',
-  'Clelia Rohloff',
-  'Joi Sandidge',
-  'Micheal Belew',
-  'Mercedes Buhler',
-  'Tam Steimle',
-  'Slyvia Alongi',
-  'Suzie Mcneilly',
-  'Stefanie Beehler',
-  'Nadene Orcutt',
-  'Maud Barlow',
-  'Dusty Dabrowski',
-  'Kylee Krom',
-  'Lena Edmisten',
-  'Kristopher Whiteside',
-  'Dorine Lepley',
-  'Kelle Khouri',
-  'Cristen Shier',
-];
 
 const regularPodSpecs = {
   ram: 2,
@@ -109,12 +51,7 @@ const partnerPodSpecs = {
 };
 
 const createPod = (type: PodType) => {
-  const randomName = randomNames.splice(Math.floor(Math.random() * randomNames.length), 1)[0];
-  const randomLocation = {
-    x: Math.floor(Math.random() * 5000),
-    y: Math.floor(Math.random() * 5000),
-  };
-  const pod: Pod = new Pod(type, randomLocation, randomName);
+  const pod: Pod = new Pod(type);
   pod.address = getPublicFromWallet();
   pod.spawnTimestamp = getCurrentTimestamp();
   type === PodType.REGULAR_POD ?

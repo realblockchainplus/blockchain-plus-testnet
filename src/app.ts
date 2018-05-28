@@ -6,7 +6,7 @@ import * as express from 'express';
 import * as http from 'http';
 import * as minimist from 'minimist';
 
-import { sendTestConfig, testStartMsg } from './message';
+import { Message, MessageType, sendTestConfig, testStartMsg } from './message';
 import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers, write, getLogger } from './p2p';
 import { Pod } from './pod';
 import { selectRandom } from './rngTool';
@@ -122,8 +122,16 @@ const initHttpServer = (): void => {
     }
     console.log(localLogger);
     write(localLogger, testStartMsg());
-    io.emit('message', sendTestConfig({ selectedPods, testConfig }));
-    res.send('Test Started!');
+    localLogger.on('message', (message: Message) => {
+      if (message.type === MessageType.LOGGER_READY) {
+        io.emit('message', sendTestConfig({ selectedPods, testConfig }));
+        res.send('Test Started!');
+      }
+      else {
+        console.log(message.type);
+        console.log('???');
+      }
+    });
   });
 
   server.listen(port, () => {

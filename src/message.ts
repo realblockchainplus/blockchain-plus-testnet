@@ -1,7 +1,9 @@
 import { Ledger } from './ledger';
 import { Pod } from './pod';
+import { Result } from './result';
 import { Transaction } from './transaction';
 import { TestConfig } from './testConfig';
+import { getPublicFromWallet } from './wallet';
 
 class Message {
   public type: MessageType;
@@ -20,15 +22,10 @@ enum MessageType {
   TEST_CONFIG = 9,
   WIPE_LEDGER = 10,
   TEST_START = 11,
+  LOGGER_READY = 12,
 }
 
-interface IResult {
-  res: boolean;
-  reason: string;
-  id: string;
-}
-
-const responseIsTransactionHashValid = (result: IResult): Message => ({
+const responseIsTransactionHashValid = (result: Result): Message => ({
   type: MessageType.TRANSACTION_CONFIRMATION_RESULT,
   data: JSON.stringify(result),
 });
@@ -51,7 +48,7 @@ const isTransactionHashValid = (transactionData: {
   data: JSON.stringify(transactionData),
 });
 
-const responseIsTransactionValid = (result: IResult, transaction: Transaction): Message => {
+const responseIsTransactionValid = (result: Result, transaction: Transaction): Message => {
   return {
     type: MessageType.VALIDATION_RESULT,
     data: JSON.stringify({ result, transaction }),
@@ -92,7 +89,7 @@ const testStartMsg = (): Message => ({
 });
 
 export {
-  Message, MessageType, IResult, isTransactionHashValid, isTransactionValid, killMsg,
+  Message, MessageType, isTransactionHashValid, isTransactionValid, killMsg,
   podListUpdated, responseIdentityMsg, responseIsTransactionHashValid,
   responseIsTransactionValid, sendTestConfig, wipeLedgersMsg, testStartMsg,
 };

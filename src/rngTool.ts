@@ -4,16 +4,18 @@ import { getPublicFromWallet } from './wallet';
 import { randomNumberFromRange } from './utils';
 
 const selectRandom = (pods: Pod[], num: number, to: string = ''): Pod[] => {
+  console.time('selectRandom');
   const randomNumbers: number[] = buildRandomSet(pods, num, to);
   const _pods: Pod[] = [];
   for (let i = 0; i < randomNumbers.length; i += 1) {
     _pods.push(pods[randomNumbers[i]]);
   }
+  console.timeEnd('selectRandom');
   return _pods;
 };
 
 const buildRandomSet = (pods: Pod[], num: number, to: string): number[] => {
-  // console.log('Building random set...');
+  console.time('buildRandomSet');
   const randomSet: number[] = [];
   const myIndex = getPodIndexByPublicKey(getPublicFromWallet(), pods);
   const toIndex = getPodIndexByPublicKey(to, pods);
@@ -26,7 +28,7 @@ const buildRandomSet = (pods: Pod[], num: number, to: string): number[] => {
       randomSet.push(randomNumber);
     }
   }
-  // console.log('While loop over, returning randomSet');
+  console.timeEnd('buildRandomSet');
   return randomSet;
 };
 
