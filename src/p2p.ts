@@ -182,6 +182,14 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): R
         // console.log('Selected for validation. Validating...');
         const { transaction, senderLedger }:
           { transaction: Transaction, senderLedger: Ledger } = JSON.parse(data);
+        const requestValidationStartEvent = new LogEvent(
+          pods[getPodIndexByPublicKey(transaction.from)],
+          pods[getPodIndexByPublicKey(transaction.to)],
+          transaction.id,
+          EventType.REQUEST_VALIDATION_START,
+          'info',          
+        );
+        write(localLogger, createLogEventMsg(requestValidationStartEvent));
         validateTransaction(transaction, senderLedger, (res: Result) => {
           const tx = new Transaction(
             transaction.from,
@@ -199,6 +207,14 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): R
           // io.clients((err, clients) => { // console.dir(clients); });
           // console.log(res.id);
           // console.log(_tx.id);
+          const requestValidationEndEvent = new LogEvent(
+            pods[getPodIndexByPublicKey(transaction.from)],
+            pods[getPodIndexByPublicKey(transaction.to)],
+            transaction.id,
+            EventType.REQUEST_VALIDATION_END,
+            'info',
+          );
+          write(localLogger, createLogEventMsg(requestValidationEndEvent));
           io.emit('message', responseIsTransactionValid(res, _tx));
         });
         break;
@@ -212,16 +228,6 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): R
         }
         if (transaction.from === getPublicFromWallet()) {
           validationResults[transaction.id].push({ socket, message });
-          const requestValidationEndEvent = new LogEvent(
-            pods[getPodIndexByPublicKey(transaction.from)],
-            pods[getPodIndexByPublicKey(transaction.to)],
-            transaction.id,
-            EventType.REQUEST_VALIDATION_END,
-            'info',            
-            pods[getPodIndexByPublicKey(result.validator)],
-          );
-          console.timeEnd('requestValidation');
-          write(localLogger, createLogEventMsg(requestValidationEndEvent));
         }
         else {
           // console.log('why');
@@ -391,7 +397,7 @@ const initP2PServer = (server: http.Server): any => {
   });
   if (isSeed) {
     console.log('connecting to logger');
-    localLogger = ioClient(config.loggerPublicIp);
+    localLogger = ioClient(config.loggerServerIp);
     console.log('after connecting to logger');
     io.on('disconnect', (socket: ServerSocket) => {
       closeConnection(socket);
@@ -401,9 +407,9 @@ const initP2PServer = (server: http.Server): any => {
 
 const write = (socket: ClientSocket, message: Message): void => {
   if (socket) {
-    if (message.type === MessageType.LOG_EVENT) { console.time('writeToLogger'); }
+    // if (message.type === MessageType.LOG_EVENT) { console.time('writeToLogger'); }
     socket.emit('message', message);
-    if (message.type === MessageType.LOG_EVENT) { console.timeEnd('writeToLogger'); }
+    // if (message.type === MessageType.LOG_EVENT) { console.timeEnd('writeToLogger'); }
   }
 };
 
