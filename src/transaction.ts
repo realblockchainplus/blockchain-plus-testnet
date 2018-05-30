@@ -214,18 +214,9 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   for (let i = 0; i < selectedPods.length; i += 1) {
     const pod = selectedPods[i];
     const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
-    const requestValidationStartEvent = new LogEvent(
-      senderPod,
-      pods[getPodIndexByPublicKey(transaction.to)],
-      transaction.id,
-      EventType.REQUEST_VALIDATION_START,
-      'info',
-      pods[getPodIndexByPublicKey(pod.address)],
-    );
     // console.time('requestValidation');
     // console.log(`Connecting to ${podIp}`);
-    const promise: Promise<void> = new Promise((resolve, reject) => {
-      write(localLogger, createLogEventMsg(requestValidationStartEvent));          
+    const promise: Promise<void> = new Promise((resolve, reject) => {          
       const connectToValidatorStartEvent = new LogEvent(
         senderPod,
         pods[getPodIndexByPublicKey(transaction.to)],
