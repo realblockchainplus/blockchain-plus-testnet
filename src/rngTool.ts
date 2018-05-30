@@ -23,12 +23,12 @@ const buildRandomSet = (pods: Pod[], num: number, to: string): number[] => {
   while (randomSet.length < num) {
     randomNumber = randomNumberFromRange(0, pods.length, true);
     // console.log(`Random Number: ${randomNumber}, MyIndex: ${myIndex}`);
-    if (randomSet.indexOf(randomNumber) === -1 && randomNumber !== myIndex && randomNumber !== toIndex) {
+    if (randomSet.indexOf(randomNumber) === -1 && randomNumber !== myIndex) {
       // console.log('Random number not in set, adding.');
       randomSet.push(randomNumber);
     }
   }
-  console.timeEnd('buildRandomSet');
+  // console.timeEnd('buildRandomSet');
   return randomSet;
 };
 
