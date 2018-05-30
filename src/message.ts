@@ -25,9 +25,9 @@ enum MessageType {
   LOGGER_READY = 12,
 }
 
-const responseIsTransactionHashValid = (result: Result): Message => ({
+const responseIsTransactionHashValid = (senderId: string, result: Result): Message => ({
   type: MessageType.TRANSACTION_CONFIRMATION_RESULT,
-  data: JSON.stringify(result),
+  data: JSON.stringify({ senderId, result }),
 });
 
 const podListUpdated = (pods: Pod[]): Message => ({
@@ -41,12 +41,15 @@ const killMsg = (): Message => ({
 });
 
 const isTransactionHashValid = (transactionData: {
+  senderId: string,
   transactionId: string,
   hash: string,
-}): Message => ({
-  type: MessageType.TRANSACTION_CONFIRMATION_REQUEST,
-  data: JSON.stringify(transactionData),
-});
+}): Message => {
+  console.log('[isTransactionValid] sent!');
+  return {
+    type: MessageType.TRANSACTION_CONFIRMATION_REQUEST,
+    data: JSON.stringify(transactionData),
+}};
 
 const responseIsTransactionValid = (result: Result, transaction: Transaction): Message => {
   return {

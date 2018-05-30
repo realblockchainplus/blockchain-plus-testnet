@@ -148,7 +148,7 @@ const getPodIndexBySocket = (socket: ClientSocket | ServerSocket): number => {
   return index;
 };
 
-const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): Result => {
+const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): { senderId: string, result: Result } => {
   try {
     if (message === null) {
       // console.log('could not parse received JSON message: ' + message);
@@ -251,11 +251,11 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): R
         break;
       }
       case MessageType.TRANSACTION_CONFIRMATION_REQUEST: {
-        // console.log('Selected to confirm a valid transaction. Confirming...');
-        const { transactionId, hash }:
-          { transactionId: string, hash: string } = JSON.parse(data);
+        const { senderId, transactionId, hash }:
+          { senderId: string, transactionId: string, hash: string } = JSON.parse(data);
+        console.log(`Selected to confirm a transaction hash for transaction with id: ${transactionId} from: ${senderId}.`);
         const result = validateTransactionHash(transactionId, hash);
-        io.emit('message', responseIsTransactionHashValid(result));
+        io.emit('message', responseIsTransactionHashValid(senderId, result));
         break;
       }
       case MessageType.TRANSACTION_CONFIRMATION_RESULT: {

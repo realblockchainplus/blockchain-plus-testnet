@@ -122,7 +122,7 @@ const initHttpServer = (): void => {
     }
     console.log(localLogger);
     write(localLogger, testStartMsg());
-    localLogger.on('message', (message: Message) => {
+    localLogger.once('message', (message: Message) => {
       if (message.type === MessageType.LOGGER_READY) {
         io.emit('message', sendTestConfig({ selectedPods, testConfig }));
         res.send('Test Started!');
