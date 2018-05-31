@@ -2,7 +2,11 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "ES2016",
-    "noImplicitAny": true,    
+    "noImplicitAny": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": true,
+    "strict": true,
+    "noUnusedLocals": true,  
     "sourceMap": true,
     "outDir": "js",
     "baseUrl": ".",
