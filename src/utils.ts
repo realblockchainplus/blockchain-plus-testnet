@@ -1,52 +1,51 @@
-import { getLedger, getLocalLedger, Ledger, LedgerType } from './ledger';
-import * as os from 'os';
+import { getLocalLedger, Ledger, LedgerType } from './ledger';
+// import * as os from 'os';
 import { Transaction } from './transaction';
-import { getLogger, getPods, getPodIndexByPublicKey, write } from './p2p';
-import { LogEvent, EventType, createLogEventMsg } from './logEvent';
+import { LogEvent, EventType } from './logEvent';
+import { Pod } from './pod';
+import { ClientSocket, ServerSocket } from './p2p';
 
 const getCurrentTimestamp = (): number => {
   return new Date().getTime();
 };
 
 const getEntryByTransactionId = (transactionId: string, type: LedgerType): Transaction => {
-  const pods = getPods();
-  const localLogger = getLogger();
-  const getEntryFromLedgerStartEvent = new LogEvent(
-    undefined,
-    undefined,
+  new LogEvent(
+    '',
+    '',
     transactionId,
     EventType.GET_ENTRY_FROM_LEDGER_START,
     'silly',
   );
-  write(localLogger, createLogEventMsg(getEntryFromLedgerStartEvent));
   const { entries }: { entries: Transaction[] } = getLocalLedger(type);
-  let index = null;
-  for (let i = 0; i < entries.length; i += 1) {
-    const entry = entries[i];
-    if (transactionId === entry.id) {
-      index = i;
-    }
-  }
-  const getEntryFromLedgerEndEvent = new LogEvent(
-    undefined,
-    undefined,
+  const index = entries.findIndex(entry => entry.id === transactionId);
+  new LogEvent(
+    '',
+    '',
     transactionId,
     EventType.GET_ENTRY_FROM_LEDGER_END,
     'silly',
   );
-  write(localLogger, createLogEventMsg(getEntryFromLedgerEndEvent));
   return entries[index];
 };
 
 const getEntryInLedgerByTransactionId = (transactionId: string, ledger: Ledger): Transaction => {
   const { entries }: { entries: Transaction[] } = ledger;
-  let index = null;
-  for (let i = 0; i < entries.length; i += 1) {
-    const entry = entries[i];
-    if (transactionId === entry.id) {
-      index = i;
-    }
-  }
+  new LogEvent(
+    '',
+    '',
+    transactionId,
+    EventType.GET_ENTRY_FROM_LEDGER_START,
+    'silly',
+  );
+  const index = entries.findIndex(entry => entry.id === transactionId);
+  new LogEvent(
+    '',
+    '',
+    transactionId,
+    EventType.GET_ENTRY_FROM_LEDGER_END,
+    'silly',
+  );
   return entries[index];
 };
 
@@ -66,16 +65,25 @@ const getLocalIp = () => {
     }
   }
   return localIp;
+
+const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[]): number => {
+  const index = _pods.findIndex(_pod => _pod.address === publicKey);
+  return index;
+};
+
+const getPodIndexBySocket = (socket: ClientSocket | ServerSocket, _pods: Pod[]): number => {
+  const index = _pods.findIndex(_pod => _pod.socketId === socket.id);
+  return index;
 };
 
 const isValidAddress = (address: string): boolean => {
   if (address.length !== 130) {
-    // console.log(`Invalid public key length. Expected 130, got: ${address.length}`);
+    console.log(`Invalid public key length. Expected 130, got: ${address.length}`);
   } else if (address.match('^[a-fA-F0-9]+$') === null) {
-    // console.log('public key must contain only hex characters');
+    console.log('public key must contain only hex characters');
     return false;
   } else if (!address.startsWith('04')) {
-    // console.log('public key must start with 04');
+    console.log('public key must start with 04');
     return false;
   }
   return true;
@@ -94,5 +102,6 @@ const toHexString = (byteArray: any[]): string => {
 
 export {
   getCurrentTimestamp, getEntryByTransactionId, getEntryInLedgerByTransactionId,
-  getLocalIp, isValidAddress, randomNumberFromRange, toHexString,
+  getLocalIp, getPodIndexByPublicKey, getPodIndexBySocket, isValidAddress,
+  randomNumberFromRange, toHexString,
 };

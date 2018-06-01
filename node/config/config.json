@@ -2,6 +2,5 @@
   "portMin": 0,
   "portMax": 0,
   "seedServerIp": "https://bcp-tn.now.sh",
-  "loggerServerIp": "https://bcp-tn-logger.now.sh",
-  "sendersAsValidators": false
+  "loggerServerIp": "https://bcp-tn-logger.now.sh"
 }
