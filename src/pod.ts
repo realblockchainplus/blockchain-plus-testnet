@@ -7,8 +7,8 @@ class Pod {
   public spawnTimestamp: number;
   public address: string;
   public port: number;
-  public ip?: string;
-  public socketId?: string;
+  public ip: string;
+  public socketId: string;
 
   constructor(type: PodType, port: number) {
     this.type = type;
@@ -16,6 +16,8 @@ class Pod {
     this.address = getPublicFromWallet();
     this.spawnTimestamp = getCurrentTimestamp();
     this.port = port;
+    this.ip = '';
+    this.socketId = '';
   }
 }
 

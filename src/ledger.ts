@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import { EventType, LogEvent } from './logEvent';
 import { loopTest, getTestConfig } from './p2p';
 import { Transaction } from './transaction';
-import { getEntryInLedgerByTransactionId } from './utils';
+import { getEntryInLedgerByTransactionId, createDummyTransaction } from './utils';
 
 let ledgerLocation = ``;
 const myLedgerFilename = 'my_ledger.json';
@@ -97,7 +97,8 @@ const updateLedger = (transaction: Transaction, type: LedgerType): void => {
  * Used to set [[Transaction.amount]] to null if [[LedgerType.WITNESS_LEDGER]].
  */
 const updateTransaction = (transaction: Transaction, type: LedgerType): Transaction => {
-  const _transaction = Object.assign({}, transaction);
+  const _transaction = createDummyTransaction();
+  Object.assign(_transaction, transaction);
   _transaction.amount = type === LedgerType.MY_LEDGER ? _transaction.amount : 0;
   // console.log(`Updated transaction amount based on ledger type. Ledger Type: ${type}, Amount: ${_transaction.amount}.`);
   return _transaction;

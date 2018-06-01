@@ -5,6 +5,7 @@ import { randomNumberFromRange } from './utils';
 
 const selectRandom = (pods: Pod[], num: number, to: string = ''): Pod[] => {
   console.time('selectRandom');
+  // console.log('selectRandom');
   const randomNumbers: number[] = buildRandomSet(pods, num, to);
   const _pods: Pod[] = [];
   for (let i = 0; i < randomNumbers.length; i += 1) {
@@ -15,10 +16,13 @@ const selectRandom = (pods: Pod[], num: number, to: string = ''): Pod[] => {
 };
 
 const buildRandomSet = (pods: Pod[], num: number, to: string): number[] => {
+  // console.log('buildRandomSet');
   console.time('buildRandomSet');
   const randomSet: number[] = [];
   const myIndex = getPodIndexByPublicKey(getPublicFromWallet(), pods);
   let randomNumber;
+  // console.log(num, pods.length);
+  // console.dir(pods);
   while (randomSet.length < num) {
     randomNumber = randomNumberFromRange(0, pods.length, true);
     // console.log(`Random Number: ${randomNumber}, MyIndex: ${myIndex}`);

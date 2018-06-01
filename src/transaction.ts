@@ -15,17 +15,17 @@ import { TestConfig } from './testConfig';
 const ec = new ecdsa.ec('secp256k1');
 
 class Transaction {
-  public id: string;
+  public id: string = '';
   public from: string;
   public to: string;
   public amount: number;
-  public witnessOne!: string;
-  public witnessTwo!: string;
-  public partnerOne!: string;
-  public partnerTwo!: string;
-  public signature: string;
+  public witnessOne: string = '';
+  public witnessTwo: string = '';
+  public partnerOne: string = '';
+  public partnerTwo: string = '';
+  public signature: string = '';
   public timestamp: number;
-  public hash: string;
+  public hash: string = '';
   public local: boolean;
 
   constructor(from: string, to: string, amount: number, timestamp: number, selectedPods: Pod[] = getPods(), testConfig?: TestConfig) {
@@ -34,10 +34,12 @@ class Transaction {
     this.amount = amount;
     this.timestamp = timestamp;
     this.local = testConfig ? testConfig.local : false;
-    this.selectRandomValidators(selectedPods, testConfig);
-    this.id = getTransactionId(this);
-    this.signature = this.generateSignature();
-    this.hash = this.generateHash();
+    if (from !== '') {
+      this.selectRandomValidators(selectedPods, testConfig);
+      this.id = getTransactionId(this);
+      this.signature = this.generateSignature();
+      this.hash = this.generateHash();
+    }
     // this.witnessOne = witnessOne;
     // this.witnessTwo = witnessTwo;
     // this.partnerOne = partnerOne;
@@ -45,14 +47,14 @@ class Transaction {
   }
 
   assignValidatorsToTransaction = (validators: Pod[]): void => {
-    this.witnessOne = validators[0].address;
-    this.witnessTwo = validators[1].address;
-    this.partnerOne = validators[2].address;
-    this.partnerTwo = validators[3].address;
+    this.witnessOne = validators[0].address || '';
+    this.witnessTwo = validators[1].address || '';
+    this.partnerOne = validators[2].address || '';
+    this.partnerTwo = validators[3].address || '';
   }
 
   generateSignature = (): string => {
-    console.log('generateSignature');
+    // console.log('generateSignature');
     new LogEvent(
       this.from,
       this.to,
@@ -73,6 +75,7 @@ class Transaction {
   }
 
   generateHash = (): string => {
+    // console.log('generateHash');
     new LogEvent(
       this.from,
       this.to,
@@ -101,6 +104,7 @@ class Transaction {
   }
 
   getValidators(): Pod[] {
+    // console.log('getValidators');
     const pods = getPods();
     return [
       pods[getPodIndexByPublicKey(this.witnessOne, pods)],
@@ -110,23 +114,22 @@ class Transaction {
     ];
   }
 
-  selectRandomValidators(validatorPool: Pod[], testConfig?: TestConfig) {
-    if (validatorPool.length !== 4) {
-      if (this.from === genesisAddress) {
-        return;
-      }
-      throw new Error('Need 4 validators for a transaction.');
+  selectRandomValidators(sendersAndReceivers: Pod[], testConfig?: TestConfig) {
+    // console.log('selectRandomValidators');
+    if (this.from === getGenesisAddress()) {
+      // console.log('genesis transaction, returning...');
+      return;
     }
     let regularPods: Pod[] = [];
     const pods = getPods();
-    if (testConfig) {
-      if (testConfig.sendersAsValidators) {
-        regularPods = pods.filter(pod => pod.type === 0);
-      }
+    if (testConfig && testConfig.sendersAsValidators) {
+      regularPods = pods.filter(pod => pod.type === 0);
     }
     else {
-      const senderPods = validatorPool.slice(0, validatorPool.length / 2);
+      const senderPods = sendersAndReceivers.slice(0, sendersAndReceivers.length / 2);
       regularPods = pods.filter(pod => pod.type === 0).filter(pod => !senderPods.find(senderPod => senderPod.address === pod.address));
+      // console.log('regularPods');
+      // console.dir(regularPods);
     }
     const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
     const selectedPods: Pod[] = [...selectRandom(regularPods, 2), ...selectRandom(partnerPods, 2)];
@@ -140,7 +143,7 @@ const genesisAmount: number = 500;
 const getGenesisAddress = (): string => genesisAddress;
 
 const genesisTransaction = (publicKey: string): Transaction => {
-  console.log('genesisTransaction');
+  // console.log('genesisTransaction');
   const transaction = new Transaction(
     genesisAddress,
     publicKey,
@@ -178,6 +181,7 @@ const getTransactionId = (transaction: Transaction): string => {
 
 const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledger): void => {
   // console.time('transaction');
+  // console.log('[requestValidateTransaction]');
   new LogEvent(
     transaction.from,
     transaction.to,
@@ -185,7 +189,6 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
     EventType.TRANSACTION_START,
     'info',
   );
-  transaction.generateSignature();
   // console.log('Starting for loop for sending out validation checks...');
   const validators = transaction.getValidators();
   for (let i = 0; i < validators.length; i += 1) {
@@ -217,6 +220,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
           pod.address,
         );
         write(socket, isTransactionValid({ transaction, senderLedger }));
+        // console.dir(senderLedger);
         resolve(`[requestValidateTransaction] Connected to ${podIp}... sending transaction details for transaction with id: ${transaction.id}.`);
       });
       socket.on('message', (message: IMessage) => {

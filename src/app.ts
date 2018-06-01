@@ -121,7 +121,7 @@ const initHttpServer = (): void => {
       const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
       selectedPods = selectRandom(regularPods, testConfig.numSenders * 2, '');
     }
-    console.log(localLogger);
+    // console.log(localLogger);
     write(localLogger, testStartMsg());
     localLogger.once('message', (message: IMessage) => {
       if (message.type === MessageType.LOGGER_READY) {
@@ -129,15 +129,15 @@ const initHttpServer = (): void => {
         res.send('Test Started!');
       }
       else {
-        console.log(message.type);
-        console.log('???');
+        // console.log(message.type);
+        // console.log('???');
       }
     });
   });
 
   server.listen(port, () => {
     const address = server.address() as AddressInfo;
-    console.log(`[Node] New Node created on port: ${address.port}`);
+    // console.log(`[Node] New Node created on port: ${address.port}`);
     initWallet(address.port);
     initP2PServer(server);
     initP2PNode(server);
@@ -146,11 +146,11 @@ const initHttpServer = (): void => {
 
 if (localCluster) {
   for (let i = 0; i < numRegular; i += 1) {
-    console.log('Spawning Regular node...');
+    // console.log('Spawning Regular node...');
     spawn('npm.cmd', ['run', 'start-regular-local']);
   }
   for (let i = 0; i < numPartner; i += 1) {
-    console.log('Spawning Partner node...');
+    // console.log('Spawning Partner node...');
     spawn('npm.cmd', ['run', 'start-partner-local']);
   }
 }

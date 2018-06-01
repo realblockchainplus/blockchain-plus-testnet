@@ -43,8 +43,11 @@ class LogEvent {
   }
 
   sendLogEvent() {
+    console.time('sendLogEvent');
+    // console.log(`[sendLogEvent]: ${this.eventType}`);
     const localLogger = getLogger();
     write(localLogger, logEventMsg(this));
+    console.timeEnd('sendLogEvent');
   }
 }
 

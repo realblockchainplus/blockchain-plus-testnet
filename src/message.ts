@@ -44,7 +44,7 @@ const isTransactionHashValid = (transactionData: {
   transactionId: string,
   hash: string,
 }): IMessage => {
-  console.log('[isTransactionValid] sent!');
+  // console.log('[isTransactionValid] sent!');
   return {
     type: MessageType.TRANSACTION_CONFIRMATION_REQUEST,
     data: JSON.stringify(transactionData),
@@ -59,7 +59,6 @@ const responseIsTransactionValid = (result: Result, transaction: Transaction): I
 };
 
 const responseIdentityMsg = (pod: Pod): IMessage => {
-  console.dir(pod);
   return {
     type: MessageType.RESPONSE_IDENTITY,
     data: JSON.stringify(pod),

@@ -1,5 +1,5 @@
 import { getLocalLedger, Ledger, LedgerType } from './ledger';
-// import * as os from 'os';
+import * as os from 'os';
 import { Transaction } from './transaction';
 import { LogEvent, EventType } from './logEvent';
 import { Pod } from './pod';
@@ -65,6 +65,7 @@ const getLocalIp = () => {
     }
   }
   return localIp;
+};
 
 const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[]): number => {
   const index = _pods.findIndex(_pod => _pod.address === publicKey);
@@ -78,12 +79,12 @@ const getPodIndexBySocket = (socket: ClientSocket | ServerSocket, _pods: Pod[]):
 
 const isValidAddress = (address: string): boolean => {
   if (address.length !== 130) {
-    console.log(`Invalid public key length. Expected 130, got: ${address.length}`);
+    // console.log(`Invalid public key length. Expected 130, got: ${address.length}`);
   } else if (address.match('^[a-fA-F0-9]+$') === null) {
-    console.log('public key must contain only hex characters');
+    // console.log('public key must contain only hex characters');
     return false;
   } else if (!address.startsWith('04')) {
-    console.log('public key must start with 04');
+    // console.log('public key must start with 04');
     return false;
   }
   return true;
@@ -100,8 +101,13 @@ const toHexString = (byteArray: any[]): string => {
   }).join('');
 };
 
+const createDummyTransaction = (): Transaction => {
+  const tx = new Transaction('', '', 0, 0);
+  return tx;
+};
+
 export {
-  getCurrentTimestamp, getEntryByTransactionId, getEntryInLedgerByTransactionId,
-  getLocalIp, getPodIndexByPublicKey, getPodIndexBySocket, isValidAddress,
-  randomNumberFromRange, toHexString,
+  createDummyTransaction, getCurrentTimestamp, getEntryByTransactionId, 
+  getEntryInLedgerByTransactionId, getLocalIp, getPodIndexByPublicKey, getPodIndexBySocket,
+  isValidAddress, randomNumberFromRange, toHexString,
 };
