@@ -3,19 +3,20 @@ import * as minimist from 'minimist';
 import * as socketIo from 'socket.io';
 import * as ioClient from 'socket.io-client';
 
-import { getLedger, getLocalLedger, Ledger, LedgerType, updateLedger, initLedger } from './ledger';
-import { createLogEventMsg, EventType, LogEvent } from './logEvent';
+import { getLocalLedger, Ledger, LedgerType, updateLedger, initLedger } from './ledger';
+import { EventType, LogEvent } from './logEvent';
 import {
   isTransactionHashValid,
   killMsg,
-  Message,
+  IMessage,
   MessageType,
   podListUpdated,
   responseIsTransactionHashValid,
   responseIsTransactionValid,
   wipeLedgersMsg,
+  responseIdentityMsg,
 } from './message';
-import { createPod, Pod } from './pod';
+import { Pod } from './pod';
 import { TestConfig } from './testConfig';
 import {
   Result,
@@ -24,8 +25,9 @@ import {
   validateTransaction,
   validateTransactionHash,
 } from './transaction';
-import { getCurrentTimestamp, randomNumberFromRange } from './utils';
+import { getCurrentTimestamp, getPodIndexBySocket, getPodIndexByPublicKey } from './utils';
 import { getPublicFromWallet } from './wallet';
+import { AddressInfo } from 'net';
 
 const config = require('../node/config/config.json');
 
@@ -42,19 +44,20 @@ const isSeed = argv.s === 'true';
 
 let io: Server;
 let gServer: http.Server;
+let port: number;
 let localSocket: ClientSocket;
 let localLogger: ClientSocket;
 let startTime: number;
 let endTime: number;
 let selectedReceiver: Pod;
 
-let localTestConfig = new TestConfig(60, 2, true, 1);
+let localTestConfig = new TestConfig(60, 2, true, 1, false);
 
 const validationResults: { [txId: string]: IValidationResult[] } = {};
 
 interface IValidationResult {
   socket: ClientSocket | ServerSocket;
-  message: Message;
+  message: IMessage;
 }
 
 const getPods = (): Pod[] => pods;
@@ -63,6 +66,7 @@ const getServer = (): http.Server => gServer;
 const getLogger = (): ClientSocket => localLogger;
 const getTestConfig = (): TestConfig => localTestConfig;
 const getSelectedPods = (): Pod[] => localSelectedPods;
+const getPort = (): number => port;
 
 const beginTest = (receiver: Pod): void => {
   selectedReceiver = receiver;
@@ -77,11 +81,13 @@ const beginTest = (receiver: Pod): void => {
     selectedReceiver.address,
     1,
     getCurrentTimestamp(),
+    localSelectedPods,
+    localTestConfig,
   );
 
-  const testStartEvent = new LogEvent(
-    pods[getPodIndexByPublicKey(transaction.from)],
-    pods[getPodIndexByPublicKey(transaction.to)],
+  new LogEvent(
+    transaction.from,
+    transaction.to,
     '',
     EventType.TEST_START,
     'info',
@@ -89,8 +95,6 @@ const beginTest = (receiver: Pod): void => {
     undefined,
     localTestConfig,
   );
-
-  write(localLogger, createLogEventMsg(testStartEvent));
   requestValidateTransaction(transaction, getLocalLedger(LedgerType.MY_LEDGER));
 };
 
@@ -106,14 +110,14 @@ const loopTest = (): void => {
 
     requestValidateTransaction(transaction, getLocalLedger(LedgerType.MY_LEDGER));
   }
-  else { 
+  else {
     // console.log(endTime, getCurrentTimestamp());
-    // console.log('Time is up!'); 
+    // console.log('Time is up!');
   }
 };
 
 const closeConnection = (socket: ServerSocket): void => {
-  const pod = pods[getPodIndexBySocket(socket)];
+  const pod = pods[getPodIndexBySocket(socket, pods)!];
   // console.log(`Connection failed to peer: ${pod.name} / ${pod.address}`);
   pods.splice(pods.indexOf(pod), 1);
   if (isSeed) {
@@ -124,31 +128,7 @@ const closeConnection = (socket: ServerSocket): void => {
   }
 };
 
-const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[] = pods): number => {
-  // console.time('getPodIndexByPublicKey');
-  let index = null;
-  for (let i = 0; i < _pods.length; i += 1) {
-    const _pod = _pods[i];
-    if (publicKey === _pod.address) {
-      index = i;
-    }
-  }
-  // console.timeEnd('getPodIndexByPublicKey');
-  return index;
-};
-
-const getPodIndexBySocket = (socket: ClientSocket | ServerSocket): number => {
-  let index = null;
-  for (let i = 0; i < pods.length; i += 1) {
-    const _pod = pods[i];
-    if (socket.id === _pod.socketId) {
-      index = i;
-    }
-  }
-  return index;
-};
-
-const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): Result => {
+const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): void => {
   try {
     if (message === null) {
       // console.log('could not parse received JSON message: ' + message);
@@ -158,23 +138,27 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): R
     // console.log('Received message: %s', JSON.stringify(message));
     switch (type) {
       case MessageType.RESPONSE_IDENTITY: {
-        // console.log('Received Pod Identity');
-        if (getPodIndexByPublicKey(data.address) === null) {
-          // console.log(`Local IP of connecting node: ${data.localIp}`);
+        console.log('Received Pod Identity');
+        console.dir(data);
+        const pod: Pod = JSON.parse(data);
+        console.dir(pod);
+        if (getPodIndexByPublicKey(pod.address, pods) === -1) {
+          console.log(`Local IP of connecting node: ${pod.localIp}`);
           // @ts-ignore
-          data.ip = socket['handshake'].headers['x-real-ip'];
-          // data.ip = (<ServerSocket>socket).handshake.address;
-          // console.log(data.ip);
-          pods.push(data);
+          pod.ip = socket['handshake'].headers['x-real-ip'];
+          // console.log((<ServerSocket>socket).handshake.address);
+          console.log(`old ip: ${pod.ip}`);
+          pods.push(pod);
           if (isSeed) {
-            const numRegular = pods.filter(pod => pod.type === 0).length;
-            const numPartner = pods.filter(pod => pod.type === 1).length;
+            const numRegular = pods.filter(_pod => _pod.type === 0).length;
+            const numPartner = pods.filter(_pod => _pod.type === 1).length;
             console.log(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
-            io.emit('message', podListUpdated(pods));          
+            io.emit('message', podListUpdated(pods));
           }
         }
         else {
-          // console.log('Pod already exists in Pods, do nothing.');
+          console.log(getPodIndexByPublicKey(data.address, pods));
+          console.log('Pod already exists in Pods, do nothing.');
         }
         break;
       }
@@ -182,14 +166,13 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): R
         // console.log('Selected for validation. Validating...');
         const { transaction, senderLedger }:
           { transaction: Transaction, senderLedger: Ledger } = JSON.parse(data);
-        const requestValidationStartEvent = new LogEvent(
-          pods[getPodIndexByPublicKey(transaction.from)],
-          pods[getPodIndexByPublicKey(transaction.to)],
+        new LogEvent(
+          transaction.from,
+          transaction.to,
           transaction.id,
           EventType.REQUEST_VALIDATION_START,
-          'info',          
+          'info',
         );
-        write(localLogger, createLogEventMsg(requestValidationStartEvent));
         validateTransaction(transaction, senderLedger, (res: Result) => {
           const tx = new Transaction(
             transaction.from,
@@ -207,20 +190,19 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): R
           // io.clients((err, clients) => { // console.dir(clients); });
           // console.log(res.id);
           // console.log(_tx.id);
-          const requestValidationEndEvent = new LogEvent(
-            pods[getPodIndexByPublicKey(transaction.from)],
-            pods[getPodIndexByPublicKey(transaction.to)],
+          new LogEvent(
+            transaction.from,
+            transaction.to,
             transaction.id,
             EventType.REQUEST_VALIDATION_END,
             'info',
           );
-          write(localLogger, createLogEventMsg(requestValidationEndEvent));
           io.emit('message', responseIsTransactionValid(res, _tx));
         });
         break;
       }
       case MessageType.VALIDATION_RESULT: {
-        const { result, transaction }: { result: Result, transaction: Transaction } = JSON.parse(data);
+        const { transaction }: { transaction: Transaction } = JSON.parse(data);
         // console.log(result.id);
         // console.log(transaction.id);
         if (!validationResults.hasOwnProperty(transaction.id)) {
@@ -233,15 +215,15 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): R
           // console.log('why');
         }
         if (Object.keys(validationResults[transaction.id]).length === 4) {
-          handleValidationResults(transaction.id);          
+          handleValidationResults(transaction.id);
         }
         break;
       }
       case MessageType.POD_LIST_UPDATED: {
-        // console.log('Pod list updated...');
+        console.log('Pod list updated...');
         const _data = JSON.parse(data);
         if (_data.length === undefined) {
-          // console.log(`Pod list received was undefined. Ignoring. TEMPORARY, TRACK DOWN MESSAGE SOURCE.`);
+          // console.log(`Pod list received was undefined. Ignoring. TEMPORARY, TRACK DOWN message SOURCE.`);
           break;
         }
         pods = _data;
@@ -265,7 +247,8 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): R
         break;
       }
       case MessageType.TRANSACTION_CONFIRMATION_RESULT: {
-        return JSON.parse(data);
+        // See validateLedger
+        break;
       }
       case MessageType.TEST_CONFIG: {
         const data = JSON.parse(message.data);
@@ -293,7 +276,7 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): R
       }
       case MessageType.WIPE_LEDGER: {
         // console.log(gServer.address().port);
-        initLedger(gServer.address().port);
+        initLedger(port);
         break;
       }
     }
@@ -304,11 +287,11 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: Message): R
 
 const handleNewConnection = (socket: ServerSocket): void => {
   // console.log('New connection, emitting [identity]');
-  if (isSeed) {    
+  if (isSeed) {
     socket.emit('identity');
   }
-  socket.on('message', (message: Message) => {
-    // console.log('[handleNewConnection] handleMessage');
+  socket.on('message', (message: IMessage) => {
+    console.log('[handleNewConnection] handleMessage');
     handleMessage(socket, message);
   });
   if (isSeed) {
@@ -323,12 +306,12 @@ const handleValidationResults = (transactionId: string): void => {
   for (let i = 0; i < _validationResults.length; i += 1) {
     const validationResult = _validationResults[i];
     const { socket, message } = validationResult;
-    const { result, transaction }:
-      { result: Result, transaction: Transaction } = JSON.parse(message.data);
+    const { result }:
+      { result: Result } = JSON.parse(message.data);
     if (result.res) {
       // console.log(`Validation Result returned ${result.res}`);
     }
-    else { 
+    else {
       isValid = false;
       // console.log(`Validation Result returned ${result.res}`);
       // console.log(`Reason: ${result.reason}`);
@@ -357,29 +340,27 @@ const handleValidationResults = (transactionId: string): void => {
 };
 
 const initP2PNode = (server: http.Server): void => {
+  console.log('initP2PNode');
   gServer = server;
+  port = (server.address() as AddressInfo).port;
   if (isSeed) {
     // console.log('Process is a seed server, node will not be created.');
     return;
   }
-  const randomType: number = Math.floor(Math.random() * 10) >= 1 ? 0 : 1;
-  const pod: Pod = createPod(type);
+  const pod = new Pod(type, port);
   const socket: ClientSocket = ioClient(config.seedServerIp);
   const logger: ClientSocket = ioClient(config.loggerServerIp);
   localSocket = socket;
   localLogger = logger;
   socket.on('connect', () => {
-    pod.socketId = socket.id;
-    pod.port = server.address().port;
-    const message: Message = new Message();
-    message.type = MessageType.RESPONSE_IDENTITY;
-    message.data = pod;
+    const message = responseIdentityMsg(pod);
+    console.dir(message.data);
     socket.on('identity', () => {
-      // console.log('Received [identity]');
+      console.log('Received [identity]');
       write(socket, message);
     });
-    socket.on('message', (msg: Message) => {
-      // console.log(`Received Message: ${msg.type}`);
+    socket.on('message', (msg: IMessage) => {
+      // console.log(`Received message: ${msg.type}`);
       handleMessage(socket, msg);
     });
     socket.on('disconnect', () => {
@@ -389,6 +370,7 @@ const initP2PNode = (server: http.Server): void => {
 };
 
 const initP2PServer = (server: http.Server): any => {
+  console.log('initP2PServer');
   io = socketIo({ wsEngine: 'ws' });
   io.listen(server);
   io.on('connection', (socket: ServerSocket) => {
@@ -405,11 +387,9 @@ const initP2PServer = (server: http.Server): any => {
   }
 };
 
-const write = (socket: ClientSocket, message: Message): void => {
+const write = (socket: ClientSocket, message: IMessage): void => {
   if (socket) {
-    // if (message.type === MessageType.LOG_EVENT) { console.time('writeToLogger'); }
     socket.emit('message', message);
-    // if (message.type === MessageType.LOG_EVENT) { console.timeEnd('writeToLogger'); }
   }
 };
 
@@ -422,6 +402,7 @@ const wipeLedgers = (): void => {
 };
 
 export {
-  beginTest, loopTest, initP2PServer, initP2PNode, getPods, getIo, getTestConfig, write, handleMessage, Message,
-  killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType, getLogger, wipeLedgers, getSelectedPods,
+  beginTest, loopTest, initP2PServer, initP2PNode, getPods, getIo, getServer, getTestConfig, write, handleMessage, IMessage,
+  killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType, getLogger, wipeLedgers, getSelectedPods, ClientSocket,
+  ServerSocket, Server, getPort,
 };

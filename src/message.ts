@@ -3,11 +3,11 @@ import { Pod } from './pod';
 import { Result } from './result';
 import { Transaction } from './transaction';
 import { TestConfig } from './testConfig';
-import { getPublicFromWallet } from './wallet';
+import { LogEvent } from './logEvent';
 
-class Message {
-  public type: MessageType;
-  public data: any;
+interface IMessage {
+  type: MessageType;
+  data: any;
 }
 
 enum MessageType {
@@ -25,17 +25,17 @@ enum MessageType {
   LOGGER_READY = 12,
 }
 
-const responseIsTransactionHashValid = (result: Result): Message => ({
+const responseIsTransactionHashValid = (result: Result): IMessage => ({
   type: MessageType.TRANSACTION_CONFIRMATION_RESULT,
   data: JSON.stringify(result),
 });
 
-const podListUpdated = (pods: Pod[]): Message => ({
+const podListUpdated = (pods: Pod[]): IMessage => ({
   type: MessageType.POD_LIST_UPDATED,
   data: JSON.stringify(pods),
 });
 
-const killMsg = (): Message => ({
+const killMsg = (): IMessage => ({
   type: MessageType.KILL_SERVER_PROCESS,
   data: null,
 });
@@ -43,29 +43,33 @@ const killMsg = (): Message => ({
 const isTransactionHashValid = (transactionData: {
   transactionId: string,
   hash: string,
-}): Message => {
+}): IMessage => {
   console.log('[isTransactionValid] sent!');
   return {
     type: MessageType.TRANSACTION_CONFIRMATION_REQUEST,
     data: JSON.stringify(transactionData),
-}};
+  };
+};
 
-const responseIsTransactionValid = (result: Result, transaction: Transaction): Message => {
+const responseIsTransactionValid = (result: Result, transaction: Transaction): IMessage => {
   return {
     type: MessageType.VALIDATION_RESULT,
     data: JSON.stringify({ result, transaction }),
   };
 };
 
-const responseIdentityMsg = (pod: Pod): Message => ({
-  type: MessageType.RESPONSE_IDENTITY,
-  data: JSON.stringify(pod),
-});
+const responseIdentityMsg = (pod: Pod): IMessage => {
+  console.dir(pod);
+  return {
+    type: MessageType.RESPONSE_IDENTITY,
+    data: JSON.stringify(pod),
+  };
+};
 
 const isTransactionValid = (transactionData: {
   transaction: Transaction,
   senderLedger: Ledger,
-}): Message => {
+}): IMessage => {
   return {
     type: MessageType.SELECTED_FOR_VALIDATION,
     data: JSON.stringify(transactionData),
@@ -75,23 +79,29 @@ const isTransactionValid = (transactionData: {
 const sendTestConfig = (testConfig: {
   selectedPods: Pod[],
   testConfig: TestConfig,
-}): Message => ({
+}): IMessage => ({
   type: MessageType.TEST_CONFIG,
   data: JSON.stringify(testConfig),
 });
 
-const wipeLedgersMsg = (): Message => ({
+const wipeLedgersMsg = (): IMessage => ({
   type: MessageType.WIPE_LEDGER,
   data: null,
 });
 
-const testStartMsg = (): Message => ({
+const testStartMsg = (): IMessage => ({
   type: MessageType.TEST_START,
   data: null,
 });
 
+const logEventMsg = (event: LogEvent): IMessage => ({
+  type: MessageType.LOG_EVENT,
+  data: JSON.stringify(event),
+});
+
 export {
-  Message, MessageType, isTransactionHashValid, isTransactionValid, killMsg,
+  IMessage, MessageType, isTransactionHashValid, isTransactionValid, killMsg,
   podListUpdated, responseIdentityMsg, responseIsTransactionHashValid,
   responseIsTransactionValid, sendTestConfig, wipeLedgersMsg, testStartMsg,
+  logEventMsg,
 };

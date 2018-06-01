@@ -18,7 +18,6 @@ const buildRandomSet = (pods: Pod[], num: number, to: string): number[] => {
   console.time('buildRandomSet');
   const randomSet: number[] = [];
   const myIndex = getPodIndexByPublicKey(getPublicFromWallet(), pods);
-  const toIndex = getPodIndexByPublicKey(to, pods);
   let randomNumber;
   while (randomSet.length < num) {
     randomNumber = randomNumberFromRange(0, pods.length, true);

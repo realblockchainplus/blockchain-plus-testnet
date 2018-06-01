@@ -6,14 +6,14 @@ import * as express from 'express';
 import * as http from 'http';
 import * as minimist from 'minimist';
 
-import { Message, MessageType, sendTestConfig, testStartMsg } from './message';
+import { IMessage, MessageType, sendTestConfig, testStartMsg } from './message';
 import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers, write, getLogger } from './p2p';
 import { Pod } from './pod';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
 import { randomNumberFromRange } from './utils';
 import { getPublicFromWallet, initWallet } from './wallet';
-import { LogEvent, EventType, createLogEventMsg } from './logEvent';
+import { AddressInfo } from 'net';
 
 const config = require('../node/config/config.json');
 
@@ -42,8 +42,8 @@ const numPartner = argv.np || 0;
 /**
  * Initializes a http server with a limited API to allow for
  * user commands.
- * 
- * Commands: 
+ *
+ * Commands:
  * * getAddress
  * * killAll
  * * wipeLedgers
@@ -94,25 +94,26 @@ const initHttpServer = (): void => {
 
   // Starts a test
   app.post('/startTest', (req, res) => {
-    const { duration, numSenders, local, maxLedgerLength, senderAddresses } = req.body;
+    const { duration, numSenders, local, maxLedgerLength, sendersAsValidators, senderAddresses } = req.body;
     const testConfig = new TestConfig(
       duration,
       numSenders,
       local,
       maxLedgerLength,
+      sendersAsValidators,
     );
     const pods: Pod[] = getPods();
     const io = getIo();
     const localLogger = getLogger();
     let selectedPods: Pod[] = [];
-    if (req.body.senderAddresses > 0) {
-      if (req.body.numSenders !== req.body.senderAddresses) {
+    if (senderAddresses > 0) {
+      if (req.body.numSenders !== senderAddresses) {
         res.send('numSenders must equal the length of senderAddresses');
         return;
       }
-      for (let i = 0; i < req.body.senderAddresses.length; i += 1) {
-        const address = req.body.senderAddresses[i];
-        const pod = pods[getPodIndexByPublicKey(address)];
+      for (let i = 0; i < senderAddresses.length; i += 1) {
+        const address = senderAddresses[i];
+        const pod = pods[getPodIndexByPublicKey(address, pods)];
         selectedPods.push(pod);
       }
     }
@@ -122,7 +123,7 @@ const initHttpServer = (): void => {
     }
     console.log(localLogger);
     write(localLogger, testStartMsg());
-    localLogger.once('message', (message: Message) => {
+    localLogger.once('message', (message: IMessage) => {
       if (message.type === MessageType.LOGGER_READY) {
         io.emit('message', sendTestConfig({ selectedPods, testConfig }));
         res.send('Test Started!');
@@ -135,8 +136,9 @@ const initHttpServer = (): void => {
   });
 
   server.listen(port, () => {
-    // console.log(`[Node] New Node created on port: ${server.address().port}`);
-    initWallet(server.address().port);
+    const address = server.address() as AddressInfo;
+    console.log(`[Node] New Node created on port: ${address.port}`);
+    initWallet(address.port);
     initP2PServer(server);
     initP2PNode(server);
   });

@@ -1,39 +1,50 @@
 import * as winston from 'winston';
 
-import { Message, MessageType } from './message';
 import { Pod } from './pod';
 import { TestConfig } from './testConfig';
 import { getPublicFromWallet } from './wallet';
-import { getPods, getPodIndexByPublicKey } from './p2p';
+import { getPods, getPodIndexByPublicKey, getLogger, write } from './p2p';
+import { logEventMsg } from './message';
 
 class LogEvent {
-  public sender: Pod;
-  public receiver: Pod;
-  public description: string;
+  public sender: Partial<Pod>;
+  public receiver: Partial<Pod>;
   public eventType: EventType;
-  public timestamp: string;
-  public messageType: MessageType;
   public transactionId: string;
   public logLevel: winston.NPMLoggingLevel;
-  public owner: Pod;
+  public owner: Partial<Pod>;
   public testConfig?: TestConfig;
   public ledgerLength?: number;
-  public validator?: Pod;
-  public connectionTo?: Pod;
+  public validator?: Partial<Pod>;
+  public connectionTo?: Partial<Pod>;
 
-  constructor(sender: Pod, receiver: Pod, transactionId: string, eventType: EventType,
-    logLevel: winston.NPMLoggingLevel, validator?: Pod, connectionTo?: Pod,
+  constructor(sender: string, receiver: string, transactionId: string, eventType: EventType,
+    logLevel: winston.NPMLoggingLevel, validator?: string, connectionTo?: string,
     testConfig?: TestConfig, ledgerLength?: number) {
-    this.sender = sender;
-    this.receiver = receiver;
-    this.owner = getPods()[getPodIndexByPublicKey(getPublicFromWallet())];
+    this.sender = this.partialPod(sender, 'sender');
+    this.receiver = this.partialPod(receiver, 'receiver');
+    this.owner = this.partialPod(getPublicFromWallet(), 'owner');
     this.transactionId = transactionId;
     this.eventType = eventType;
     this.logLevel = logLevel;
     this.testConfig = testConfig;
     this.ledgerLength = ledgerLength;
-    this.validator = validator;
-    this.connectionTo = connectionTo;
+    this.validator = this.partialPod(validator!, 'validator');
+    this.connectionTo = this.partialPod(connectionTo!, 'connect');
+    this.sendLogEvent();
+  }
+
+  partialPod(address: string, id: string): Partial<Pod> {
+    const pods = getPods();
+    const pod: Partial<Pod> = { ...pods[getPodIndexByPublicKey(address, pods)] };
+    delete pod.socketId;
+    delete pod.spawnTimestamp;
+    return pod;
+  }
+
+  sendLogEvent() {
+    const localLogger = getLogger();
+    write(localLogger, logEventMsg(this));
   }
 }
 
@@ -72,11 +83,6 @@ enum EventType {
   WRITE_TO_WITNESS_LEDGER_END = 32,
 }
 
-const createLogEventMsg = (event: LogEvent): Message => ({
-  type: MessageType.LOG_EVENT,
-  data: JSON.stringify(event),
-});
-
 export {
-  LogEvent, EventType, createLogEventMsg,
+  LogEvent, EventType,
 };

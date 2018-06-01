@@ -10,7 +10,7 @@ class Result {
     this.res = res;
     this.reason = reason;
     this.id = id;
-    this.validator = getPublicFromWallet();  
+    this.validator = getPublicFromWallet();
   }
 }
 

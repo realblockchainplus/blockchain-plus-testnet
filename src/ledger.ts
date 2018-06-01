@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 
-import { createLogEventMsg, EventType, LogEvent } from './logEvent';
-import { getLogger, getPodIndexByPublicKey, getPods, loopTest, write, getTestConfig } from './p2p';
+import { EventType, LogEvent } from './logEvent';
+import { loopTest, getTestConfig } from './p2p';
 import { Transaction } from './transaction';
 import { getEntryInLedgerByTransactionId } from './utils';
 
@@ -28,11 +28,11 @@ class Ledger {
 
 /**
  * ## Ledger Types
- * 
+ *
  * Every node stores a ledger of each type.
- * 
+ *
  * Transactions where the node is either the Sender or Receiver are stored in [[MY_LEDGER]]. Transaction amount is stored.
- * 
+ *
  * Transactions where the node is a witness are stored in [[WITNESS_LEDGER]]. Transaction amount is NOT stored.
  */
 enum LedgerType {
@@ -93,12 +93,12 @@ const updateLedger = (transaction: Transaction, type: LedgerType): void => {
 
 /**
  * Updates [[Transaction.amount]] based on the specified [[LedgerType]].
- * 
+ *
  * Used to set [[Transaction.amount]] to null if [[LedgerType.WITNESS_LEDGER]].
  */
 const updateTransaction = (transaction: Transaction, type: LedgerType): Transaction => {
-  const _transaction: Transaction = { ...transaction };
-  _transaction.amount = type === LedgerType.MY_LEDGER ? _transaction.amount : null;
+  const _transaction = Object.assign({}, transaction);
+  _transaction.amount = type === LedgerType.MY_LEDGER ? _transaction.amount : 0;
   // console.log(`Updated transaction amount based on ledger type. Ledger Type: ${type}, Amount: ${_transaction.amount}.`);
   return _transaction;
 };
@@ -109,46 +109,37 @@ const updateTransaction = (transaction: Transaction, type: LedgerType): Transact
 const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): void => {
   const ledgerFilename = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
   // console.log(`Ledger File Name: ${ledgerFilename}`);
-  const pods = getPods();
-  const localLogger = getLogger();
   const transaction = ledger.entries[ledger.entries.length - 1];
   const eventTypeStart = type === LedgerType.MY_LEDGER ? EventType.WRITE_TO_MY_LEDGER_START : EventType.WRITE_TO_WITNESS_LEDGER_START;
-  const writeToLedgerStartEvent = new LogEvent(
-    pods[getPodIndexByPublicKey(transaction.from)],
-    pods[getPodIndexByPublicKey(transaction.to)],
+  new LogEvent(
+    transaction.from,
+    transaction.to,
     transaction.id,
     eventTypeStart,
     'silly',
   );
-  write(localLogger, createLogEventMsg(writeToLedgerStartEvent));
   fs.writeFileSync(`${ledgerLocation}/${ledgerFilename}`, JSON.stringify(ledger));
   const eventTypeEnd = type === LedgerType.MY_LEDGER ? EventType.WRITE_TO_MY_LEDGER_END : EventType.WRITE_TO_WITNESS_LEDGER_END;
-  const writeToLedgerEndEvent = new LogEvent(
-    pods[getPodIndexByPublicKey(transaction.from)],
-    pods[getPodIndexByPublicKey(transaction.to)],
+  new LogEvent(
+    transaction.from,
+    transaction.to,
     transaction.id,
     eventTypeEnd,
     'silly',
   );
-  write(localLogger, createLogEventMsg(writeToLedgerEndEvent));
   if (ledger.entries.length > 1 && type === LedgerType.MY_LEDGER) {
     // console.log('Looping...');
-    const event = new LogEvent(
-      pods[getPodIndexByPublicKey(transaction.from)],
-      pods[getPodIndexByPublicKey(transaction.to)],
+    new LogEvent(
+      transaction.from,
+      transaction.to,
       transaction.id,
       EventType.TRANSACTION_END,
       'info',
     );
     // console.timeEnd('transaction');
-    write(localLogger, createLogEventMsg(event));
     loopTest();
   }
 };
-
-const deleteEntry = (ledger: Ledger, type: LedgerType): void => {
-};
-
 
 export {
   Ledger, updateLedger, getLedger, getLocalLedger, LedgerType, initLedger,
