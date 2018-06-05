@@ -311,20 +311,20 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             const result = new Result(false, reason, entry.id);
             reject(result);
           }, 10000);
-          new LogEvent(
-            transaction.from,
-            transaction.to,
-            transaction.id,
-            EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END,
-            'info',
-            undefined,
-            pod.address,
-          );
           const isTransactionHashValidMsg = isTransactionHashValid({ transactionId: entry.id, hash: entry.hash });
           socket.on('connect', () => {
             // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
             // console.log(`[validateLedger] Connected to ${podIp}... sending transaction details.`);
             clearTimeout(connectTimeout);
+            new LogEvent(
+              transaction.from,
+              transaction.to,
+              transaction.id,
+              EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END,
+              'info',
+              undefined,
+              pod.address,
+            );
             write(socket, isTransactionHashValidMsg);
           });
           socket.on('disconnect', () => {
