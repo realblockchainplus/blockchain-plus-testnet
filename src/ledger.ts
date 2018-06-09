@@ -4,6 +4,7 @@ import { EventType, LogEvent } from './logEvent';
 import { loopTest, getTestConfig } from './p2p';
 import { Transaction } from './transaction';
 import { getEntryInLedgerByTransactionId, createDummyTransaction } from './utils';
+import { info, debug } from './logger';
 
 let ledgerLocation = ``;
 const myLedgerFilename = 'my_ledger.json';
@@ -62,6 +63,7 @@ const initLedger = (port: number): void => {
   const witnessLedger = new Ledger([], 1);
   ledgerLocation = `node/ledger-${port}`;
   if (!fs.existsSync(ledgerLocation)) {
+    debug('Ledger location does not exist... creating ledger directory.');
     fs.mkdirSync(ledgerLocation);
   }
   fs.writeFileSync(`${ledgerLocation}/${myLedgerFilename}`, JSON.stringify(myLedger));
@@ -77,7 +79,7 @@ const updateLedger = (transaction: Transaction, type: LedgerType): void => {
   const maxLedgerLength = localTestConfig.maxLedgerLength || 1;
   const _transaction = updateTransaction(transaction, type);
   const ledger: Ledger = getLocalLedger(type);
-  // console.log(getEntryInLedgerByTransactionId(_transaction.id, ledger));
+  debug(getEntryInLedgerByTransactionId(_transaction.id, ledger));
   if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined) {
     if (ledger.entries.length > maxLedgerLength && type === LedgerType.MY_LEDGER) {
       ledger.entries.pop();
@@ -86,7 +88,7 @@ const updateLedger = (transaction: Transaction, type: LedgerType): void => {
     writeLedger(ledger, type);
   }
   else {
-    // console.log('Entry already exists. TEMPORARY CHECK.');
+    debug('Entry already exists. TEMPORARY CHECK.');
     if (type === LedgerType.MY_LEDGER) { loopTest(); }
   }
 };
@@ -100,7 +102,7 @@ const updateTransaction = (transaction: Transaction, type: LedgerType): Transact
   const _transaction = createDummyTransaction();
   Object.assign(_transaction, transaction);
   _transaction.amount = type === LedgerType.MY_LEDGER ? _transaction.amount : 0;
-  // console.log(`Updated transaction amount based on ledger type. Ledger Type: ${type}, Amount: ${_transaction.amount}.`);
+  info(`Updated transaction amount based on ledger type. Ledger Type: ${type}, Amount: ${_transaction.amount}.`);
   return _transaction;
 };
 
@@ -109,7 +111,7 @@ const updateTransaction = (transaction: Transaction, type: LedgerType): Transact
  */
 const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): void => {
   const ledgerFilename = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
-  // console.log(`Ledger File Name: ${ledgerFilename}`);
+  debug(`Ledger File Name: ${ledgerFilename}`);
   const transaction = ledger.entries[ledger.entries.length - 1];
   const eventTypeStart = type === LedgerType.MY_LEDGER ? EventType.WRITE_TO_MY_LEDGER_START : EventType.WRITE_TO_WITNESS_LEDGER_START;
   new LogEvent(
@@ -129,7 +131,7 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
     'silly',
   );
   if (ledger.entries.length > 1 && type === LedgerType.MY_LEDGER) {
-    // console.log('Looping...');
+    debug('Looping...');
     new LogEvent(
       transaction.from,
       transaction.to,

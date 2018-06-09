@@ -2,15 +2,30 @@ import { getPodIndexByPublicKey } from './p2p';
 import { Pod } from './pod';
 import { getPublicFromWallet } from './wallet';
 import { randomNumberFromRange } from './utils';
+import { LogEvent, EventType } from './logEvent';
 
 const selectRandom = (pods: Pod[], num: number, to: string = ''): Pod[] => {
   console.time('selectRandom');
+  new LogEvent(
+    '',
+    '',
+    '',
+    EventType.SELECT_RANDOM_PODS_START,
+    'silly',
+  );
   // console.log('selectRandom');
   const randomNumbers: number[] = buildRandomSet(pods, num, to);
   const _pods: Pod[] = [];
   for (let i = 0; i < randomNumbers.length; i += 1) {
     _pods.push(pods[randomNumbers[i]]);
   }
+  new LogEvent(
+    '',
+    '',
+    '',
+    EventType.SELECT_RANDOM_PODS_END,
+    'silly',
+  );
   console.timeEnd('selectRandom');
   return _pods;
 };

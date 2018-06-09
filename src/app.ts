@@ -9,6 +9,7 @@ import * as minimist from 'minimist';
 import { IMessage, MessageType, sendTestConfig, testStartMsg } from './message';
 import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers, write, getLogger } from './p2p';
 import { Pod } from './pod';
+import { err, info, debug } from './logger';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
 import { randomNumberFromRange } from './utils';
@@ -121,7 +122,7 @@ const initHttpServer = (): void => {
       const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
       selectedPods = selectRandom(regularPods, testConfig.numSenders * 2, '');
     }
-    // console.log(localLogger);
+    debug(localLogger);
     write(localLogger, testStartMsg());
     localLogger.once('message', (message: IMessage) => {
       if (message.type === MessageType.LOGGER_READY) {
@@ -129,15 +130,14 @@ const initHttpServer = (): void => {
         res.send('Test Started!');
       }
       else {
-        // console.log(message.type);
-        // console.log('???');
+        err(`Received unexpected message from logger. TYPE: ${message.type}`);
       }
     });
   });
 
   server.listen(port, () => {
     const address = server.address() as AddressInfo;
-    // console.log(`[Node] New Node created on port: ${address.port}`);
+    info(`[Node] New Node created on port: ${address.port}`);
     initWallet(address.port);
     initP2PServer(server);
     initP2PNode(server);
@@ -146,11 +146,11 @@ const initHttpServer = (): void => {
 
 if (localCluster) {
   for (let i = 0; i < numRegular; i += 1) {
-    // console.log('Spawning Regular node...');
+    info('Spawning Regular node...');
     spawn('npm.cmd', ['run', 'start-regular-local']);
   }
   for (let i = 0; i < numPartner; i += 1) {
-    // console.log('Spawning Partner node...');
+    info('Spawning Partner node...');
     spawn('npm.cmd', ['run', 'start-partner-local']);
   }
 }

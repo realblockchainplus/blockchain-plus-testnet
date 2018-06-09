@@ -1,10 +1,12 @@
 import * as winston from 'winston';
 
+import { db } from './firebase';
+import { debug } from './logger';
 import { Pod } from './pod';
 import { TestConfig } from './testConfig';
 import { getPublicFromWallet } from './wallet';
-import { getPods, getPodIndexByPublicKey, getLogger, write } from './p2p';
-import { logEventMsg } from './message';
+import { getPods, getPodIndexByPublicKey, getTestConfig } from './p2p';
+import { getCurrentTimestamp } from './utils';
 
 class LogEvent {
   public sender: Partial<Pod>;
@@ -13,6 +15,8 @@ class LogEvent {
   public transactionId: string;
   public logLevel: winston.NPMLoggingLevel;
   public owner: Partial<Pod>;
+  public timestamp: number;
+  public testId: string;
   public testConfig?: TestConfig;
   public ledgerLength?: number;
   public validator?: Partial<Pod>;
@@ -25,6 +29,8 @@ class LogEvent {
     this.receiver = this.partialPod(receiver, 'receiver');
     this.owner = this.partialPod(getPublicFromWallet(), 'owner');
     this.transactionId = transactionId;
+    this.testId = getTestConfig().testId;
+    this.timestamp = getCurrentTimestamp();
     this.eventType = eventType;
     this.logLevel = logLevel;
     this.testConfig = testConfig;
@@ -43,11 +49,10 @@ class LogEvent {
   }
 
   sendLogEvent() {
-    console.time('sendLogEvent');
-    // console.log(`[sendLogEvent]: ${this.eventType}`);
-    const localLogger = getLogger();
-    write(localLogger, logEventMsg(this));
-    console.timeEnd('sendLogEvent');
+    debug(`[sendLogEvent]: ${this.eventType}`);
+    const testId = this.testId || 'TEMP';
+    const ref = db.ref(`tests/${testId}`);
+    ref.push(JSON.parse(JSON.stringify(this)));
   }
 }
 

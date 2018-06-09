@@ -44,7 +44,6 @@ const isTransactionHashValid = (transactionData: {
   transactionId: string,
   hash: string,
 }): IMessage => {
-  // console.log('[isTransactionValid] sent!');
   return {
     type: MessageType.TRANSACTION_CONFIRMATION_REQUEST,
     data: JSON.stringify(transactionData),
