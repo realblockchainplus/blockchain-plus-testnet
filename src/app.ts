@@ -7,9 +7,9 @@ import * as http from 'http';
 import * as minimist from 'minimist';
 
 import { sendTestConfig } from './message';
-import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers, getLogger } from './p2p';
+import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers } from './p2p';
 import { Pod } from './pod';
-import { info, debug } from './logger';
+import { info } from './logger';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
 import { randomNumberFromRange } from './utils';
@@ -106,7 +106,7 @@ const initHttpServer = (): void => {
     );
     const pods: Pod[] = getPods();
     const io = getIo();
-    const localLogger = getLogger();
+    // const localLogger = getLogger();
     let selectedPods: Pod[] = [];
     if (senderAddresses > 0) {
       if (req.body.numSenders !== senderAddresses) {
@@ -123,7 +123,7 @@ const initHttpServer = (): void => {
       const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
       selectedPods = selectRandom(regularPods, testConfig.numSenders * 2, '');
     }
-    debug(localLogger);
+    // debug(localLogger);
     new LogEvent(
       '',
       '',

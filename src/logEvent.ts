@@ -25,9 +25,9 @@ class LogEvent {
   constructor(sender: string, receiver: string, transactionId: string, eventType: EventType,
     logLevel: winston.NPMLoggingLevel, validator?: string, connectionTo?: string,
     testConfig?: TestConfig, ledgerLength?: number) {
-    this.sender = this.partialPod(sender, 'sender');
-    this.receiver = this.partialPod(receiver, 'receiver');
-    this.owner = this.partialPod(getPublicFromWallet(), 'owner');
+    this.sender = this.partialPod(sender);
+    this.receiver = this.partialPod(receiver);
+    this.owner = this.partialPod(getPublicFromWallet());
     this.transactionId = transactionId;
     this.testId = getTestConfig().testId;
     this.timestamp = getCurrentTimestamp();
@@ -35,12 +35,12 @@ class LogEvent {
     this.logLevel = logLevel;
     this.testConfig = testConfig;
     this.ledgerLength = ledgerLength;
-    this.validator = this.partialPod(validator!, 'validator');
-    this.connectionTo = this.partialPod(connectionTo!, 'connect');
+    this.validator = this.partialPod(validator!);
+    this.connectionTo = this.partialPod(connectionTo!);
     this.sendLogEvent();
   }
 
-  partialPod(address: string, id: string): Partial<Pod> {
+  partialPod(address: string): Partial<Pod> {
     const pods = getPods();
     const pod: Partial<Pod> = { ...pods[getPodIndexByPublicKey(address, pods)] };
     delete pod.socketId;
