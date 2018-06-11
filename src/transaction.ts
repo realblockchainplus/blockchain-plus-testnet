@@ -232,7 +232,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       setTimeout(() => { reject(`Connection to ${podIp} could not be made in 10 seconds.`); }, 10000);
     }).then((fulfilled) => {
       // console.log(fulfilled);
-    },      (rejected) => {
+    }, (rejected) => {
       // console.log(rejected);
     });
   }

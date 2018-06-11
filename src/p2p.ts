@@ -117,13 +117,14 @@ const loopTest = (): void => {
 };
 
 const closeConnection = (socket: ServerSocket): void => {
-  const pod = pods[getPodIndexBySocket(socket, pods)!];
+  const pod = pods[getPodIndexBySocket(socket, pods)];
   info(`Connection failed to peer: ${pod.address}`);
   pods.splice(pods.indexOf(pod), 1);
   if (isSeed) {
     const numRegular = pods.filter(pod => pod.type === 0).length;
     const numPartner = pods.filter(pod => pod.type === 1).length;
-    info(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
+    console.log(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`); // temporary. zeit doesnt show debug messages
+    // info(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
     io.emit('message', podListUpdated(pods));
   }
 };
@@ -148,7 +149,8 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
           if (isSeed) {
             const numRegular = pods.filter(_pod => _pod.type === 0).length;
             const numPartner = pods.filter(_pod => _pod.type === 1).length;
-            info(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
+            console.log(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`); // temporary
+            // info(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
             io.emit('message', podListUpdated(pods));
           }
         }
@@ -336,8 +338,9 @@ const initP2PNode = (server: http.Server): void => {
   localSocket = socket;
   localLogger = logger;
   socket.on('connect', () => {
+    pod.socketId = socket.id;
     const message = responseIdentityMsg(pod);
-    console.dir(message.data);
+    // console.dir(message.data);
     socket.on('identity', () => {
       // console.log('Received [identity]');
       write(socket, message);

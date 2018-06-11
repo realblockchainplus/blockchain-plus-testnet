@@ -1,5 +1,5 @@
 import { getLocalLedger, Ledger, LedgerType } from './ledger';
-import * as os from 'os';
+// import * as os from 'os';
 import { Transaction } from './transaction';
 import { LogEvent, EventType } from './logEvent';
 import { Pod } from './pod';
@@ -50,21 +50,22 @@ const getEntryInLedgerByTransactionId = (transactionId: string, ledger: Ledger):
 };
 
 const getLocalIp = () => {
-  const interfaces = os.networkInterfaces();
-  const keys = Object.keys(interfaces);
-  let localIp = '';
-  for (let i = 0; i < keys.length; i += 1) {
-    const key = keys[i];
-    const _interfaces = interfaces[key];
-    for (let k = 0; k < _interfaces.length; k += 1) {
-      const __interface = _interfaces[k];
-      const { address, internal, family } = __interface;
-      if (internal === false && address.substr(0, 7) === '192.168' && family === 'IPv4') {
-        localIp += address;
-      }
-    }
-  }
-  return localIp;
+  // const interfaces = os.networkInterfaces();
+  // const keys = Object.keys(interfaces);
+  // let localIp = '';
+  // for (let i = 0; i < keys.length; i += 1) {
+  //   const key = keys[i];
+  //   const _interfaces = interfaces[key];
+  //   for (let k = 0; k < _interfaces.length; k += 1) {
+  //     const __interface = _interfaces[k];
+  //     const { address, internal, family } = __interface;
+  //     if (internal === false && address.substr(0, 7) === '192.168' && family === 'IPv4') {
+  //       localIp += address;
+  //     }
+  //   }
+  // }
+  // return localIp;
+  return 'localhost';
 };
 
 const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[]): number => {
@@ -107,7 +108,7 @@ const createDummyTransaction = (): Transaction => {
 };
 
 export {
-  createDummyTransaction, getCurrentTimestamp, getEntryByTransactionId, 
+  createDummyTransaction, getCurrentTimestamp, getEntryByTransactionId,
   getEntryInLedgerByTransactionId, getLocalIp, getPodIndexByPublicKey, getPodIndexBySocket,
   isValidAddress, randomNumberFromRange, toHexString,
 };

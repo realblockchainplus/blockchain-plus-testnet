@@ -6,15 +6,16 @@ import * as express from 'express';
 import * as http from 'http';
 import * as minimist from 'minimist';
 
-import { IMessage, MessageType, sendTestConfig, testStartMsg } from './message';
-import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers, write, getLogger } from './p2p';
+import { sendTestConfig } from './message';
+import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers, getLogger } from './p2p';
 import { Pod } from './pod';
-import { err, info, debug } from './logger';
+import { info, debug } from './logger';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
 import { randomNumberFromRange } from './utils';
 import { getPublicFromWallet, initWallet } from './wallet';
 import { AddressInfo } from 'net';
+import { LogEvent, EventType } from './logEvent';
 
 const config = require('../node/config/config.json');
 
@@ -123,16 +124,24 @@ const initHttpServer = (): void => {
       selectedPods = selectRandom(regularPods, testConfig.numSenders * 2, '');
     }
     debug(localLogger);
-    write(localLogger, testStartMsg());
-    localLogger.once('message', (message: IMessage) => {
-      if (message.type === MessageType.LOGGER_READY) {
-        io.emit('message', sendTestConfig({ selectedPods, testConfig }));
-        res.send('Test Started!');
-      }
-      else {
-        err(`Received unexpected message from logger. TYPE: ${message.type}`);
-      }
-    });
+    new LogEvent(
+      '',
+      '',
+      '',
+      EventType.TEST_START,
+      'silly',
+    );
+    io.emit('message', sendTestConfig({ selectedPods, testConfig }));
+    res.send('Test Started!');
+    // localLogger.once('message', (message: IMessage) => {
+    //   if (message.type === MessageType.LOGGER_READY) {
+    //     io.emit('message', sendTestConfig({ selectedPods, testConfig }));
+    //     res.send('Test Started!');
+    //   }
+    //   else {
+    //     err(`Received unexpected message from logger. TYPE: ${message.type}`);
+    //   }
+    // });
   });
 
   server.listen(port, () => {
