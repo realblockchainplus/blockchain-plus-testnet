@@ -2,7 +2,7 @@ import { getLocalIp, getCurrentTimestamp } from './utils';
 import { getPublicFromWallet } from './wallet';
 
 class Pod {
-  public type: PodType;
+  public podType: PodType;
   public localIp: string;
   public spawnTimestamp: number;
   public address: string;
@@ -10,8 +10,8 @@ class Pod {
   public ip: string;
   public socketId: string;
 
-  constructor(type: PodType, port: number) {
-    this.type = type;
+  constructor(podType: PodType, port: number) {
+    this.podType = podType;
     this.localIp = getLocalIp();
     this.address = getPublicFromWallet();
     this.spawnTimestamp = getCurrentTimestamp();

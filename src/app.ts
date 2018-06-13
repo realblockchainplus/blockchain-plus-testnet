@@ -120,7 +120,7 @@ const initHttpServer = (): void => {
       }
     }
     else {
-      const regularPods: Pod[] = pods.filter(pod => pod.type === 0);
+      const regularPods: Pod[] = pods.filter(pod => pod.podType === 0);
       selectedPods = selectRandom(regularPods, testConfig.numSenders * 2, '');
     }
     // debug(localLogger);

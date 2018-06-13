@@ -123,15 +123,15 @@ class Transaction {
     let regularPods: Pod[] = [];
     const pods = getPods();
     if (testConfig && testConfig.sendersAsValidators) {
-      regularPods = pods.filter(pod => pod.type === 0);
+      regularPods = pods.filter(pod => pod.podType === 0);
     }
     else {
       const senderPods = sendersAndReceivers.slice(0, sendersAndReceivers.length / 2);
-      regularPods = pods.filter(pod => pod.type === 0).filter(pod => !senderPods.find(senderPod => senderPod.address === pod.address));
+      regularPods = pods.filter(pod => pod.podType === 0).filter(pod => !senderPods.find(senderPod => senderPod.address === pod.address));
       // console.log('regularPods');
       // console.dir(regularPods);
     }
-    const partnerPods: Pod[] = pods.filter(pod => pod.type === 1);
+    const partnerPods: Pod[] = pods.filter(pod => pod.podType === 1);
     const selectedPods: Pod[] = [...selectRandom(regularPods, 2), ...selectRandom(partnerPods, 2)];
     this.assignValidatorsToTransaction(selectedPods);
   }

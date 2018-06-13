@@ -44,7 +44,7 @@ class LogEvent {
 
   sendToDb() {
     if (conn.readyState === 1) {
-      console.log('Connection is ready. Sending...');
+      // console.log('Connection is ready. Sending...');
       this.sendLogEvent();
     }
     else {
@@ -70,8 +70,8 @@ class LogEvent {
         console.log(err);
         return;
       }
-      console.log(result);
-      console.log('after save');
+      // console.log(result);
+      // console.log('after save');
     });
     // const ref = db.ref(`tests/${testId}`);
     // ref.push(JSON.parse(JSON.stringify(this)));
@@ -79,8 +79,11 @@ class LogEvent {
 
   hydrateLogEventModel() {
     const testId = this.testId || 'TEMP';
-    const logEventModel = conn.model('logEvent', LogEventSchema.set('collection', testId));
-    // const logEvent = new logEventModel({
+    const logEventModel = conn.model(`logEvent-${testId}`, LogEventSchema.set('collection', testId));
+    const logEvent = new logEventModel(this);
+    // console.log(logEvent);
+    // logEvent.markModified('sender');
+    // ({
     //   sender: {
     //     type: this.sender.type,
     //     localIp: this.sender.localIp,
@@ -91,8 +94,6 @@ class LogEvent {
     //     socketId: this.sender.socketId,
     //   },
     // });
-    const logEvent = new logEventModel(this);
-    console.log(logEvent);
     return logEvent;
   }
 }

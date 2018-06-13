@@ -118,11 +118,11 @@ const loopTest = (): void => {
 
 const closeConnection = (socket: ServerSocket): void => {
   const pod = pods[getPodIndexBySocket(socket, pods)];
-  info(`Connection failed to peer: ${pod.address}`);
+  // info(`Connection failed to peer: ${pod.address}`);
   pods.splice(pods.indexOf(pod), 1);
   if (isSeed) {
-    const numRegular = pods.filter(pod => pod.type === 0).length;
-    const numPartner = pods.filter(pod => pod.type === 1).length;
+    const numRegular = pods.filter(pod => pod.podType === 0).length;
+    const numPartner = pods.filter(pod => pod.podType === 1).length;
     console.log(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`); // temporary. zeit doesnt show debug messages
     // info(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
     io.emit('message', podListUpdated(pods));
@@ -147,8 +147,8 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
           pod.ip = socket['handshake'].headers['x-real-ip'];
           pods.push(pod);
           if (isSeed) {
-            const numRegular = pods.filter(_pod => _pod.type === 0).length;
-            const numPartner = pods.filter(_pod => _pod.type === 1).length;
+            const numRegular = pods.filter(_pod => _pod.podType === 0).length;
+            const numPartner = pods.filter(_pod => _pod.podType === 1).length;
             console.log(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`); // temporary
             // info(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
             io.emit('message', podListUpdated(pods));

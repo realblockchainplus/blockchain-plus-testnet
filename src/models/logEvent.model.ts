@@ -1,65 +1,21 @@
 import * as mongoose from 'mongoose';
 
+import { PodSchema } from './pod.model';
+import { TestConfigSchema } from './testConfig.model';
+
 const LogEventSchema = new mongoose.Schema({
-  sender: {
-    type: String,
-    localIp: String,
-    spawnTimestamp: Number,
-    address: String,
-    port: Number,
-    ip: String,
-    socketId: String,
-  },
-  receiver: {
-    type: String,
-    localIp: String,
-    spawnTimestamp: Number,
-    address: String,
-    port: Number,
-    ip: String,
-    socketId: String,
-  },
-  eventType: String,
+  sender: PodSchema,
+  receiver: PodSchema,
+  eventType: Number,
   transactionId: String,
   logLevel: String,
-  owner: {
-    type: String,
-    localIp: String,
-    spawnTimestamp: Number,
-    address: String,
-    port: Number,
-    ip: String,
-    socketId: String,
-  },
+  owner: PodSchema,
   timestamp: Number,
   testId: String,
-  testConfig: {
-    testId: String,
-    duration: Number,
-    numSenders: Number,
-    local: Boolean,
-    maxLedgerLength: Number,
-    sendersAsValidators: Boolean,
-  },
+  testConfig: TestConfigSchema,
   ledgerLength: Number,
-  validator: {
-    type: String,
-    localIp: String,
-    spawnTimestamp: Number,
-    address: String,
-    port: Number,
-    ip: String,
-    socketId: String,
-  },
-  connectionTo: {
-    type: String,
-    localIp: String,
-    spawnTimestamp: Number,
-    address: String,
-    port: Number,
-    ip: String,
-    socketId: String,
-  },
+  validator: PodSchema,
+  connectionTo: PodSchema,
 }, { validateBeforeSave: false });
 
 export { LogEventSchema };
