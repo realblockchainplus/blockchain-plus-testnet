@@ -1,7 +1,9 @@
 import * as winston from 'winston';
 
-import { db } from './firebase';
+// import { db } from './firebase';
 import { debug } from './logger';
+import { LogEventSchema } from './models/logEvent.model';
+import { conn } from './db';
 import { Pod } from './pod';
 import { TestConfig } from './testConfig';
 import { getPublicFromWallet } from './wallet';
@@ -37,9 +39,21 @@ class LogEvent {
     this.ledgerLength = ledgerLength;
     this.validator = this.partialPod(validator!);
     this.connectionTo = this.partialPod(connectionTo!);
-    this.sendLogEvent();
+    this.sendToDb();
   }
 
+  sendToDb() {
+    if (conn.readyState === 1) {
+      console.log('Connection is ready. Sending...');
+      this.sendLogEvent();
+    }
+    else {
+      conn.once('open', () => {
+        console.log('Connection is now open. Sending...');
+        this.sendLogEvent();
+      });
+    }
+  }
   partialPod(address: string): Partial<Pod> {
     const pods = getPods();
     const pod: Partial<Pod> = { ...pods[getPodIndexByPublicKey(address, pods)] };
@@ -50,9 +64,36 @@ class LogEvent {
 
   sendLogEvent() {
     debug(`[sendLogEvent]: ${this.eventType}`);
+    const logEvent = this.hydrateLogEventModel();
+    logEvent.save((err, result) => {
+      if (err) {
+        console.log(err);
+        return;
+      }
+      console.log(result);
+      console.log('after save');
+    });
+    // const ref = db.ref(`tests/${testId}`);
+    // ref.push(JSON.parse(JSON.stringify(this)));
+  }
+
+  hydrateLogEventModel() {
     const testId = this.testId || 'TEMP';
-    const ref = db.ref(`tests/${testId}`);
-    ref.push(JSON.parse(JSON.stringify(this)));
+    const logEventModel = conn.model('logEvent', LogEventSchema.set('collection', testId));
+    // const logEvent = new logEventModel({
+    //   sender: {
+    //     type: this.sender.type,
+    //     localIp: this.sender.localIp,
+    //     spawnTimestamp: this.sender.spawnTimestamp,
+    //     address: this.sender.address,
+    //     port: this.sender.port,
+    //     ip: this.sender.ip,
+    //     socketId: this.sender.socketId,
+    //   },
+    // });
+    const logEvent = new logEventModel(this);
+    console.log(logEvent);
+    return logEvent;
   }
 }
 

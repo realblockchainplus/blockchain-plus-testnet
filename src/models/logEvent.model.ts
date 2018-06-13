@@ -1,0 +1,65 @@
+import * as mongoose from 'mongoose';
+
+const LogEventSchema = new mongoose.Schema({
+  sender: {
+    type: String,
+    localIp: String,
+    spawnTimestamp: Number,
+    address: String,
+    port: Number,
+    ip: String,
+    socketId: String,
+  },
+  receiver: {
+    type: String,
+    localIp: String,
+    spawnTimestamp: Number,
+    address: String,
+    port: Number,
+    ip: String,
+    socketId: String,
+  },
+  eventType: String,
+  transactionId: String,
+  logLevel: String,
+  owner: {
+    type: String,
+    localIp: String,
+    spawnTimestamp: Number,
+    address: String,
+    port: Number,
+    ip: String,
+    socketId: String,
+  },
+  timestamp: Number,
+  testId: String,
+  testConfig: {
+    testId: String,
+    duration: Number,
+    numSenders: Number,
+    local: Boolean,
+    maxLedgerLength: Number,
+    sendersAsValidators: Boolean,
+  },
+  ledgerLength: Number,
+  validator: {
+    type: String,
+    localIp: String,
+    spawnTimestamp: Number,
+    address: String,
+    port: Number,
+    ip: String,
+    socketId: String,
+  },
+  connectionTo: {
+    type: String,
+    localIp: String,
+    spawnTimestamp: Number,
+    address: String,
+    port: Number,
+    ip: String,
+    socketId: String,
+  },
+}, { validateBeforeSave: false });
+
+export { LogEventSchema };
