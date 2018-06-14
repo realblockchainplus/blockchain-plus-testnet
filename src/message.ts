@@ -42,6 +42,7 @@ const killMsg = (): IMessage => ({
 
 const isTransactionHashValid = (transactionData: {
   transactionId: string,
+  currentTransactionId: string,
   hash: string,
 }): IMessage => {
   return {

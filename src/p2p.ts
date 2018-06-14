@@ -226,10 +226,10 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
         break;
       }
       case MessageType.TRANSACTION_CONFIRMATION_REQUEST: {
-        const { transactionId, hash }:
-          { transactionId: string, hash: string } = JSON.parse(data);
+        const { transactionId, currentTransactionId, hash }:
+          { transactionId: string, currentTransactionId: string, hash: string } = JSON.parse(data);
         // console.log(`Selected to confirm a transaction hash for transaction with id: ${transactionId}.`);
-        const result = validateTransactionHash(transactionId, hash);
+        const result = validateTransactionHash(transactionId, currentTransactionId, hash);
         io.emit('message', responseIsTransactionHashValid(result));
         break;
       }

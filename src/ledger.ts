@@ -79,7 +79,7 @@ const updateLedger = (transaction: Transaction, type: LedgerType): void => {
   const maxLedgerLength = localTestConfig.maxLedgerLength || 1;
   const _transaction = updateTransaction(transaction, type);
   const ledger: Ledger = getLocalLedger(type);
-  debug(getEntryInLedgerByTransactionId(_transaction.id, ledger));
+  // debug(getEntryInLedgerByTransactionId(_transaction.id, ledger));
   if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined) {
     if (ledger.entries.length > maxLedgerLength && type === LedgerType.MY_LEDGER) {
       ledger.entries.pop();

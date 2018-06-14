@@ -9,43 +9,33 @@ const getCurrentTimestamp = (): number => {
   return new Date().getTime();
 };
 
-const getEntryByTransactionId = (transactionId: string, type: LedgerType): Transaction => {
-  new LogEvent(
-    '',
-    '',
-    transactionId,
-    EventType.GET_ENTRY_FROM_LEDGER_START,
-    'silly',
-  );
+const getEntryByTransactionId = (transactionId: string, currentTransactionId: string, type: LedgerType): Transaction => {
+  if (type === LedgerType.WITNESS_LEDGER) {
+    new LogEvent(
+      '',
+      '',
+      currentTransactionId,
+      EventType.GET_ENTRY_FROM_LEDGER_START,
+      'silly',
+    );
+  }
   const { entries }: { entries: Transaction[] } = getLocalLedger(type);
   const index = entries.findIndex(entry => entry.id === transactionId);
-  new LogEvent(
-    '',
-    '',
-    transactionId,
-    EventType.GET_ENTRY_FROM_LEDGER_END,
-    'silly',
-  );
+  if (type === LedgerType.WITNESS_LEDGER) {
+    new LogEvent(
+      '',
+      '',
+      currentTransactionId,
+      EventType.GET_ENTRY_FROM_LEDGER_END,
+      'silly',
+    );
+  }
   return entries[index];
 };
 
 const getEntryInLedgerByTransactionId = (transactionId: string, ledger: Ledger): Transaction => {
   const { entries }: { entries: Transaction[] } = ledger;
-  new LogEvent(
-    '',
-    '',
-    transactionId,
-    EventType.GET_ENTRY_FROM_LEDGER_START,
-    'silly',
-  );
   const index = entries.findIndex(entry => entry.id === transactionId);
-  new LogEvent(
-    '',
-    '',
-    transactionId,
-    EventType.GET_ENTRY_FROM_LEDGER_END,
-    'silly',
-  );
   return entries[index];
 };
 

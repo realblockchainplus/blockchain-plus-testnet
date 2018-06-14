@@ -290,7 +290,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
           // console.log(`This node was a validator for this transaction. Checking hash against witness ledger entry...`);
           // console.time(`connectPreviousValidator-${k}-${entry.id}`);
           // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
-          const result = validateTransactionHash(entry.id, entry.hash);
+          const result = validateTransactionHash(entry.id, transaction.id, entry.hash);
           resolve(result);
         } else {
           const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
@@ -311,7 +311,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             const result = new Result(false, reason, entry.id);
             reject(result);
           }, 10000);
-          const isTransactionHashValidMsg = isTransactionHashValid({ transactionId: entry.id, hash: entry.hash });
+          const isTransactionHashValidMsg = isTransactionHashValid({ transactionId: entry.id, currentTransactionId: transaction.id, hash: entry.hash });
           socket.on('connect', () => {
             // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
             // console.log(`[validateLedger] Connected to ${podIp}... sending transaction details.`);
@@ -436,8 +436,8 @@ const validateSignature = (transaction: Transaction): Result => {
   return new Result(res, reason, id);
 };
 
-const validateTransactionHash = (id: string, hash: string): Result => {
-  const transaction: Transaction = getEntryByTransactionId(id, 1);
+const validateTransactionHash = (id: string, currentId: string, hash: string): Result => {
+  const transaction: Transaction = getEntryByTransactionId(id, currentId, 1);
   let res: boolean = false;
   let reason: string = 'Transaction hash is valid';
   if (transaction === undefined) {
