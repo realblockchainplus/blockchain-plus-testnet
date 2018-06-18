@@ -1,0 +1,29 @@
+language: nodejs
+
+before_script:
+  - npm run setup
+  - npm run compile
+
+script:
+  - npm run travis-deploy
+
+after_success:
+  - npm run docs
+
+deploy:
+  - provider: pages
+    github_token: $GITHUB_TOKEN
+    skip_cleanup: true
+    local_dir: docs/
+    on:
+      tags: true
+  - provider: releases
+    api_key: $GITHUB_TOKEN
+    file_glob: true
+    file: "bcp-tn-*.tgz"
+    skip_cleanup: true
+    on:
+      tags: true
+
+notifications:
+  slack: mytugboat:mPltc1I3OSToMjebrSOkc26L

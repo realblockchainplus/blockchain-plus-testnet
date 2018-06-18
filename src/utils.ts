@@ -97,8 +97,10 @@ const createDummyTransaction = (): Transaction => {
   return tx;
 };
 
+const testFunc = () => {};
+
 export {
   createDummyTransaction, getCurrentTimestamp, getEntryByTransactionId,
   getEntryInLedgerByTransactionId, getLocalIp, getPodIndexByPublicKey, getPodIndexBySocket,
-  isValidAddress, randomNumberFromRange, toHexString,
+  isValidAddress, randomNumberFromRange, toHexString, testFunc,
 };

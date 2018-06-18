@@ -2,7 +2,7 @@ node_modules
 node
 *.txt
 *.pem
-docs
+.env
 js
 src/*.js
 src/*.map

@@ -1,7 +1,13 @@
+import * as minimist from 'minimist';
 import * as mongoose from 'mongoose';
 
-const secrets = require('../env/mongodb.json');
+const argv = minimist(process.argv.slice(2));
+const conn = mongoose.createConnection(`mongodb://${process.env.DB_USER}:${process.env.DB_PASS}@${process.env.DB_IP}/${process.env.DB_NAME}`);
 
-const conn = mongoose.createConnection(`mongodb://${secrets.dbUser}:${secrets.dbPassword}@${secrets.dbIp}/${secrets.dbName}`);
+conn.on('open', () => {
+  if (argv.ci === 'true') {
+    process.exit();
+  }
+});
 
 export { conn };
