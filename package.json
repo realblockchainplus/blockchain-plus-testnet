@@ -1,6 +1,6 @@
 {
   "name": "blockchain-plus-testnet",
-  "version": "1.0.0-alpha.7",
+  "version": "1.0.0-alpha.8",
   "description": "Typescript implementation of the blockchain network laid out in the Blockchain+ whitepaper.",
   "repository": {
     "type": "git",
