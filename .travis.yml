@@ -16,14 +16,14 @@ deploy:
     skip_cleanup: true
     local_dir: docs/
     on:
-      tags: true
+      tags: false
   - provider: releases
-    api_key: "TEtBd0MQb3p9bLRMJWG2d0QTLNBa0JIoHNUngvJx/nfwLdSCVVXOAvbIa3OI7ci2UAyYthOLng+NZqmprdzFcUCTx+V1cQ5+MI3Tv1uvwiSY0/m1N4pDl+0muM6ZcwE7jd6oZPwu63SwZCAqq1/RgmrC5/skOmzF7h1PUTUtBtPn3nkh5srmLn3kFePEU2a5cWFB/+zIgkl1CPK9Bx4KHuBgGYjt9aNtRxBCl4U81/gb1IoyGmSPGx9ntax9xQolPrCtoPh6BqneWOEkcUR4id4K2g2swfM1NdvdVs+eFKSuziPRTVAT5Rta0QCAsxjUEKHgp7z8rW+/ZmqBxxkzgp0HVQRfsUidyJDh/XBOK8qF/OqIAu+EZwhBsrLHNfaMpd6b9p+MZNgvtbUN/zT7vRnw+xxmHk7DezEzR9PoT2C5gAa0hQRuysEJ+m4pFH6t6lS7lwkccMA7KxgYPHkMynmD3f23yzgfE468AdV7PZUQgsvHPemE4G6vqsSOkx+zI0cupjAyGhnxirJTEE62P5ClKFz3yb07wLtN2cfBwsRa8K3BtqQ2IVhvFlru6wyuGCi0+t5Djflps8ef1593LdEO/l4C1SAgwa6WWkyPsCmZAmkQ5JfIUExMXtgcFHDx11Xsc0E2bYfPdrVSJZgpiGqp1vw/+oh26BQZe92hQMg="
+    api_key: $GITHUB_TOKEN
     file_glob: true
     file: "bcp-tn-*.tgz"
     skip_cleanup: true
     on:
-      tags: true
+      tags: false
 
 notifications:
   slack: mytugboat:mPltc1I3OSToMjebrSOkc26L
