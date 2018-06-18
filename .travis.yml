@@ -5,7 +5,7 @@ before_script:
   - npm run compile
 
 script:
-  - npm run start-regular
+  - npm run travis-deploy
 
 after_success:
   - npm run docs
@@ -22,9 +22,6 @@ deploy:
     skip_cleanup: true
     on:
       tags: true
-  - provider: npm
-    skip_cleanup: true
-    email: "scoot.donnelly@gmail.com"
-    api_key: $NPM_TOKEN
-    on:
-      tags: true
+
+notifications:
+  slack: mytugboat:mPltc1I3OSToMjebrSOkc26L

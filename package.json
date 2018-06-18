@@ -21,7 +21,8 @@
     "start-regular-local-debug": "set DEBUG=bcp:* & node js/app.js -t 0 -s false",
     "start-cluster-local": "node js/app.js -s false -c true --np=4 --nr=12",
     "deploy-seed": "echo y | now rm blockchain-plus-testnet & npm run compile & now deploy --public & now alias",
-    "test": "mocha -r ts-node/register tests/*.spec.ts"
+    "test": "mocha -r ts-node/register tests/*.spec.ts",
+    "travis-deploy": "node js/app.js -t 0 -s false --ci=true"
   },
   "dependencies": {
     "body-parser": "^1.18.3",
