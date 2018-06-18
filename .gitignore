@@ -3,7 +3,6 @@ node
 *.txt
 *.pem
 .env
-docs
 js
 src/*.js
 src/*.map
