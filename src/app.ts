@@ -1,7 +1,7 @@
 import * as bodyParser from 'body-parser';
 import { spawn } from 'child_process';
 import * as cors from 'cors';
-// import * as dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 import * as express from 'express';
 import * as http from 'http';
 import * as minimist from 'minimist';
@@ -18,6 +18,7 @@ import { AddressInfo } from 'net';
 import { LogEvent, EventType } from './logEvent';
 
 const config = require('../node/config/config.json');
+dotenv.config();
 
 // Argument Options
 // * p = Port (number)
