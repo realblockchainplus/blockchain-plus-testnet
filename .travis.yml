@@ -1,0 +1,30 @@
+language: nodejs
+
+before_script:
+  - npm run setup
+  - npm run compile
+
+script:
+  - npm run start-regular
+
+after_success:
+  - npm run docs
+
+deploy:
+  - provider: pages
+    skip_cleanup: true
+    local_dir: docs/
+    on:
+      tags: true
+  - provider: releases
+    file_glob: true
+    file: "bcp-tn-*.tgz"
+    skip_cleanup: true
+    on:
+      tags: true
+  - provider: npm
+    skip_cleanup: true
+    email: "scoot.donnelly@gmail.com"
+    api_key: $NPM_TOKEN
+    on:
+      tags: true
