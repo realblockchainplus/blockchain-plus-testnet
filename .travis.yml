@@ -16,14 +16,14 @@ deploy:
     skip_cleanup: true
     local_dir: docs/
     on:
-      tags: false
+      tags: true
   - provider: releases
     api_key: $GITHUB_TOKEN
     file_glob: true
     file: "bcp-tn-*.tgz"
     skip_cleanup: true
     on:
-      tags: false
+      tags: true
 
 notifications:
   slack: mytugboat:mPltc1I3OSToMjebrSOkc26L
