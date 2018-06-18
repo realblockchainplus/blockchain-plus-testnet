@@ -12,7 +12,7 @@
     "compile": "tsc",
     "docs": "typedoc --name \"Blockchain Plus Testnet\" --mode file --hideGenerator --out docs src",
     "now-start": "set DEBUG=bcp:* & node js/app.js -s true",
-    "setup": "npm run install",
+    "setup": "npm install",
     "start-partner": "node js/app.js -t 1 -s false -p 80",
     "start-regular": "node js/app.js -t 0 -s false -p 80",
     "start-partner-local": "node js/app.js -t 1 -s false",
