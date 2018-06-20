@@ -287,6 +287,24 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
       // console.dir(pod);
       const promise: Promise<Result> = new Promise((resolve, reject) => {
         if (pod.address === getPublicFromWallet()) {
+          new LogEvent(
+            transaction.from,
+            transaction.to,
+            transaction.id,
+            EventType.CONNECT_TO_PREVIOUS_VALIDATOR_START,
+            'info',
+            undefined,
+            pod.address,
+          );
+          new LogEvent(
+            transaction.from,
+            transaction.to,
+            transaction.id,
+            EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END,
+            'info',
+            undefined,
+            pod.address,
+          );
           // console.log(`This node was a validator for this transaction. Checking hash against witness ledger entry...`);
           // console.time(`connectPreviousValidator-${k}-${entry.id}`);
           // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);

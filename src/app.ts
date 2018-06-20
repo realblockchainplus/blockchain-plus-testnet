@@ -6,6 +6,8 @@ import * as express from 'express';
 import * as http from 'http';
 import * as minimist from 'minimist';
 
+dotenv.config();
+
 import { sendTestConfig } from './message';
 import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers } from './p2p';
 import { Pod } from './pod';
@@ -18,7 +20,6 @@ import { AddressInfo } from 'net';
 import { LogEvent, EventType } from './logEvent';
 
 const config = require('../node/config/config.json');
-dotenv.config();
 
 // Argument Options
 // * p = Port (number)

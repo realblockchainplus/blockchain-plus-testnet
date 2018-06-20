@@ -20,7 +20,14 @@ const getEntryByTransactionId = (transactionId: string, currentTransactionId: st
     );
   }
   const { entries }: { entries: Transaction[] } = getLocalLedger(type);
-  const index = entries.findIndex(entry => entry.id === transactionId);
+  let index = -1; 
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i];
+    if (entry.id === transactionId) {
+      index = i;
+      break;
+    }
+  }
   if (type === LedgerType.WITNESS_LEDGER) {
     new LogEvent(
       '',
@@ -35,7 +42,14 @@ const getEntryByTransactionId = (transactionId: string, currentTransactionId: st
 
 const getEntryInLedgerByTransactionId = (transactionId: string, ledger: Ledger): Transaction => {
   const { entries }: { entries: Transaction[] } = ledger;
-  const index = entries.findIndex(entry => entry.id === transactionId);
+  let index = -1; 
+  for (let i = 0; i < entries.length; i += 1) {
+    const entry = entries[i];
+    if (entry.id === transactionId) {
+      index = i;
+      break;
+    }
+  }
   return entries[index];
 };
 
@@ -59,12 +73,30 @@ const getLocalIp = () => {
 };
 
 const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[]): number => {
-  const index = _pods.findIndex(_pod => _pod.address === publicKey);
+  console.time('getPodIndexByPublicKey');
+  let index = -1; 
+  for (let i = 0; i < _pods.length; i += 1) {
+    const pod = _pods[i];
+    if (pod.address === publicKey) {
+      index = i;
+      break;
+    }
+  }
+  console.timeEnd('getPodIndexByPublicKey');
   return index;
 };
 
 const getPodIndexBySocket = (socket: ClientSocket | ServerSocket, _pods: Pod[]): number => {
-  const index = _pods.findIndex(_pod => _pod.socketId === socket.id);
+  console.time('getPodIndexBySocket');
+  let index = -1; 
+  for (let i = 0; i < _pods.length; i += 1) {
+    const pod = _pods[i];
+    if (pod.socketId === socket.id) {
+      index = i;
+      break;
+    }
+  }
+  console.timeEnd('getPodIndexBySocket');
   return index;
 };
 

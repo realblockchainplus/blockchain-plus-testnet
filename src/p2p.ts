@@ -75,6 +75,17 @@ const beginTest = (receiver: Pod): void => {
   startTime = getCurrentTimestamp();
   endTime = startTime + localTestConfig.duration;
 
+  new LogEvent(
+    '',
+    '',
+    '',
+    EventType.TEST_START,
+    'info',
+    undefined,
+    undefined,
+    localTestConfig,
+  );
+  
   const transaction = new Transaction(
     getPublicFromWallet(),
     selectedReceiver.address,
