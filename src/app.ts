@@ -77,6 +77,11 @@ const initHttpServer = (): void => {
   //   res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.to}.`);
   // });
 
+  app.get('/getPeers', (req, res) => {
+    const pods = JSON.stringify(getPods());
+    res.send({ pods });
+  });
+
   app.get('/getAddress', (req, res) => {
     const address: string = getPublicFromWallet();
     res.send({ address });
