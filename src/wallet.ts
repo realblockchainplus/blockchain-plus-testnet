@@ -11,7 +11,6 @@ const createNodeDir = (): void => {
   if (!existsSync('node')) {
     mkdirSync('node');
   }
-  createWalletDir();
 };
 
 const createWalletDir = (): void => {
@@ -51,6 +50,7 @@ const getPublicFromWallet = (): string => {
 const initWallet = (port: number): void => {
   privateKeyLocation += `node/wallet/${port}`;
   createNodeDir();
+  createWalletDir();
   initLedger(port);
   if (!existsSync(privateKeyLocation)) {
     const newPrivateKey = generatePrivateKey();
@@ -62,6 +62,6 @@ const initWallet = (port: number): void => {
 };
 
 export {
-  getPublicFromWallet, getPrivateFromWallet, generatePrivateKey,
+  createNodeDir, createWalletDir, getPublicFromWallet, getPrivateFromWallet, generatePrivateKey,
   initWallet, deleteWallet,
 };

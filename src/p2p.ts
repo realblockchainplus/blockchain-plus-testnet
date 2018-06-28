@@ -85,7 +85,7 @@ const beginTest = (receiver: Pod): void => {
     undefined,
     localTestConfig,
   );
-  
+
   const transaction = new Transaction(
     getPublicFromWallet(),
     selectedReceiver.address,

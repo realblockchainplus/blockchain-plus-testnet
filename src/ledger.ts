@@ -5,6 +5,7 @@ import { loopTest, getTestConfig } from './p2p';
 import { Transaction } from './transaction';
 import { getEntryInLedgerByTransactionId, createDummyTransaction } from './utils';
 import { info, debug } from './logger';
+import { getPublicFromWallet } from './wallet';
 
 let ledgerLocation = ``;
 const myLedgerFilename = 'my_ledger.json';
@@ -144,6 +145,25 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
   }
 };
 
+const getLedgerBalance = (ledger: Ledger, publicKey?: string): number => {
+  const walletAddress = publicKey || getPublicFromWallet();
+  let ledgerBalance = 0;
+  for (let i = 0; i < ledger.entries.length; i += 1) {
+    const entry = ledger.entries[i];
+    // console.dir(entry);
+    // console.log(entry.to, publicKey);
+    if (entry.to == walletAddress) {
+      // console.log(`Address matches publicKey. Adding ${entry.amount} to currentHoldings.`);
+      ledgerBalance += entry.amount;
+    }
+    if (entry.from == walletAddress) {
+      // console.log(`From matches publicKey. Removing ${entry.amount} from currentHoldings.`);
+      ledgerBalance -= entry.amount;
+    }
+  }
+  return ledgerBalance;
+};
+
 export {
-  Ledger, updateLedger, getLedger, getLocalLedger, LedgerType, initLedger,
+  Ledger, updateLedger, getLedger, getLedgerBalance, getLocalLedger, LedgerType, initLedger,
 };

@@ -8,6 +8,7 @@ import * as minimist from 'minimist';
 
 dotenv.config();
 
+import { createEC2Instance } from './aws';
 import { sendTestConfig } from './message';
 import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers } from './p2p';
 import { Pod } from './pod';
@@ -76,6 +77,11 @@ const initHttpServer = (): void => {
   //   requestValidateTransaction(transaction, getLocalLedger(LedgerType.MY_LEDGER));
   //   res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.to}.`);
   // });
+
+  app.get('/testAws', (req, res) => {
+    createEC2Instance();
+    res.send('aaa');
+  });
 
   app.get('/getPeers', (req, res) => {
     const pods = JSON.stringify(getPods());
@@ -151,7 +157,8 @@ const initHttpServer = (): void => {
     // });
   });
 
-  server.listen(port, () => {
+  server.listen(4001, () => {
+    console.log(port);
     const address = server.address() as AddressInfo;
     info(`[Node] New Node created on port: ${address.port}`);
     initWallet(address.port);

@@ -1,7 +1,7 @@
 import * as CryptoJS from 'crypto-js';
 import * as ecdsa from 'elliptic';
 import * as ioClient from 'socket.io-client';
-import { Ledger } from './ledger';
+import { Ledger, getLedgerBalance } from './ledger';
 import { EventType, LogEvent } from './logEvent';
 import { isTransactionValid } from './message';
 import { IMessage, MessageType, getPodIndexByPublicKey, getPods, getTestConfig, handleMessage, isTransactionHashValid, write } from './p2p';
@@ -151,24 +151,6 @@ const genesisTransaction = (publicKey: string): Transaction => {
     genesisTimestamp,
   );
   return transaction;
-};
-
-const getCurrentHoldings = (ledger: Ledger, publicKey: string): number => {
-  let currentHoldings = 0;
-  for (let i = 0; i < ledger.entries.length; i += 1) {
-    const entry = ledger.entries[i];
-    // console.dir(entry);
-    // console.log(entry.to, publicKey);
-    if (entry.to == publicKey) {
-      // console.log(`Address matches publicKey. Adding ${entry.amount} to currentHoldings.`);
-      currentHoldings += entry.amount;
-    }
-    if (entry.from == publicKey) {
-      // console.log(`From matches publicKey. Removing ${entry.amount} from currentHoldings.`);
-      currentHoldings -= entry.amount;
-    }
-  }
-  return currentHoldings;
 };
 
 const getTransactionId = (transaction: Transaction): string => {
@@ -376,7 +358,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
         validationResult.reason = 'Needs to be filled with details of failed validation checks.';
       }
     }
-    const currentHoldings = getCurrentHoldings(senderLedger, publicKey);
+    const currentHoldings = getLedgerBalance(senderLedger, publicKey);
     if (currentHoldings < transaction.amount) {
       // console.log(`Current Holdings: ${currentHoldings}, Transaction Amount: ${transaction.amount}`);
       validationResult.res = false;
