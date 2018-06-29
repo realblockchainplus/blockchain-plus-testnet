@@ -8,7 +8,7 @@ import * as minimist from 'minimist';
 
 dotenv.config();
 
-import { createEC2Instance } from './aws';
+// import { createEC2Instance } from './aws';
 import { sendTestConfig } from './message';
 import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers } from './p2p';
 import { Pod } from './pod';
@@ -19,6 +19,7 @@ import { randomNumberFromRange } from './utils';
 import { getPublicFromWallet, initWallet } from './wallet';
 import { AddressInfo } from 'net';
 import { LogEvent, EventType } from './logEvent';
+import { configureSecurityGroups, createEC2Cluster, AWSRegionCode } from './aws';
 
 const config = require('../node/config/config.json');
 
@@ -37,7 +38,8 @@ const portMax = config.portMax;
 
 // Either a port is passed through the npm run command, or a random port is selected
 // For non-local tests the port 80 is passed through npm run
-const port = argv.p || randomNumberFromRange(portMin, portMax, true);
+const port = parseInt(argv.p, 10) || randomNumberFromRange(portMin, portMax, true);
+console.log(port);
 
 // For local testing a cluster is created
 const localCluster = argv.c === 'true';
@@ -54,7 +56,7 @@ const numPartner = argv.np || 0;
  * * wipeLedgers
  * * getAddress
  */
-const initHttpServer = (): void => {
+const initHttpServer = (port: number, callback = (server: http.Server) => {}): void => {
   const app = express();
   const server = new http.Server(app);
 
@@ -78,9 +80,16 @@ const initHttpServer = (): void => {
   //   res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.to}.`);
   // });
 
-  app.get('/testAws', (req, res) => {
-    createEC2Instance();
+  app.post('/testAws', (req, res) => {
+    const { totalNodes, regions, imageName }: { totalNodes: number, regions: AWSRegionCode[], imageName: string } = req.body;
+    createEC2Cluster(totalNodes, regions, imageName);
     res.send('aaa');
+  });
+
+  app.post('/configureSecurityGroups', (req, res) => {
+    const { create } = req.body;
+    configureSecurityGroups(create);
+    res.send('bbb');
   });
 
   app.get('/getPeers', (req, res) => {
@@ -157,13 +166,8 @@ const initHttpServer = (): void => {
     // });
   });
 
-  server.listen(4001, () => {
-    console.log(port);
-    const address = server.address() as AddressInfo;
-    info(`[Node] New Node created on port: ${address.port}`);
-    initWallet(address.port);
-    initP2PServer(server);
-    initP2PNode(server);
+  server.listen(port, () => {
+    callback(server);
   });
 };
 
@@ -178,5 +182,13 @@ if (localCluster) {
   }
 }
 else {
-  initHttpServer();
+  initHttpServer(4001, (server) => {
+    const address = server.address() as AddressInfo;
+    info(`[Node] New Node created on port: ${address.port}`);
+    initWallet(address.port);
+    initP2PServer(server);
+    initP2PNode(server);
+  });
 }
+
+export { initHttpServer };
