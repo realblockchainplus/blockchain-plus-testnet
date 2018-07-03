@@ -86,7 +86,7 @@ const initHttpServer = (port: number, callback = (server: http.Server) => {}): v
     res.send('No problemo.');
   });
 
-  app.post('/testAws', (req, res) => {
+  app.post('/createEC2Cluster', (req, res) => {
     const { totalNodes, regions, imageName }: { totalNodes: number, regions: AWSRegionCode[], imageName: string } = req.body;
     createEC2Cluster(totalNodes, regions, imageName);
     res.send('aaa');

@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "ES2017",
+    "noImplicitAny": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitReturns": true,
+    "strict": true,
+    "noUnusedLocals": true,  
+    "sourceMap": true,
+    "outDir": "js",
+    "baseUrl": "."
+  },
+  "compileOnSave": true,
+  "include": [
+    "*.ts"
+  ]
+}
