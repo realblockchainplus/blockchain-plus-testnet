@@ -5,7 +5,7 @@ before_script:
   - npm run compile
 
 script:
-  - npm run travis-deploy
+  - npm run test
 
 after_success:
   - npm run docs

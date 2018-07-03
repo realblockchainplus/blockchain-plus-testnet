@@ -23,8 +23,7 @@
     "start-cluster-local": "node js/app.js -s false -c true --np=4 --nr=12",
     "deploy-seed": "echo y | now rm blockchain-plus-testnet && npm run compile && now deploy --public && now alias",
     "aws-test": "node js/app.js -s false --min=10 --nodes=50",
-    "test": "set NODE_PATH='./blockchain-plus-testnet' && mocha -r ts-node/register tests/*.spec.ts",
-    "travis-deploy": "npm run test"
+    "test": "mocha --exit -r ts-node/register tests/*.spec.ts"
   },
   "dependencies": {
     "body-parser": "^1.18.3",
