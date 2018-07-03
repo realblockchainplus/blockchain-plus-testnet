@@ -10,7 +10,7 @@ const { expect } = chai;
 describe('Wallet exists', () => {
   it('should return a 130 length hex string', () => {
     const result = getPublicFromWallet();
-    expect(result).length.to.equal(130);
+    expect(result.length).to.equal(130);
   });
 });
 
