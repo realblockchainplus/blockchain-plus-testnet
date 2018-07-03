@@ -19,7 +19,7 @@ import { randomNumberFromRange } from './utils';
 import { getPublicFromWallet, initWallet } from './wallet';
 import { AddressInfo } from 'net';
 import { LogEvent, EventType } from './logEvent';
-import { configureSecurityGroups, createEC2Cluster, AWSRegionCode } from './aws';
+import { configureSecurityGroups, createEC2Cluster, AWSRegionCode, terminateEC2Cluster } from './aws';
 
 const config = require('../node/config/config.json');
 
@@ -79,6 +79,12 @@ const initHttpServer = (port: number, callback = (server: http.Server) => {}): v
   //   requestValidateTransaction(transaction, getLocalLedger(LedgerType.MY_LEDGER));
   //   res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.to}.`);
   // });
+
+  app.post('/terminateInstances', (req, res) => {
+    const { regions } = req.body;
+    terminateEC2Cluster(regions);
+    res.send('No problemo.');
+  });
 
   app.post('/testAws', (req, res) => {
     const { totalNodes, regions, imageName }: { totalNodes: number, regions: AWSRegionCode[], imageName: string } = req.body;

@@ -18,6 +18,11 @@ enum AWSRegionCode {
   GERMANY = 'eu-central-1',
 }
 
+const baseName = 'bcp-tn-node';
+const defaultKeyPair = baseName;
+const defaultSecurityGroup = `${baseName}-default`;
+const defaultImage = `${baseName}-image`;
+
 const regularTag: AWS.EC2.Tag = {
   Key: 'type',
   Value: 'regular',
@@ -57,7 +62,7 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
       let securityGroup: AWS.EC2.SecurityGroup;
       for (let i = 0; i < d.SecurityGroups!.length; i += 1) {
         const sg = d.SecurityGroups![i];
-        if (sg.GroupName === 'bcp-tn-node-default') {
+        if (sg.GroupName === defaultSecurityGroup) {
           securityGroup = sg;
         }
       }
@@ -66,11 +71,15 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
           IamInstanceProfile,
           ImageId,
           InstanceType,
-          KeyName: 'bcp-tn-node',
+          KeyName: defaultKeyPair,
           MinCount: nodeCount,
           MaxCount: nodeCount,
           SecurityGroupIds: [securityGroup.GroupId!],
-          UserData: Buffer.from('#!/bin/bash;cd blockchain-plus-testnet;sudo git pull origin master;sudo npm run compile;sudo npm run start-regular').toString('base64'),
+          UserData: Buffer.from(`
+            #!/bin/bash
+            cd blockchain-plus-testnet
+            sudo npm run start-regular
+          `).toString('base64'),
         };
 
         ec2.runInstances(params, (err, data) => {
@@ -150,7 +159,7 @@ const getImagesByTag = (ec2: AWS.EC2, imageTag: AWS.EC2.Tag, callback: (images: 
   const params: AWS.EC2.DescribeImagesRequest = {
     Filters: [
       {
-        Name: imageTag.Key as string,
+        Name: `tag:${imageTag.Key as string}`,
         Values: [
           imageTag.Value as string,
         ],
@@ -167,7 +176,7 @@ const getImagesByTag = (ec2: AWS.EC2, imageTag: AWS.EC2.Tag, callback: (images: 
       callback(images);
     }
   });
-}
+};
 
 const getImageIdByImageName = (ec2: AWS.EC2, imageName: string, callback: (imageId: string | undefined) => void) => {
   const params: AWS.EC2.DescribeImagesRequest = {
@@ -209,8 +218,8 @@ const configureSecurityGroups = (create: boolean) => {
           const vpc = data.Vpcs![k];
           if (create) {
             const createSecurityGroupRequest: AWS.EC2.CreateSecurityGroupRequest = {
-              Description: 'Default security group for bcp-tn-node instances.',
-              GroupName: 'bcp-tn-node-default',
+              Description: `Default security group for ${defaultKeyPair} instances.`,
+              GroupName: defaultSecurityGroup,
               VpcId: vpc.VpcId,
             };
 
@@ -220,7 +229,7 @@ const configureSecurityGroups = (create: boolean) => {
               }
               else {
                 const inboundParams: AWS.EC2.AuthorizeSecurityGroupIngressRequest = {
-                  GroupName: 'bcp-tn-node-default',
+                  GroupName: defaultSecurityGroup,
                   IpPermissions: [
                     {
                       IpProtocol: '-1',
@@ -249,7 +258,7 @@ const configureSecurityGroups = (create: boolean) => {
                 const deleteSecurityGroupRequest: AWS.EC2.DeleteSecurityGroupRequest = {
                   GroupId: securityGroup.GroupId,
                 };
-                if (securityGroup.GroupName === 'bcp-tn-node-default') {
+                if (securityGroup.GroupName === defaultSecurityGroup) {
                   ec2.deleteSecurityGroup(deleteSecurityGroupRequest, (e, d) => {
                     if (e) {
                       console.log(`[deleteSecurityGroup] Error: ${e}`);
@@ -271,8 +280,8 @@ const configureSecurityGroups = (create: boolean) => {
 const createNewImage = (region: AWSRegionCode, commitTag: string) => {
   const ec2 = initEC2(region);
   const imageTag: AWS.EC2.Tag = {
-    Key: 'tag:category',
-    Value: 'bcp-tn-node-image'
+    Key: 'category',
+    Value: defaultImage,
   };
   getImagesByTag(ec2, imageTag, (images) => {
     images!.sort((a, b) => {
@@ -296,9 +305,61 @@ const createNewImage = (region: AWSRegionCode, commitTag: string) => {
             console.log(`[createImage] Success: ${JSON.stringify(data)}`);
           }
         });
-    });
+      });
     });
   });
 };
 
-export { AWSRegionCode, createEC2Instance, createEC2Cluster, createNewImage, configureSecurityGroups };
+const terminateEC2Cluster = (regions: AWSRegionCode[]): void => {
+  for (let i = 0; i < regions.length; i += 1) {
+    const region = regions[i];
+    const ec2 = initEC2(region as AWSRegionCode);
+    const params: AWS.EC2.DescribeInstancesRequest = {
+      Filters: [
+        {
+          Name: `tag:${regularTag.Key}` as string,
+          Values: [
+            regularTag.Value as string,
+            partnerTag.Value as string,
+          ],
+        },
+        {
+          Name: 'key-name',
+          Values: [defaultKeyPair],
+        },
+        {
+          Name: 'instance-state-name',
+          Values: ['pending', 'running', 'shutting-down', 'stopping', 'stopped'],
+        },
+      ],
+    };
+
+    ec2.describeInstances(params, (err, data) => {
+      if (err) {
+        console.log(`[describeInstances] Error: ${err}`);
+      }
+      else {
+        const { Reservations } = data;
+        for (let k = 0; k < Reservations!.length; k += 1) {
+          const Reservation = Reservations![k];
+          const { Instances } = Reservation;
+          const instanceIds = Instances!.map(instance => instance.InstanceId as string);
+          const terminateInstancesParams: AWS.EC2.TerminateInstancesRequest = {
+            InstanceIds: instanceIds,
+          };
+
+          ec2.terminateInstances(terminateInstancesParams, (_err, _data) => {
+            if (_err) {
+              console.log(`[terminateInstances] Error: ${_err}`);
+            }
+            else {
+              console.log(`[terminateInstances] Success: ${JSON.stringify(_data)}`);
+            }
+          });
+        }
+      }
+    });
+  }
+};
+
+export { AWSRegionCode, createEC2Instance, createEC2Cluster, createNewImage, configureSecurityGroups, terminateEC2Cluster };

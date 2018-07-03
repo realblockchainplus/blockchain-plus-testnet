@@ -376,7 +376,7 @@ const initP2PServer = (server: http.Server): any => {
   });
   if (isSeed) {
     // console.log('connecting to logger');
-    localLogger = ioClient(config.loggerServerIp);
+    // localLogger = ioClient(config.loggerServerIp);
     // console.log('after connecting to logger');
     io.on('disconnect', (socket: ServerSocket) => {
       closeConnection(socket);
