@@ -1,6 +1,6 @@
 {
   "name": "blockchain-plus-testnet",
-  "version": "1.0.0-alpha.15",
+  "version": "1.0.0-alpha.16",
   "description": "Typescript implementation of the blockchain network laid out in the Blockchain+ whitepaper.",
   "repository": {
     "type": "git",
@@ -12,6 +12,7 @@
     "compile": "tsc",
     "compile-scripts": "tsc -p scripts",
     "start": "node js/app.js",
+    "scripts": "npm run compile-scripts && npm run create-image",
     "docs": "typedoc --name \"Blockchain Plus Testnet\" --mode file --hideGenerator --out docs src",
     "now-start": "node js/app.js -s true",
     "setup": "npm install",
@@ -69,6 +70,7 @@
     "mocha": "^5.2.0",
     "tslint": "^5.10.0",
     "tslint-config-airbnb": "^5.9.2",
+    "typedoc": "^0.11.1",
     "uuid": "^3.3.0"
   },
   "now": {
