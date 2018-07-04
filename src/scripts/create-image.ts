@@ -8,5 +8,5 @@ const regions = Object.keys(AWSRegionCode).map((key: string) => AWSRegionCode[ke
 
 for (let i = 0; i < regions.length; i += 1) {
   const region = regions[i];
-  createNewImage(region as AWSRegionCode, '1.0.0-alpha.16');
+  createNewImage(region as AWSRegionCode, process.env.TRAVIS_TAG as string);
 }
