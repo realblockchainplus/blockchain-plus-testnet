@@ -49,7 +49,7 @@ class LogEvent {
     }
     else {
       conn.once('open', () => {
-        console.log('Connection is now open. Sending...');
+        // console.log('Connection is now open. Sending...');
         this.sendLogEvent();
       });
     }

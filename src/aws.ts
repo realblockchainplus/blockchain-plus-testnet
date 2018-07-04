@@ -43,7 +43,7 @@ const initEC2 = (region?: AWSRegionCode): AWS.EC2 => {
 };
 
 const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: number, imageName: string,
-  callback: (instance: AWS.EC2.Instance) => void = () => {}) => {
+  startNode: boolean, callback: (instance: AWS.EC2.Instance) => void = () => {}) => {
   console.log('[createEC2Instance]');
   const ec2 = initEC2(region);
   const InstanceType = type === PodType.REGULAR_POD ? 't2.medium' : 't2.large';
@@ -67,6 +67,14 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
         }
       }
       getImageIdByImageName(ec2, imageName, (ImageId) => {
+        let userData = `#!/bin/bash
+      cd blockchain-plus-testnet
+      git pull origin master
+      sudo npm run compile
+      `;
+
+        const userDataEncoded = new Buffer(userData).toString(`base64`);
+        startNode ? userData += `\nsudo npm run start-regular` : null;
         const params: AWS.EC2.RunInstancesRequest = {
           IamInstanceProfile,
           ImageId,
@@ -75,11 +83,7 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
           MinCount: nodeCount,
           MaxCount: nodeCount,
           SecurityGroupIds: [securityGroup.GroupId!],
-          UserData: Buffer.from(`
-            #!/bin/bash
-            cd blockchain-plus-testnet
-            sudo npm run start-regular
-          `).toString('base64'),
+          UserData: userDataEncoded,
         };
 
         ec2.runInstances(params, (err, data) => {
@@ -100,7 +104,6 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
                 }
                 else {
                   console.log('Instance tagged');
-                  console.log(data);
                   callback(instance);
                 }
               });
@@ -149,8 +152,8 @@ const createEC2Cluster = (totalNodes: number, regions: AWSRegionCode[], imageNam
   populateRegionBreakdown(() => distributeNodes(() => {
     for (let i = 0; i < regionBreakdownArray.length; i += 1) {
       const regionBreakdown = regionBreakdownArray[i];
-      createEC2Instance(PodType.REGULAR_POD, regionBreakdown.id, regionBreakdown.numRegular, imageName);
-      createEC2Instance(PodType.PARTNER_POD, regionBreakdown.id, regionBreakdown.numPartner, imageName);
+      createEC2Instance(PodType.REGULAR_POD, regionBreakdown.id, regionBreakdown.numRegular, imageName, true);
+      createEC2Instance(PodType.PARTNER_POD, regionBreakdown.id, regionBreakdown.numPartner, imageName, true);
     }
   }));
 };
@@ -288,29 +291,49 @@ const createNewImage = (region: AWSRegionCode, commitTag: string) => {
       return Date.parse(a.CreationDate as string) - Date.parse(b.CreationDate as string);
     });
     const mostRecentImage = images![0];
-    createEC2Instance(PodType.REGULAR_POD, region, 1, mostRecentImage.Name!, (instance: AWS.EC2.Instance) => {
+    console.log(`Most Recent Image -- Region: ${region} | Image: ${mostRecentImage.Name}`);
+    createEC2Instance(PodType.REGULAR_POD, region, 1, mostRecentImage.Name!, false, (instance: AWS.EC2.Instance) => {
       const waitForParams: AWS.EC2.DescribeInstancesRequest = {
         InstanceIds: [instance.InstanceId!],
       };
       ec2.waitFor('instanceRunning', waitForParams, (e, d) => {
         const params: AWS.EC2.CreateImageRequest = {
           InstanceId: instance.InstanceId as string,
-          Name: commitTag,
+          Name: `${baseName}-${commitTag}`,
         };
-        ec2.createImage(params, (err, data) => {
-          if (err) {
-            console.log(`[createImage] Error: ${err}`);
-          }
-          else {
-            console.log(`[createImage] Success: ${JSON.stringify(data)}`);
-          }
-        });
+        setTimeout(() => {
+          ec2.createImage(params, (err, data) => {
+            if (err) {
+              console.log(`[createImage] Error: ${err}`);
+            }
+            else {
+              console.log(`[createImage] Success: ${JSON.stringify(data)}`);
+              const describeImagesParams: AWS.EC2.DescribeImagesRequest = {
+                ImageIds: [data.ImageId as string],
+              };
+              ec2.waitFor('imageAvailable', describeImagesParams, (_err, _data) => {
+                const terminateInstancesParams: AWS.EC2.TerminateInstancesRequest = {
+                  InstanceIds: [instance.InstanceId as string],
+                };
+                ec2.terminateInstances(terminateInstancesParams, (__err, __data) => {
+                  if (__err) {
+                    console.log(`[terminateInstances] Error: ${__err}`);
+                  }
+                  else {
+                    console.log(`[terminateInstances] Success: ${JSON.stringify(__data)}`);
+                  }
+                });
+              });
+            }
+          });
+        }, 60000);
       });
     });
   });
 };
 
 const terminateEC2Cluster = (regions: AWSRegionCode[]): void => {
+  regions.length === 0 ? Object.keys(AWSRegionCode).map((key: string) => regions.push(AWSRegionCode[key as any] as AWSRegionCode)) : null;
   for (let i = 0; i < regions.length; i += 1) {
     const region = regions[i];
     const ec2 = initEC2(region as AWSRegionCode);

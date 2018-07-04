@@ -73,7 +73,7 @@ const getLocalIp = () => {
 };
 
 const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[]): number => {
-  console.time('getPodIndexByPublicKey');
+  // console.time('getPodIndexByPublicKey');
   let index = -1;
   for (let i = 0; i < _pods.length; i += 1) {
     const pod = _pods[i];
@@ -82,7 +82,7 @@ const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[]): number => {
       break;
     }
   }
-  console.timeEnd('getPodIndexByPublicKey');
+  // console.timeEnd('getPodIndexByPublicKey');
   return index;
 };
 
