@@ -33,6 +33,11 @@ const partnerTag: AWS.EC2.Tag = {
   Value: 'partner',
 };
 
+const imageTag: AWS.EC2.Tag = {
+  Key: 'category',
+  Value: defaultImage,
+};
+
 const initEC2 = (region?: AWSRegionCode): AWS.EC2 => {
   const ec2 = new AWS.EC2({ region, apiVersion: '2016-11-15' });
   ec2.config.update({
@@ -280,12 +285,8 @@ const configureSecurityGroups = (create: boolean) => {
   }
 };
 
-const createNewImage = (region: AWSRegionCode, commitTag: string) => {
+const createNewImage = (region: AWSRegionCode, commitTag: string, callback: () => void) => {
   const ec2 = initEC2(region);
-  const imageTag: AWS.EC2.Tag = {
-    Key: 'category',
-    Value: defaultImage,
-  };
   getImagesByTag(ec2, imageTag, (images) => {
     images!.sort((a, b) => {
       return Date.parse(a.CreationDate as string) - Date.parse(b.CreationDate as string);
@@ -308,6 +309,18 @@ const createNewImage = (region: AWSRegionCode, commitTag: string) => {
             }
             else {
               console.log(`[createImage] Success: ${JSON.stringify(data)}`);
+              const tagParams: AWS.EC2.CreateTagsRequest = {
+                Resources: [data.ImageId as string],
+                Tags: [imageTag],
+              };
+              ec2.createTags(tagParams, (tagErr, tagData) => {
+                if (err) {
+                  console.log(`[createTags] Error: ${tagErr}`);
+                }
+                else {
+                  console.log(`[createTags] Success: ${tagData}`);
+                }
+              });
               const describeImagesParams: AWS.EC2.DescribeImagesRequest = {
                 ImageIds: [data.ImageId as string],
               };
@@ -321,6 +334,7 @@ const createNewImage = (region: AWSRegionCode, commitTag: string) => {
                   }
                   else {
                     console.log(`[terminateInstances] Success: ${JSON.stringify(__data)}`);
+                    callback();
                   }
                 });
               });
