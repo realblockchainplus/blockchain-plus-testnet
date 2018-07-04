@@ -9,7 +9,11 @@ script:
 
 after_success:
   - npm run all-scripts
+    on
+      tags: true
   - npm run docs
+    on
+      tags: true
 
 deploy:
   - provider: pages
