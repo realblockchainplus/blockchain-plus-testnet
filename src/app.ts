@@ -11,10 +11,11 @@ dotenv.config();
 // import { createEC2Instance } from './aws';
 import { sendTestConfig } from './message';
 import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers } from './p2p';
-import { Pod } from './pod';
+import { Pod, PodType } from './pod';
 import { info } from './logger';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
+import { ISnapshotMap } from './transaction';
 import { randomNumberFromRange } from './utils';
 import { getPublicFromWallet, initWallet } from './wallet';
 import { AddressInfo } from 'net';
@@ -151,6 +152,15 @@ const initHttpServer = (port: number, callback = (server: http.Server) => {}): v
       const regularPods: Pod[] = pods.filter(pod => pod.podType === 0);
       selectedPods = selectRandom(regularPods, testConfig.numSenders * 2, '');
     }
+
+    const snapshotMap: ISnapshotMap = {};
+
+    for (let i = 0; i < selectedPods.length; i += 1) {
+      const selectedPod = selectedPods[i];
+      const snapshotPods = selectRandom(pods.filter(pod => pod.podType === PodType.PARTNER_POD), 4);
+      snapshotMap[selectedPod.address] = [...snapshotPods.map(pod => pod.address)];
+    }
+    
     // debug(localLogger);
     new LogEvent(
       '',
@@ -159,7 +169,7 @@ const initHttpServer = (port: number, callback = (server: http.Server) => {}): v
       EventType.TEST_START,
       'silly',
     );
-    io.emit('message', sendTestConfig({ selectedPods, testConfig }));
+    io.emit('message', sendTestConfig({ selectedPods, snapshotMap, testConfig }));
     res.send('Test Started!');
     // localLogger.once('message', (message: IMessage) => {
     //   if (message.type === MessageType.LOGGER_READY) {

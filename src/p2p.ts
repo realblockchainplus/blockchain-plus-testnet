@@ -18,13 +18,14 @@ import {
   responseIdentityMsg,
 } from './message';
 import { Pod } from './pod';
+import { Result } from './result';
 import { TestConfig } from './testConfig';
 import {
-  Result,
   requestValidateTransaction,
   Transaction,
   validateTransaction,
   validateTransactionHash,
+  ISnapshotMap,
 } from './transaction';
 import { getCurrentTimestamp, getPodIndexBySocket, getPodIndexByPublicKey, createDummyTransaction } from './utils';
 import { getPublicFromWallet } from './wallet';
@@ -48,6 +49,7 @@ let gServer: http.Server;
 let port: number;
 let localSocket: ClientSocket;
 let localLogger: ClientSocket;
+let localSnapshotMap: ISnapshotMap;
 let startTime: number;
 let endTime: number;
 let selectedReceiver: Pod;
@@ -67,6 +69,7 @@ const getServer = (): http.Server => gServer;
 const getLogger = (): ClientSocket => localLogger;
 const getTestConfig = (): TestConfig => localTestConfig;
 const getSelectedPods = (): Pod[] => localSelectedPods;
+const getSnapshotMap = (): ISnapshotMap => localSnapshotMap;
 const getPort = (): number => port;
 
 const beginTest = (receiver: Pod): void => {
@@ -251,7 +254,8 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
       case MessageType.TEST_CONFIG: {
         info('Received test config');
         const data = JSON.parse(message.data);
-        const { testConfig, selectedPods }: { testConfig: TestConfig, selectedPods: Pod[] } = data;
+        const { testConfig, snapshotMap, selectedPods }: { testConfig: TestConfig, snapshotMap: ISnapshotMap, selectedPods: Pod[] } = data;
+        localSnapshotMap = snapshotMap;
         localTestConfig = testConfig;
         debug(`Local test config: ${localTestConfig}`);
         debug(`Received test config: ${testConfig}`);
@@ -401,5 +405,5 @@ const wipeLedgers = (): void => {
 export {
   beginTest, loopTest, initP2PServer, initP2PNode, getPods, getIo, getServer, getTestConfig, write, handleMessage, IMessage,
   killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType, getLogger, wipeLedgers, getSelectedPods, ClientSocket,
-  ServerSocket, Server, getPort,
+  ServerSocket, Server, getPort, getSnapshotMap,
 };

@@ -1,7 +1,7 @@
 import { Ledger } from './ledger';
 import { Pod } from './pod';
 import { Result } from './result';
-import { Transaction } from './transaction';
+import { Transaction, ISnapshotMap } from './transaction';
 import { TestConfig } from './testConfig';
 import { LogEvent } from './logEvent';
 
@@ -77,6 +77,7 @@ const isTransactionValid = (transactionData: {
 
 const sendTestConfig = (testConfig: {
   selectedPods: Pod[],
+  snapshotMap: ISnapshotMap,
   testConfig: TestConfig,
 }): IMessage => ({
   type: MessageType.TEST_CONFIG,

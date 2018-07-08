@@ -4,10 +4,10 @@ import * as ioClient from 'socket.io-client';
 import { Ledger, getLedgerBalance } from './ledger';
 import { EventType, LogEvent } from './logEvent';
 import { isTransactionValid } from './message';
-import { IMessage, MessageType, getPodIndexByPublicKey, getPods, getTestConfig, handleMessage, isTransactionHashValid, write } from './p2p';
-import { Pod } from './pod';
+import { IMessage, MessageType, getPodIndexByPublicKey, getPods, getTestConfig, handleMessage, isTransactionHashValid, write, getSnapshotMap } from './p2p';
+import { Pod, PodType } from './pod';
 import { Result } from './result';
-import { getEntryByTransactionId, toHexString } from './utils';
+import { getEntryByTransactionId, toHexString, generateSnapshot } from './utils';
 import { getPrivateFromWallet, getPublicFromWallet } from './wallet';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
@@ -135,6 +135,10 @@ class Transaction {
     const selectedPods: Pod[] = [...selectRandom(regularPods, 2), ...selectRandom(partnerPods, 2)];
     this.assignValidatorsToTransaction(selectedPods);
   }
+}
+
+interface ISnapshotMap {
+  [index: string]: string[]
 }
 
 const genesisTimestamp: number = 1525278308842;
@@ -384,6 +388,12 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
 const validateTransaction = (transaction: Transaction, senderLedger: Ledger,
   callback: (result: Result, transaction: Transaction) => void): void => {
   // console.log(`[validateTransaction] transactionId: ${transaction.id}`);
+  
+  const validationPromiseArray: Promise<Ledger | Result>[] = [];
+  const partnerPods = getPods().filter(pod => pod.podType === PodType.PARTNER_POD);
+  const snapshotNodes = selectRandom(partnerPods, 8);
+  const senderLedgerSnapshot = generateSnapshot(senderLedger);
+  const snapshotValidationPromise: Promise<Result> = validateSenderLedgerSnapshot(senderLedgerSnapshot, transaction);
   const expectedTransactionId: string = getTransactionId(transaction);
   let result = new Result(false, '', transaction.id);
   // console.log(`[validateTransaction] resultId: ${result.id}`);
@@ -399,12 +409,19 @@ const validateTransaction = (transaction: Transaction, senderLedger: Ledger,
       // console.log(result.reason);
       callback(result, transaction);
     }
+    const requestReceiverLedgerPromise: Promise<Ledger> = requestReceiverLedger(transaction).then()
     // console.log('Signature was valid... validating ledger.');
-    validateLedger(senderLedger, transaction).then((res) => {
+    const validateLedgerPromise: Promise<Result> = validateLedger(senderLedger, transaction).then((res) => {
       result = res;
       // console.log('validateLedger result:');
       // console.dir(result);
       callback(result, transaction);
+    });
+
+    validationPromiseArray.push(requestReceiverLedgerPromise, validateLedgerPromise);
+
+    Promise.all(validationPromiseArray).then((results) => {
+
     });
   }
 };
@@ -454,7 +471,19 @@ const validateTransactionHash = (id: string, currentId: string, hash: string): R
   return new Result(res, reason, id);
 };
 
+const validateSenderLedgerSnapshot = (snapshot: string, transaction: Transaction): Result => {
+  const snapshotMap = getSnapshotMap();
+  const senderSnapshots = snapshotMap[transaction.from];
+  const lastSnapshot = senderSnapshots[senderSnapshots.length - 1];
+  if (lastSnapshot === snapshot) {
+    return new Result(true, '', transaction.id);
+  }
+  else {
+    return new Result(false, 'Provided snapshot does not match sender\'s last snapshot', transaction.id);
+  }
+};
+
 export {
-  Transaction, getTransactionId, Result, requestValidateTransaction, genesisTransaction,
+  Transaction, getTransactionId, ISnapshotMap, requestValidateTransaction, genesisTransaction,
   validateTransaction, validateTransactionHash, getGenesisAddress,
 };
