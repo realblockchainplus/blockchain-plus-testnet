@@ -53,6 +53,19 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
   const ec2 = initEC2(region);
   const InstanceType = type === PodType.REGULAR_POD ? 't2.medium' : 't2.large';
   const tag = type === PodType.REGULAR_POD ? regularTag : partnerTag;
+  let documentName = `BCP-`;
+  if (startNode) {
+    documentName += 'Start';
+    if (type === PodType.REGULAR_POD) {
+      documentName += 'Regular';
+    }
+    else {
+      documentName += 'Partner';
+    }
+  }
+  else {
+    documentName += 'Update';
+  }
 
   const IamInstanceProfile: AWS.EC2.IamInstanceProfile = {
     Arn: 'arn:aws:iam::490668483643:instance-profile/EC2-bcp-tn-regular',
@@ -72,14 +85,6 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
         }
       }
       getImageIdByImageName(ec2, imageName, (ImageId) => {
-        let userData = `#!/bin/bash
-      cd blockchain-plus-testnet
-      git pull origin master
-      sudo npm run compile
-      `;
-
-        const userDataEncoded = new Buffer(userData).toString(`base64`);
-        startNode ? userData += `\nsudo npm run start-regular` : null;
         const params: AWS.EC2.RunInstancesRequest = {
           IamInstanceProfile,
           ImageId,
@@ -88,7 +93,6 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
           MinCount: nodeCount,
           MaxCount: nodeCount,
           SecurityGroupIds: [securityGroup.GroupId!],
-          UserData: userDataEncoded,
         };
 
         ec2.runInstances(params, (err, data) => {
@@ -99,17 +103,30 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
             for (let i = 0; i < data.Instances!.length; i += 1) {
               const instance = data.Instances![i];
               // console.dir(`[runInstances] Success: ${JSON.stringify(instance)}`);
-              const tags = {
-                Resources: [instance.InstanceId!],
-                Tags: [tag],
+              const ssm = new AWS.SSM({ apiVersion: '2014-11-06' });
+              const sendCommandParams: AWS.SSM.SendCommandRequest = {
+                DocumentName: documentName,
+                InstanceIds: [instance.InstanceId as string],
               };
-              ec2.createTags(tags, (_err, _data) => {
-                if (_err) {
-                  console.log(`[createTags] Error: ${_err}`);
+              ssm.sendCommand(sendCommandParams, (e, d) => {
+                if (e) {
+                  console.log(`[sendCommand] Error: ${e}`);
                 }
                 else {
-                  console.log('Instance tagged');
-                  callback(instance);
+                  console.log(`${documentName} command sent.`);
+                  const tags = {
+                    Resources: [instance.InstanceId!],
+                    Tags: [tag],
+                  };
+                  ec2.createTags(tags, (_err, _data) => {
+                    if (_err) {
+                      console.log(`[createTags] Error: ${_err}`);
+                    }
+                    else {
+                      console.log('Instance tagged');
+                      callback(instance);
+                    }
+                  });
                 }
               });
             }
