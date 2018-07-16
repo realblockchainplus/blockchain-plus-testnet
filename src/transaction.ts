@@ -3,8 +3,9 @@ import * as ecdsa from 'elliptic';
 import * as ioClient from 'socket.io-client';
 import { Ledger, getLedgerBalance } from './ledger';
 import { EventType, LogEvent } from './logEvent';
-import { isTransactionValid } from './message';
-import { IMessage, MessageType, getPodIndexByPublicKey, getPods, getTestConfig, handleMessage, isTransactionHashValid, write, getSnapshotMap } from './p2p';
+import { debug, info } from './logger';
+import { isTransactionValid, isSnapshotHashValid } from './message';
+import { IMessage, MessageType, getPodIndexByPublicKey, getPods, getTestConfig, handleMessage, isTransactionHashValid, write, getSnapshotMap, getSelectedPods } from './p2p';
 import { Pod, PodType } from './pod';
 import { Result } from './result';
 import { getEntryByTransactionId, toHexString, generateSnapshot } from './utils';
@@ -28,7 +29,7 @@ class Transaction {
   public hash: string = '';
   public local: boolean;
 
-  constructor(from: string, to: string, amount: number, timestamp: number, selectedPods: Pod[] = getPods(), testConfig?: TestConfig) {
+  constructor(from: string, to: string, amount: number, timestamp: number, selectedPods: Pod[] = [], testConfig?: TestConfig) {
     this.from = from;
     this.to = to;
     this.amount = amount;
@@ -116,10 +117,10 @@ class Transaction {
 
   selectRandomValidators(sendersAndReceivers: Pod[], testConfig?: TestConfig) {
     // console.log('selectRandomValidators');
-    if (this.from === getGenesisAddress()) {
-      // console.log('genesis transaction, returning...');
-      return;
-    }
+    // if (this.from === getGenesisAddress()) {
+    //   // console.log('genesis transaction, returning...');
+    //   return;
+    // }
     let regularPods: Pod[] = [];
     const pods = getPods();
     if (testConfig && testConfig.sendersAsValidators) {
@@ -127,20 +128,26 @@ class Transaction {
     }
     else {
       const senderPods = sendersAndReceivers.slice(0, sendersAndReceivers.length / 2);
+      info(`[selectRandomValidators] senderPods: ${senderPods.length}`);
       regularPods = pods.filter(pod => pod.podType === 0).filter(pod => !senderPods.find(senderPod => senderPod.address === pod.address));
       // console.log('regularPods');
       // console.dir(regularPods);
     }
     const partnerPods: Pod[] = pods.filter(pod => pod.podType === 1);
+    info(`[selectRandomValidators] regularPods: ${regularPods.length} | partnerPods: ${partnerPods.length}`);
     const selectedPods: Pod[] = [...selectRandom(regularPods, 2), ...selectRandom(partnerPods, 2)];
     this.assignValidatorsToTransaction(selectedPods);
   }
 }
 
 interface ISnapshotMap {
-  [index: string]: string[]
+  [index: string]: {
+    snapshotNodes: string[],
+    snapshots: string [],
+  },
 }
 
+const numSnapshotNodes = 4;     // Default is 8
 const genesisTimestamp: number = 1525278308842;
 const genesisAddress: string = `04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a`;
 const genesisAmount: number = 500;
@@ -148,11 +155,15 @@ const getGenesisAddress = (): string => genesisAddress;
 
 const genesisTransaction = (publicKey: string): Transaction => {
   // console.log('genesisTransaction');
+  const localTestConfig = getTestConfig();
+  const localSelectedPods = getSelectedPods();
   const transaction = new Transaction(
     genesisAddress,
     publicKey,
     genesisAmount,
     genesisTimestamp,
+    localSelectedPods,
+    localTestConfig,
   );
   return transaction;
 };
@@ -179,6 +190,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   const validators = transaction.getValidators();
   for (let i = 0; i < validators.length; i += 1) {
     const pod = validators[i];
+    console.log(`Transaction.local: ${transaction.local}`);
     const podIp = transaction.local ? `${pod.localIp}:${pod.port}` : pod.ip;
     // console.time('requestValidation');
     // console.log(`Connecting to ${podIp}`);
@@ -192,6 +204,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
         undefined,
         pod.address,
       );
+      debug(`Connecting to validator: ${podIp}`);
       // console.time(`connectValidator-${i}-${transaction.id}`);
       const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
       socket.on('connect', () => {
@@ -226,7 +239,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
 
 const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise<Result> => {
   // console.time(`validateLedger-${transaction.id}`);
-  const pods: Pod[] = getPods();
+  const pods = getPods();
   const localTestConfig = getTestConfig();
   new LogEvent(
     transaction.to,
@@ -250,38 +263,76 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
     }
   }
   const promiseArray: Promise<Result>[] = [];
-  for (let i = 0; i < senderLedger.entries.length; i += 1) {
-    // console.log('Iterating over senderLedger.entries.');
-    const entry: Transaction = senderLedger.entries[i];
-    // console.dir(entry);
-    const witnesses: string[] = [entry.witnessOne, entry.witnessTwo];
-    const partners: string[] = [entry.partnerOne, entry.partnerTwo];
-    const validators: string[] = [...witnesses, ...partners];
-    const validatingPods: Pod[] = [];
-    validators.map((v: string) => {
-      // console.log(v);
-      const pod: Pod = pods[getPodIndexByPublicKey(v, pods)];
-      if (pod !== undefined) {
-        // console.log('Pushing validating pod to array');
-        validatingPods.push(pod);
-      }
-      return;
-    });
-    for (let k = 0; k < validatingPods.length; k += 1) {
-      // console.log('Iterating over validating pods.');
-      const pod: Pod = validatingPods[k];
-      // console.dir(pod);
-      const promise: Promise<Result> = new Promise((resolve, reject) => {
-        if (pod.address === getPublicFromWallet()) {
-          new LogEvent(
-            transaction.from,
-            transaction.to,
-            transaction.id,
-            EventType.CONNECT_TO_PREVIOUS_VALIDATOR_START,
-            'info',
-            undefined,
-            pod.address,
-          );
+  const ledgerLength = senderLedger.entries.length;
+  // console.log('Iterating over senderLedger.entries.');
+  const entry: Transaction = senderLedger.entries[ledgerLength - 1];
+  // console.dir(entry);
+  const witnesses: string[] = [entry.witnessOne, entry.witnessTwo];
+  const partners: string[] = [entry.partnerOne, entry.partnerTwo];
+  const validators: string[] = [...witnesses, ...partners];
+  const validatingPods: Pod[] = [];
+  validators.map((v: string) => {
+    // console.log(v);
+    const pod: Pod = pods[getPodIndexByPublicKey(v, pods)];
+    if (pod !== undefined) {
+      // console.log('Pushing validating pod to array');
+      validatingPods.push(pod);
+    }
+    return;
+  });
+  for (let k = 0; k < validatingPods.length; k += 1) {
+    // console.log('Iterating over validating pods.');
+    const pod: Pod = validatingPods[k];
+    // console.dir(pod);
+    const promise: Promise<Result> = new Promise((resolve, reject) => {
+      if (pod.address === getPublicFromWallet()) {
+        new LogEvent(
+          transaction.from,
+          transaction.to,
+          transaction.id,
+          EventType.CONNECT_TO_PREVIOUS_VALIDATOR_START,
+          'info',
+          undefined,
+          pod.address,
+        );
+        new LogEvent(
+          transaction.from,
+          transaction.to,
+          transaction.id,
+          EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END,
+          'info',
+          undefined,
+          pod.address,
+        );
+        // console.log(`This node was a validator for this transaction. Checking hash against witness ledger entry...`);
+        // console.time(`connectPreviousValidator-${k}-${entry.id}`);
+        // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
+        const result = validateTransactionHash(entry.id, transaction.id, entry.hash);
+        resolve(result);
+      } else {
+        const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
+        // console.log(`Connecting to ${podIp}`);
+        new LogEvent(
+          transaction.from,
+          transaction.to,
+          transaction.id,
+          EventType.CONNECT_TO_PREVIOUS_VALIDATOR_START,
+          'info',
+          undefined,
+          pod.address,
+        );
+        // console.time(`connectPreviousValidator-${k}-${entry.id}`);
+        const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
+        const connectTimeout = setTimeout(() => {
+          const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
+          const result = new Result(false, reason, entry.id);
+          reject(result);
+        }, 10000);
+        const isTransactionHashValidMsg = isTransactionHashValid({ transactionId: entry.id, currentTransactionId: transaction.id, hash: entry.hash });
+        socket.on('connect', () => {
+          // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
+          // console.log(`[validateLedger] Connected to ${podIp}... sending transaction details.`);
+          clearTimeout(connectTimeout);
           new LogEvent(
             transaction.from,
             transaction.to,
@@ -291,65 +342,26 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
             undefined,
             pod.address,
           );
-          // console.log(`This node was a validator for this transaction. Checking hash against witness ledger entry...`);
-          // console.time(`connectPreviousValidator-${k}-${entry.id}`);
-          // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
-          const result = validateTransactionHash(entry.id, transaction.id, entry.hash);
-          resolve(result);
-        } else {
-          const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
-          // console.log(`Connecting to ${podIp}`);
-          new LogEvent(
-            transaction.from,
-            transaction.to,
-            transaction.id,
-            EventType.CONNECT_TO_PREVIOUS_VALIDATOR_START,
-            'info',
-            undefined,
-            pod.address,
-          );
-          // console.time(`connectPreviousValidator-${k}-${entry.id}`);
-          const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
-          const connectTimeout = setTimeout(() => {
-            const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
-            const result = new Result(false, reason, entry.id);
-            reject(result);
-          }, 10000);
-          const isTransactionHashValidMsg = isTransactionHashValid({ transactionId: entry.id, currentTransactionId: transaction.id, hash: entry.hash });
-          socket.on('connect', () => {
-            // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
-            // console.log(`[validateLedger] Connected to ${podIp}... sending transaction details.`);
-            clearTimeout(connectTimeout);
-            new LogEvent(
-              transaction.from,
-              transaction.to,
-              transaction.id,
-              EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END,
-              'info',
-              undefined,
-              pod.address,
-            );
-            write(socket, isTransactionHashValidMsg);
-          });
-          socket.on('disconnect', () => {
-            // console.log('Socket was disconnected.');
-          });
-          socket.on('message', (message: IMessage) => {
-            // console.log('[validateLedger] handleMessage');
-            if (message.type === MessageType.TRANSACTION_CONFIRMATION_RESULT) {
-              const result: Result = JSON.parse(message.data);
-              // console.log(`Received validation result from ${podIp}... resolving promise.`);
-              socket.disconnect();
-              resolve(result);
-            }
-          });
-        }
-      });
-      // console.log('Adding promise to promiseArray...');
-      promiseArray.push(promise);
-      if (promiseArray.length > 4) {
-        // console.log(`Promise array length: ${promiseArray.length}. SHOULD BE 4 MAX`);
+          write(socket, isTransactionHashValidMsg);
+        });
+        socket.on('disconnect', () => {
+          // console.log('Socket was disconnected.');
+        });
+        socket.on('message', (message: IMessage) => {
+          // console.log('[validateLedger] handleMessage');
+          if (message.type === MessageType.TRANSACTION_CONFIRMATION_RESULT) {
+            const result: Result = JSON.parse(message.data);
+            // console.log(`Received validation result from ${podIp}... resolving promise.`);
+            socket.disconnect();
+            resolve(result);
+          }
+        });
       }
+    });
+    // console.log('Adding promise to promiseArray...');
+    promiseArray.push(promise);
+    if (promiseArray.length > 4) {
+      // console.log(`Promise array length: ${promiseArray.length}. SHOULD BE 4 MAX`);
     }
   }
   return Promise.all(promiseArray).then((results) => {
@@ -386,15 +398,20 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
 };
 
 const validateTransaction = (transaction: Transaction, senderLedger: Ledger,
-  callback: (result: Result, transaction: Transaction) => void): void => {
+  callback: (results: Result[], transaction: Transaction) => void): void => {
   // console.log(`[validateTransaction] transactionId: ${transaction.id}`);
   
-  const validationPromiseArray: Promise<Ledger | Result>[] = [];
+  if (transaction.from == genesisAddress) {
+    return callback([new Result(true, '', transaction.id)], transaction);
+  }
+  const validationPromiseArray: Promise<Result>[] = [];
   const partnerPods = getPods().filter(pod => pod.podType === PodType.PARTNER_POD);
-  const snapshotNodes = selectRandom(partnerPods, 8);
+  const snapshotNodes = selectRandom(partnerPods, numSnapshotNodes);
+  const senderSnapshotNodes = snapshotNodes.slice(0, numSnapshotNodes / 2);
+  const receiverSnapshotNodes = snapshotNodes.slice(numSnapshotNodes / 2, numSnapshotNodes);
   const senderLedgerSnapshot = generateSnapshot(senderLedger);
-  const snapshotValidationPromise: Promise<Result> = validateSenderLedgerSnapshot(senderLedgerSnapshot, transaction);
   const expectedTransactionId: string = getTransactionId(transaction);
+  // const requestReceiverLedgerPromise: Promise<Ledger> = requestReceiverLedger(transaction);
   let result = new Result(false, '', transaction.id);
   // console.log(`[validateTransaction] resultId: ${result.id}`);
   if (expectedTransactionId !== transaction.id) {
@@ -402,26 +419,30 @@ const validateTransaction = (transaction: Transaction, senderLedger: Ledger,
      Expecting: ${expectedTransactionId}. Got: ${transaction.id}.`;
     // console.dir(transaction);
     // console.log(result.reason);
-    callback(result, transaction);
+    callback([result], transaction);
   } else {
     result = validateSignature(transaction); // Check if sender has proper access to funds
     if (!result.res) {
       // console.log(result.reason);
-      callback(result, transaction);
+      callback([result], transaction);
     }
-    const requestReceiverLedgerPromise: Promise<Ledger> = requestReceiverLedger(transaction).then()
+    for (let i = 0; i < senderSnapshotNodes.length; i += 1) {
+      const snapshotNode = snapshotNodes[i];
+      const snapshotValidationPromise: Promise<Result> = requestSnapshotValidation(snapshotNode, senderLedgerSnapshot, transaction);
+      validationPromiseArray.push(snapshotValidationPromise);
+    }
+    for (let i = 0; i < receiverSnapshotNodes.length; i += 1) {
+      const snapshotNode = snapshotNodes[i];
+      // CHANGE TO RECEIVER LEDGER SNAPSHOT WHEN IMPLEMENTED
+      const snapshotValidationPromise: Promise<Result> = requestSnapshotValidation(snapshotNode, senderLedgerSnapshot, transaction);
+      validationPromiseArray.push(snapshotValidationPromise);
+    }
     // console.log('Signature was valid... validating ledger.');
-    const validateLedgerPromise: Promise<Result> = validateLedger(senderLedger, transaction).then((res) => {
-      result = res;
-      // console.log('validateLedger result:');
-      // console.dir(result);
-      callback(result, transaction);
-    });
-
-    validationPromiseArray.push(requestReceiverLedgerPromise, validateLedgerPromise);
+    const validateLedgerPromise: Promise<Result> = validateLedger(senderLedger, transaction);
+    validationPromiseArray.push(validateLedgerPromise);
 
     Promise.all(validationPromiseArray).then((results) => {
-
+      callback(results, transaction);
     });
   }
 };
@@ -471,19 +492,64 @@ const validateTransactionHash = (id: string, currentId: string, hash: string): R
   return new Result(res, reason, id);
 };
 
-const validateSenderLedgerSnapshot = (snapshot: string, transaction: Transaction): Result => {
+const requestSnapshotValidation = (pod: Pod, snapshot: string, transaction: Transaction): Promise<Result> => {
+  return new Promise((resolve, reject) => {
+    new LogEvent(
+      transaction.from,
+      transaction.to,
+      transaction.id,
+      EventType.CONNECT_TO_SNAPSHOT_NODE_START,
+      'info',
+      undefined,
+      pod.address,
+    );
+    const podIp = transaction.local ? `${pod.localIp}:${pod.port}` : pod.ip;
+    const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
+    const connectTimeout = setTimeout(() => {
+      const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
+      const result = new Result(false, reason, transaction.id);
+      reject(result);
+    }, 10000);
+    const isSnapshotValidMsg = isSnapshotHashValid({ snapshot, sender: transaction.from, transactionId: transaction.id });
+    socket.on('connect', () => {
+      clearTimeout(connectTimeout);
+      new LogEvent(
+        transaction.from,
+        transaction.to,
+        transaction.id,
+        EventType.CONNECT_TO_SNAPSHOT_NODE_END,
+        'info',
+        undefined,
+        pod.address,
+      );
+      write(socket, isSnapshotValidMsg);      
+    });
+    socket.on('message', (message: IMessage) => {
+      if (message.type === MessageType.SNAPSHOT_VALIDATION_RESULT) {
+        const result: Result = JSON.parse(message.data);
+        socket.disconnect();
+        resolve(result);
+      }
+    });
+  });
+};
+
+const validateSnapshot = (snapshot: string, sender: string, transactionId: string) => {
   const snapshotMap = getSnapshotMap();
-  const senderSnapshots = snapshotMap[transaction.from];
+  info(`[validateSnapshot] snapshot: ${snapshot}`);
+  const senderSnapshots = snapshotMap[sender];
+  info(`[validateSnapshot] senderSnapshots: ${JSON.stringify(senderSnapshots)}`);
   const lastSnapshot = senderSnapshots[senderSnapshots.length - 1];
-  if (lastSnapshot === snapshot) {
-    return new Result(true, '', transaction.id);
+  info(`[validateSnapshot] lastSnapshot: ${lastSnapshot}`);
+  if (lastSnapshot == snapshot) {
+    return new Result(true, '', transactionId);
   }
   else {
-    return new Result(false, 'Provided snapshot does not match sender\'s last snapshot', transaction.id);
+    return new Result(false, 'Provided snapshot does not match sender\'s last snapshot', transactionId);
   }
 };
 
 export {
   Transaction, getTransactionId, ISnapshotMap, requestValidateTransaction, genesisTransaction,
-  validateTransaction, validateTransactionHash, getGenesisAddress,
+  validateTransaction, validateTransactionHash, getGenesisAddress, validateSnapshot,
 };

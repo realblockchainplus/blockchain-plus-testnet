@@ -40,7 +40,6 @@ const portMax = config.portMax;
 // Either a port is passed through the npm run command, or a random port is selected
 // For non-local tests the port 80 is passed through npm run
 const port = parseInt(argv.p, 10) || randomNumberFromRange(portMin, portMax, true);
-console.log(port);
 
 // For local testing a cluster is created
 const localCluster = argv.c === 'true';
@@ -198,7 +197,7 @@ if (localCluster) {
   }
 }
 else {
-  initHttpServer(4001, (server) => {
+  initHttpServer(port, (server) => {
     const address = server.address() as AddressInfo;
     info(`[Node] New Node created on port: ${address.port}`);
     initWallet(address.port);

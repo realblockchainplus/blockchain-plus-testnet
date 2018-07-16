@@ -23,6 +23,9 @@ enum MessageType {
   WIPE_LEDGER = 10,
   TEST_START = 11,
   LOGGER_READY = 12,
+  SNAPSHOT_VALIDATION_REQUEST = 13,
+  SNAPSHOT_VALIDATION_RESULT = 14,
+  SNAPSHOT_MAP_UPDATED = 15,
 }
 
 const responseIsTransactionHashValid = (result: Result): IMessage => ({
@@ -33,6 +36,14 @@ const responseIsTransactionHashValid = (result: Result): IMessage => ({
 const podListUpdated = (pods: Pod[]): IMessage => ({
   type: MessageType.POD_LIST_UPDATED,
   data: JSON.stringify(pods),
+});
+
+const snapshotMapUpdated = (data: {
+  snapshotmap: ISnapshotMap,
+  targets: string[],
+}): IMessage => ({
+  type: MessageType.SNAPSHOT_MAP_UPDATED,
+  data: JSON.stringify(data),
 });
 
 const killMsg = (): IMessage => ({
@@ -51,10 +62,28 @@ const isTransactionHashValid = (transactionData: {
   };
 };
 
-const responseIsTransactionValid = (result: Result, transaction: Transaction): IMessage => {
+const isSnapshotHashValid = (transactionData: {
+  snapshot: string,
+  sender: string,
+  transactionId: string,
+}): IMessage => {
+  return {
+    type: MessageType.SNAPSHOT_VALIDATION_REQUEST,
+    data: JSON.stringify(transactionData),
+  };
+};
+
+const responseIsSnapshotValid = (result: Result): IMessage => {
+  return {
+    type: MessageType.SNAPSHOT_VALIDATION_RESULT,
+    data: JSON.stringify(result),
+  };
+};
+
+const responseIsTransactionValid = (results: Result[], transaction: Transaction): IMessage => {
   return {
     type: MessageType.VALIDATION_RESULT,
-    data: JSON.stringify({ result, transaction }),
+    data: JSON.stringify({ results, transaction }),
   };
 };
 
@@ -103,5 +132,5 @@ export {
   IMessage, MessageType, isTransactionHashValid, isTransactionValid, killMsg,
   podListUpdated, responseIdentityMsg, responseIsTransactionHashValid,
   responseIsTransactionValid, sendTestConfig, wipeLedgersMsg, testStartMsg,
-  logEventMsg,
+  logEventMsg, isSnapshotHashValid, responseIsSnapshotValid, snapshotMapUpdated,
 };

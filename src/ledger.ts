@@ -1,7 +1,8 @@
 import * as fs from 'fs';
+import * as objectHash from 'object-hash';
 
 import { EventType, LogEvent } from './logEvent';
-import { loopTest, getTestConfig } from './p2p';
+import { loopTest } from './p2p';
 import { Transaction } from './transaction';
 import { getEntryInLedgerByTransactionId, createDummyTransaction } from './utils';
 import { info, debug } from './logger';
@@ -25,6 +26,11 @@ class Ledger {
   constructor(entries: Transaction[], LedgerType: LedgerType) {
     this.entries = entries;
     this.LedgerType = LedgerType;
+  }
+
+  generateSnapshot() {
+    const hash = objectHash.MD5(this);
+    return hash;
   }
 }
 
@@ -76,15 +82,10 @@ const initLedger = (port: number): void => {
  * Updates a [[Ledger]] based on the specified [[LedgerType]].
  */
 const updateLedger = (transaction: Transaction, type: LedgerType): void => {
-  const localTestConfig = getTestConfig();
-  const maxLedgerLength = localTestConfig.maxLedgerLength || 1;
   const _transaction = updateTransaction(transaction, type);
   const ledger: Ledger = getLocalLedger(type);
   // debug(getEntryInLedgerByTransactionId(_transaction.id, ledger));
   if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined) {
-    if (ledger.entries.length > maxLedgerLength && type === LedgerType.MY_LEDGER) {
-      ledger.entries.pop();
-    }
     ledger.entries.push(_transaction);
     writeLedger(ledger, type);
   }
@@ -131,7 +132,7 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
     eventTypeEnd,
     'silly',
   );
-  if (ledger.entries.length > 1 && type === LedgerType.MY_LEDGER) {
+  if (type === LedgerType.MY_LEDGER) {
     debug('Looping...');
     new LogEvent(
       transaction.from,

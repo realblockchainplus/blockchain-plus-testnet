@@ -1,5 +1,3 @@
-import * as objectHash from 'object-hash';
-
 import { getLocalLedger, Ledger, LedgerType } from './ledger';
 // import * as os from 'os';
 import { Transaction } from './transaction';
@@ -129,11 +127,6 @@ const toHexString = (byteArray: any[]): string => {
 const createDummyTransaction = (): Transaction => {
   const tx = new Transaction('', '', 0, 0);
   return tx;
-};
-
-const generateSnapshot = (ledger: Ledger): string => {
-  const hash = objectHash.MD5(ledger);
-  return hash;
 };
 
 export {

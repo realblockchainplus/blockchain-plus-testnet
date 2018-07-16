@@ -16,6 +16,8 @@ import {
   responseIsTransactionValid,
   wipeLedgersMsg,
   responseIdentityMsg,
+  responseIsSnapshotValid,
+  snapshotMapUpdated,
 } from './message';
 import { Pod } from './pod';
 import { Result } from './result';
@@ -26,9 +28,10 @@ import {
   validateTransaction,
   validateTransactionHash,
   ISnapshotMap,
+  validateSnapshot,
 } from './transaction';
 import { getCurrentTimestamp, getPodIndexBySocket, getPodIndexByPublicKey, createDummyTransaction } from './utils';
-import { getPublicFromWallet } from './wallet';
+import { getPublicFromWallet, fundWallet } from './wallet';
 import { AddressInfo } from 'net';
 
 const config = require('../node/config/config.json');
@@ -54,7 +57,7 @@ let startTime: number;
 let endTime: number;
 let selectedReceiver: Pod;
 
-let localTestConfig = new TestConfig(60, 2, true, 1, false, 'TEMP');
+let localTestConfig = new TestConfig(60, 2, true, false, 'TEMP');
 
 const validationResults: { [txId: string]: IValidationResult[] } = {};
 
@@ -89,26 +92,7 @@ const beginTest = (receiver: Pod): void => {
     localTestConfig,
   );
 
-  const transaction = new Transaction(
-    getPublicFromWallet(),
-    selectedReceiver.address,
-    1,
-    getCurrentTimestamp(),
-    localSelectedPods,
-    localTestConfig,
-  );
-
-  new LogEvent(
-    transaction.from,
-    transaction.to,
-    '',
-    EventType.TEST_START,
-    'info',
-    undefined,
-    undefined,
-    localTestConfig,
-  );
-  requestValidateTransaction(transaction, getLocalLedger(LedgerType.MY_LEDGER));
+  fundWallet();
 };
 
 const loopTest = (): void => {
@@ -150,7 +134,7 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
       return;
     }
     const { type, data }: { type: number, data: any } = message;
-    debug('Received message: %s', JSON.stringify(message));
+    // debug('Received message: %s', JSON.stringify(message));
     switch (type) {
       case MessageType.RESPONSE_IDENTITY: {
         info('Received Pod Identity');
@@ -184,13 +168,19 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
           EventType.REQUEST_VALIDATION_START,
           'info',
         );
-        validateTransaction(transaction, senderLedger, (res: Result) => {
+        validateTransaction(transaction, senderLedger, (results: Result[]) => {
           const _tx = createDummyTransaction();
           Object.assign(_tx, transaction);
 
-          if (res.res) {
+          let validationResult = true;
+          results.map(_result => _result.res === false ? validationResult = false : null);
+          if (validationResult) {
             _tx.generateHash();
             updateLedger(_tx, 1);
+            const newSnapshot = senderLedger.generateSnapshot();
+            const _snapshotMap = getSnapshotMap();
+            info('Sending out updated snapshot.');
+            io.emit('message', snapshotMapUpdated({}))
           }
           info('Sending out validation result.');
           new LogEvent(
@@ -200,16 +190,18 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
             EventType.REQUEST_VALIDATION_END,
             'info',
           );
-          io.emit('message', responseIsTransactionValid(res, _tx));
+          io.emit('message', responseIsTransactionValid(results, _tx));
         });
         break;
       }
       case MessageType.VALIDATION_RESULT: {
+        debug(JSON.stringify(data));
         const { transaction }: { transaction: Transaction } = JSON.parse(data);
         if (!validationResults.hasOwnProperty(transaction.id)) {
           validationResults[transaction.id] = [];
         }
-        if (transaction.from === getPublicFromWallet()) {
+        const publicKey = getPublicFromWallet();
+        if (transaction.from === publicKey || transaction.to === publicKey) {
           validationResults[transaction.id].push({ socket, message });
         }
         else {
@@ -247,8 +239,10 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
         io.emit('message', responseIsTransactionHashValid(result));
         break;
       }
-      case MessageType.TRANSACTION_CONFIRMATION_RESULT: {
-        // See validateLedger
+      case MessageType.SNAPSHOT_VALIDATION_REQUEST: {
+        const { snapshot, sender, transactionId }: { snapshot: string, sender: string, transactionId: string } = JSON.parse(data);
+        const result = validateSnapshot(snapshot, sender, transactionId);
+        io.emit('message', responseIsSnapshotValid(result));
         break;
       }
       case MessageType.TEST_CONFIG: {
@@ -257,12 +251,12 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
         const { testConfig, snapshotMap, selectedPods }: { testConfig: TestConfig, snapshotMap: ISnapshotMap, selectedPods: Pod[] } = data;
         localSnapshotMap = snapshotMap;
         localTestConfig = testConfig;
-        debug(`Local test config: ${localTestConfig}`);
-        debug(`Received test config: ${testConfig}`);
+        info(`Local test config: ${JSON.stringify(localTestConfig)}`);
+        info(`Received test config: ${JSON.stringify(testConfig)}`);
         let isSelected = false;
         let index = 0;
         localSelectedPods = selectedPods;
-        // console.dir(testConfig);
+        debug(`Selected Pods: ${JSON.stringify(selectedPods)}`);
         // console.dir(selectedPods);
         for (let i = 0; i < selectedPods.length / 2; i += 1) {
           const pod = selectedPods[i];
@@ -278,6 +272,9 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
           // console.log('Selected as a sender. Starting test...');
           beginTest(selectedPods[index + selectedPods.length / 2]);
         }
+        break;
+      }
+      case MessageType.SNAPSHOT_MAP_UPDATED: {
         break;
       }
       case MessageType.WIPE_LEDGER: {
@@ -311,17 +308,19 @@ const handleValidationResults = (transactionId: string): void => {
   for (let i = 0; i < _validationResults.length; i += 1) {
     const validationResult = _validationResults[i];
     const { socket, message } = validationResult;
-    const { result }:
-      { result: Result } = JSON.parse(message.data);
-    if (result.res) {
-      // console.log(`Validation Result returned ${result.res}`);
-    }
-    else {
-      isValid = false;
-      // console.log(`Validation Result returned ${result.res}`);
-      // console.log(`Reason: ${result.reason}`);
-    }
-    socket.disconnect();
+    const { results }:
+      { results: Result[] } = JSON.parse(message.data);
+    results.map(result => {
+      if (result.res) {
+        // console.log(`Validation Result returned ${result.res}`);
+      }
+      else {
+        isValid = false;
+        console.log(`Validation Result returned ${result.res}`);
+        console.log(`Reason: ${result.reason}`);
+      }
+      socket.disconnect();
+    });
   }
   if (isValid) {
     const transaction: Transaction = JSON.parse(_validationResults[0].message.data).transaction;
