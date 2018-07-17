@@ -8,7 +8,7 @@ import { isTransactionValid, isSnapshotHashValid } from './message';
 import { IMessage, MessageType, getPodIndexByPublicKey, getPods, getTestConfig, handleMessage, isTransactionHashValid, write, getSnapshotMap, getSelectedPods } from './p2p';
 import { Pod, PodType } from './pod';
 import { Result } from './result';
-import { getEntryByTransactionId, toHexString, generateSnapshot } from './utils';
+import { getEntryByTransactionId, toHexString, generateLedgerSnapshot } from './utils';
 import { getPrivateFromWallet, getPublicFromWallet } from './wallet';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
@@ -142,9 +142,9 @@ class Transaction {
 
 interface ISnapshotMap {
   [index: string]: {
-    snapshotNodes: string[],
-    snapshots: string [],
-  },
+    snapshotNodes: string[];
+    snapshots: string [];
+  };
 }
 
 const numSnapshotNodes = 4;     // Default is 8
@@ -400,8 +400,9 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
 const validateTransaction = (transaction: Transaction, senderLedger: Ledger,
   callback: (results: Result[], transaction: Transaction) => void): void => {
   // console.log(`[validateTransaction] transactionId: ${transaction.id}`);
-  
+
   if (transaction.from == genesisAddress) {
+    info(`Genesis transaction`);
     return callback([new Result(true, '', transaction.id)], transaction);
   }
   const validationPromiseArray: Promise<Result>[] = [];
@@ -409,7 +410,8 @@ const validateTransaction = (transaction: Transaction, senderLedger: Ledger,
   const snapshotNodes = selectRandom(partnerPods, numSnapshotNodes);
   const senderSnapshotNodes = snapshotNodes.slice(0, numSnapshotNodes / 2);
   const receiverSnapshotNodes = snapshotNodes.slice(numSnapshotNodes / 2, numSnapshotNodes);
-  const senderLedgerSnapshot = generateSnapshot(senderLedger);
+  const senderLedgerSnapshot = generateLedgerSnapshot(senderLedger);
+  info(`SenderLedgerSnapshot: ${senderLedgerSnapshot}`);
   const expectedTransactionId: string = getTransactionId(transaction);
   // const requestReceiverLedgerPromise: Promise<Ledger> = requestReceiverLedger(transaction);
   let result = new Result(false, '', transaction.id);
@@ -427,12 +429,12 @@ const validateTransaction = (transaction: Transaction, senderLedger: Ledger,
       callback([result], transaction);
     }
     for (let i = 0; i < senderSnapshotNodes.length; i += 1) {
-      const snapshotNode = snapshotNodes[i];
+      const snapshotNode = senderSnapshotNodes[i];
       const snapshotValidationPromise: Promise<Result> = requestSnapshotValidation(snapshotNode, senderLedgerSnapshot, transaction);
       validationPromiseArray.push(snapshotValidationPromise);
     }
     for (let i = 0; i < receiverSnapshotNodes.length; i += 1) {
-      const snapshotNode = snapshotNodes[i];
+      const snapshotNode = receiverSnapshotNodes[i];
       // CHANGE TO RECEIVER LEDGER SNAPSHOT WHEN IMPLEMENTED
       const snapshotValidationPromise: Promise<Result> = requestSnapshotValidation(snapshotNode, senderLedgerSnapshot, transaction);
       validationPromiseArray.push(snapshotValidationPromise);
@@ -522,7 +524,7 @@ const requestSnapshotValidation = (pod: Pod, snapshot: string, transaction: Tran
         undefined,
         pod.address,
       );
-      write(socket, isSnapshotValidMsg);      
+      write(socket, isSnapshotValidMsg);
     });
     socket.on('message', (message: IMessage) => {
       if (message.type === MessageType.SNAPSHOT_VALIDATION_RESULT) {
@@ -537,16 +539,14 @@ const requestSnapshotValidation = (pod: Pod, snapshot: string, transaction: Tran
 const validateSnapshot = (snapshot: string, sender: string, transactionId: string) => {
   const snapshotMap = getSnapshotMap();
   info(`[validateSnapshot] snapshot: ${snapshot}`);
-  const senderSnapshots = snapshotMap[sender];
+  const senderSnapshots = snapshotMap[sender].snapshots;
   info(`[validateSnapshot] senderSnapshots: ${JSON.stringify(senderSnapshots)}`);
   const lastSnapshot = senderSnapshots[senderSnapshots.length - 1];
   info(`[validateSnapshot] lastSnapshot: ${lastSnapshot}`);
   if (lastSnapshot == snapshot) {
     return new Result(true, '', transactionId);
   }
-  else {
-    return new Result(false, 'Provided snapshot does not match sender\'s last snapshot', transactionId);
-  }
+  return new Result(false, 'Provided snapshot does not match sender\'s last snapshot', transactionId);
 };
 
 export {

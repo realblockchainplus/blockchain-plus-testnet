@@ -39,7 +39,7 @@ const podListUpdated = (pods: Pod[]): IMessage => ({
 });
 
 const snapshotMapUpdated = (data: {
-  snapshotmap: ISnapshotMap,
+  snapshotMap: ISnapshotMap,
   targets: string[],
 }): IMessage => ({
   type: MessageType.SNAPSHOT_MAP_UPDATED,

@@ -1,5 +1,4 @@
 import * as fs from 'fs';
-import * as objectHash from 'object-hash';
 
 import { EventType, LogEvent } from './logEvent';
 import { loopTest } from './p2p';
@@ -26,11 +25,6 @@ class Ledger {
   constructor(entries: Transaction[], LedgerType: LedgerType) {
     this.entries = entries;
     this.LedgerType = LedgerType;
-  }
-
-  generateSnapshot() {
-    const hash = objectHash.MD5(this);
-    return hash;
   }
 }
 
@@ -82,10 +76,14 @@ const initLedger = (port: number): void => {
  * Updates a [[Ledger]] based on the specified [[LedgerType]].
  */
 const updateLedger = (transaction: Transaction, type: LedgerType): void => {
+  info(`[updateLedger]`);
   const _transaction = updateTransaction(transaction, type);
+  info(`[updateLedger] init _transaction`);
   const ledger: Ledger = getLocalLedger(type);
+  info(`[updateLedger] get ledger`);
   // debug(getEntryInLedgerByTransactionId(_transaction.id, ledger));
   if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined) {
+    info(`[updateLedger] before write ledger`);
     ledger.entries.push(_transaction);
     writeLedger(ledger, type);
   }
@@ -112,6 +110,7 @@ const updateTransaction = (transaction: Transaction, type: LedgerType): Transact
  * Writes to the ledger specified by [[LedgerType]].
  */
 const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): void => {
+  info(`[writeLedger]`);
   const ledgerFilename = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
   debug(`Ledger File Name: ${ledgerFilename}`);
   const transaction = ledger.entries[ledger.entries.length - 1];

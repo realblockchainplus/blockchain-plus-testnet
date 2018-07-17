@@ -29,8 +29,9 @@ import {
   validateTransactionHash,
   ISnapshotMap,
   validateSnapshot,
+  getGenesisAddress,
 } from './transaction';
-import { getCurrentTimestamp, getPodIndexBySocket, getPodIndexByPublicKey, createDummyTransaction } from './utils';
+import { getCurrentTimestamp, getPodIndexBySocket, getPodIndexByPublicKey, createDummyTransaction, generateLedgerSnapshot } from './utils';
 import { getPublicFromWallet, fundWallet } from './wallet';
 import { AddressInfo } from 'net';
 
@@ -177,10 +178,20 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
           if (validationResult) {
             _tx.generateHash();
             updateLedger(_tx, 1);
-            const newSnapshot = senderLedger.generateSnapshot();
+            const newSnapshot = generateLedgerSnapshot(senderLedger);
+            console.log(`generated snapshot: ${newSnapshot}`);
             const _snapshotMap = getSnapshotMap();
+            console.log(`got snapshotMap`);
+            console.log(JSON.stringify(_snapshotMap));
+            console.log(transaction.from);
+            console.log(JSON.stringify(_snapshotMap[transaction.from]));
+            _snapshotMap[transaction.from].snapshots.push(newSnapshot);
+            console.log('added new snapshot to snapshotmap');
+            const targets = _snapshotMap[transaction.from].snapshotNodes;
+            transaction.from != getGenesisAddress() ? targets.push(transaction.from) : null;
+            targets.push(transaction.to);
             info('Sending out updated snapshot.');
-            io.emit('message', snapshotMapUpdated({}))
+            io.emit('message', snapshotMapUpdated({ targets, snapshotMap: _snapshotMap }));
           }
           info('Sending out validation result.');
           new LogEvent(
@@ -250,6 +261,7 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
         const data = JSON.parse(message.data);
         const { testConfig, snapshotMap, selectedPods }: { testConfig: TestConfig, snapshotMap: ISnapshotMap, selectedPods: Pod[] } = data;
         localSnapshotMap = snapshotMap;
+        console.log(`localsnapshotmap: ${JSON.stringify(localSnapshotMap)}`);
         localTestConfig = testConfig;
         info(`Local test config: ${JSON.stringify(localTestConfig)}`);
         info(`Received test config: ${JSON.stringify(testConfig)}`);
@@ -275,6 +287,12 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
         break;
       }
       case MessageType.SNAPSHOT_MAP_UPDATED: {
+        const _data: { snapshotMap: ISnapshotMap, targets: string[] } = JSON.parse(data);
+        const { snapshotMap, targets } = _data;
+        if (targets.includes(getPublicFromWallet())) {
+          info('Received new snapshotmap');
+          localSnapshotMap = snapshotMap;
+        }
         break;
       }
       case MessageType.WIPE_LEDGER: {
@@ -310,7 +328,7 @@ const handleValidationResults = (transactionId: string): void => {
     const { socket, message } = validationResult;
     const { results }:
       { results: Result[] } = JSON.parse(message.data);
-    results.map(result => {
+    results.map((result) => {
       if (result.res) {
         // console.log(`Validation Result returned ${result.res}`);
       }

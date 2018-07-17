@@ -15,7 +15,7 @@ import { Pod, PodType } from './pod';
 import { info } from './logger';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
-import { ISnapshotMap } from './transaction';
+import { ISnapshotMap, getGenesisAddress } from './transaction';
 import { randomNumberFromRange } from './utils';
 import { getPublicFromWallet, initWallet } from './wallet';
 import { AddressInfo } from 'net';
@@ -157,10 +157,20 @@ const initHttpServer = (port: number, callback = (server: http.Server) => {}): v
     for (let i = 0; i < selectedPods.length; i += 1) {
       const selectedPod = selectedPods[i];
       const snapshotPods = selectRandom(pods.filter(pod => pod.podType === PodType.PARTNER_POD), 4);
-      snapshotMap[selectedPod.address] = [...snapshotPods.map(pod => pod.address)];
+      console.log('assigning snapshot map');
+      snapshotMap[selectedPod.address] = {
+        snapshotNodes: [...snapshotPods.map(pod => pod.address)],
+        snapshots: [],
+      };
     }
-    
-    // debug(localLogger);
+
+    const snapshotPods = selectRandom(pods.filter(pod => pod.podType === PodType.PARTNER_POD), 4);
+    snapshotMap[getGenesisAddress()] = {
+      snapshotNodes: [...snapshotPods.map(pod => pod.address)],
+      snapshots: [],
+    };
+
+    //     debug(localLogger);
     new LogEvent(
       '',
       '',

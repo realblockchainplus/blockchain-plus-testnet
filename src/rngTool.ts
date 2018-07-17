@@ -36,7 +36,7 @@ const buildRandomSet = (pods: Pod[], num: number, to: string): number[] => {
   let randomNumber;
   // console.log(num, pods.length);
   // console.dir(pods);
-  let numInvalidPods = myIndex !== -1 ? 1 : 0;   // cannot select self
+  const numInvalidPods = myIndex !== -1 ? 1 : 0;   // cannot select self
   info(`[buildRandomSet] Number of pods: ${pods.length}`);
   if (pods.length - numInvalidPods >= num) {
     while (randomSet.length < num) {

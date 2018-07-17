@@ -1,3 +1,5 @@
+import * as objectHash from 'object-hash';
+
 import { getLocalLedger, Ledger, LedgerType } from './ledger';
 // import * as os from 'os';
 import { Transaction } from './transaction';
@@ -129,8 +131,13 @@ const createDummyTransaction = (): Transaction => {
   return tx;
 };
 
+const generateLedgerSnapshot = (ledger: Ledger) => {
+  const hash = objectHash.MD5(ledger);
+  return hash;
+};
+
 export {
-  createDummyTransaction, generateSnapshot, getCurrentTimestamp, getEntryByTransactionId,
+  createDummyTransaction, getCurrentTimestamp, getEntryByTransactionId,
   getEntryInLedgerByTransactionId, getLocalIp, getPodIndexByPublicKey, getPodIndexBySocket,
-  isValidAddress, randomNumberFromRange, toHexString,
+  isValidAddress, randomNumberFromRange, toHexString, generateLedgerSnapshot,
 };
