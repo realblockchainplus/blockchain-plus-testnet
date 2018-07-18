@@ -38,12 +38,9 @@ const podListUpdated = (pods: Pod[]): IMessage => ({
   data: JSON.stringify(pods),
 });
 
-const snapshotMapUpdated = (data: {
-  snapshotMap: ISnapshotMap,
-  targets: string[],
-}): IMessage => ({
+const snapshotMapUpdated = (snapshotMap: ISnapshotMap): IMessage => ({
   type: MessageType.SNAPSHOT_MAP_UPDATED,
-  data: JSON.stringify(data),
+  data: JSON.stringify(snapshotMap),
 });
 
 const killMsg = (): IMessage => ({

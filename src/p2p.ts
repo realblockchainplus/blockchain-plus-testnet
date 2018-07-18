@@ -179,19 +179,21 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
             _tx.generateHash();
             updateLedger(_tx, 1);
             const newSnapshot = generateLedgerSnapshot(senderLedger);
-            console.log(`generated snapshot: ${newSnapshot}`);
-            const _snapshotMap = getSnapshotMap();
-            console.log(`got snapshotMap`);
-            console.log(JSON.stringify(_snapshotMap));
-            console.log(transaction.from);
-            console.log(JSON.stringify(_snapshotMap[transaction.from]));
-            _snapshotMap[transaction.from].snapshots.push(newSnapshot);
-            console.log('added new snapshot to snapshotmap');
-            const targets = _snapshotMap[transaction.from].snapshotNodes;
+            localSnapshotMap[transaction.from].snapshots.push(newSnapshot);
+            const targets = localSnapshotMap[transaction.from].snapshotNodes;
             transaction.from != getGenesisAddress() ? targets.push(transaction.from) : null;
             targets.push(transaction.to);
             info('Sending out updated snapshot.');
-            io.emit('message', snapshotMapUpdated({ targets, snapshotMap: _snapshotMap }));
+            for (let i = 0; i < targets.length; i += 1) {
+              const target = targets[i];
+              const pod = pods[getPodIndexByPublicKey(target, pods)];
+              const podIp = transaction.local ? `${pod.localIp}:${pod.port}` : pod.ip;
+              const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
+              socket.on('connect', () => {
+                write(socket, snapshotMapUpdated(localSnapshotMap));
+                socket.disconnect();
+              });
+            }
           }
           info('Sending out validation result.');
           new LogEvent(
@@ -287,12 +289,9 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
         break;
       }
       case MessageType.SNAPSHOT_MAP_UPDATED: {
-        const _data: { snapshotMap: ISnapshotMap, targets: string[] } = JSON.parse(data);
-        const { snapshotMap, targets } = _data;
-        if (targets.includes(getPublicFromWallet())) {
-          info('Received new snapshotmap');
-          localSnapshotMap = snapshotMap;
-        }
+        const snapshotMap: ISnapshotMap = JSON.parse(data);
+        info('Received new snapshotmap');
+        localSnapshotMap = snapshotMap;        
         break;
       }
       case MessageType.WIPE_LEDGER: {
