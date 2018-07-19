@@ -13,10 +13,3 @@ describe('Wallet exists', () => {
     expect(result.length).to.equal(130);
   });
 });
-
-describe('Initial Wallet should have funds for testing', () => {
-  it('should return a balance higher than zero', () => {
-    const result = getLedgerBalance(getLedger(LedgerType.MY_LEDGER));
-    expect(result).to.be.greaterThan(0);
-  });
-});
