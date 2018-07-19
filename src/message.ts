@@ -1,4 +1,4 @@
-import { Ledger } from './ledger';
+import { Ledger, LedgerType } from './ledger';
 import { Pod } from './pod';
 import { Result } from './result';
 import { Transaction, ISnapshotMap } from './transaction';
@@ -23,9 +23,11 @@ enum MessageType {
   WIPE_LEDGER = 10,
   TEST_START = 11,
   LOGGER_READY = 12,
-  SNAPSHOT_VALIDATION_REQUEST = 13,
-  SNAPSHOT_VALIDATION_RESULT = 14,
+  SNAPSHOT_REQUEST = 13,
+  SNAPSHOT_RESULT = 14,
   SNAPSHOT_MAP_UPDATED = 15,
+  LEDGER_REQUEST = 16,
+  LEDGER_RESULT = 17,
 }
 
 const responseIsTransactionHashValid = (result: Result): IMessage => ({
@@ -59,21 +61,44 @@ const isTransactionHashValid = (transactionData: {
   };
 };
 
-const isSnapshotHashValid = (transactionData: {
-  snapshot: string,
-  sender: string,
+const requestSnapshotMsg = (data: {
+  snapshotOwner: string,
   transactionId: string,
 }): IMessage => {
   return {
-    type: MessageType.SNAPSHOT_VALIDATION_REQUEST,
-    data: JSON.stringify(transactionData),
+    type: MessageType.SNAPSHOT_REQUEST,
+    data: JSON.stringify(data),
   };
 };
 
-const responseIsSnapshotValid = (result: Result): IMessage => {
+const requestLedgerMsg = (data: {
+  transactionId: string,
+  ledgerType: LedgerType,
+}): IMessage => {
   return {
-    type: MessageType.SNAPSHOT_VALIDATION_RESULT,
-    data: JSON.stringify(result),
+    type: MessageType.LEDGER_REQUEST,
+    data: JSON.stringify(data),
+  };
+};
+
+const responseLedgerMsg = (data: {
+  transactionId: string,
+  ledger: Ledger,
+}): IMessage => {
+  return {
+    type: MessageType.LEDGER_RESULT,
+    data: JSON.stringify(data),
+  };
+};
+
+const responseSnapshotMsg = (data: {
+  snapshotOwner: string,
+  transactionId: string,
+  snapshot: string,
+}): IMessage => {
+  return {
+    type: MessageType.SNAPSHOT_RESULT,
+    data: JSON.stringify(data),
   };
 };
 
@@ -129,5 +154,6 @@ export {
   IMessage, MessageType, isTransactionHashValid, isTransactionValid, killMsg,
   podListUpdated, responseIdentityMsg, responseIsTransactionHashValid,
   responseIsTransactionValid, sendTestConfig, wipeLedgersMsg, testStartMsg,
-  logEventMsg, isSnapshotHashValid, responseIsSnapshotValid, snapshotMapUpdated,
+  logEventMsg, requestSnapshotMsg, responseSnapshotMsg, snapshotMapUpdated,
+  requestLedgerMsg, responseLedgerMsg,
 };

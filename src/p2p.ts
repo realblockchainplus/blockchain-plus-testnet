@@ -3,7 +3,7 @@ import * as minimist from 'minimist';
 import * as socketIo from 'socket.io';
 import * as ioClient from 'socket.io-client';
 
-import { getLocalLedger, Ledger, LedgerType, updateLedger, initLedger } from './ledger';
+import { getLocalLedger, Ledger, LedgerType, updateLedger, initLedger, getLedger } from './ledger';
 import { err, warning, info, debug } from './logger';
 import { EventType, LogEvent } from './logEvent';
 import {
@@ -16,8 +16,9 @@ import {
   responseIsTransactionValid,
   wipeLedgersMsg,
   responseIdentityMsg,
-  responseIsSnapshotValid,
+  responseSnapshotMsg,
   snapshotMapUpdated,
+  responseLedgerMsg,
 } from './message';
 import { Pod } from './pod';
 import { Result } from './result';
@@ -28,8 +29,9 @@ import {
   validateTransaction,
   validateTransactionHash,
   ISnapshotMap,
-  validateSnapshot,
   getGenesisAddress,
+  ISnapshotResponse,
+  ActorRoles,
 } from './transaction';
 import { getCurrentTimestamp, getPodIndexBySocket, getPodIndexByPublicKey, createDummyTransaction, generateLedgerSnapshot } from './utils';
 import { getPublicFromWallet, fundWallet } from './wallet';
@@ -169,18 +171,38 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
           EventType.REQUEST_VALIDATION_START,
           'info',
         );
-        validateTransaction(transaction, senderLedger, (results: Result[]) => {
+        validateTransaction(transaction, senderLedger, (responses: (Result | Ledger | ISnapshotResponse)[]) => {
           const _tx = createDummyTransaction();
           Object.assign(_tx, transaction);
 
           let validationResult = true;
+          info(`[validateTransaction] Responses: ${JSON.stringify(responses)}`);
+          const results = responses.filter(response => response instanceof Result) as Result[];
+          const snapshots = responses.filter(response => response.hasOwnProperty('snapshotOwner')) as ISnapshotResponse[];
+          let receiverLedger = {} as Ledger;
+          responses.map(response => response instanceof Ledger ? receiverLedger = response : null);
           results.map(_result => _result.res === false ? validationResult = false : null);
+          const existingSenderSnapshot = generateLedgerSnapshot(senderLedger);
+          const existingReceiverSnapshot = generateLedgerSnapshot(receiverLedger);
+          snapshots.map((_snapshot) => {
+            if (_snapshot.ownerRole === ActorRoles.SENDER) {
+              _snapshot.snapshot === existingSenderSnapshot ? validationResult = false : null;
+            }
+            if (_snapshot.ownerRole === ActorRoles.RECEIVER) {
+              _snapshot.snapshot === existingReceiverSnapshot ? validationResult = false : null;
+            }
+          });
           if (validationResult) {
             _tx.generateHash();
             updateLedger(_tx, 1);
-            const newSnapshot = generateLedgerSnapshot(senderLedger);
-            localSnapshotMap[transaction.from].snapshots.push(newSnapshot);
-            const targets = localSnapshotMap[transaction.from].snapshotNodes;
+            senderLedger.entries.push(transaction);
+            const newSenderSnapshot = generateLedgerSnapshot(senderLedger);
+            const newReceiverSnapshot = generateLedgerSnapshot(receiverLedger);
+            const senderMapLocation = localSnapshotMap[transaction.from];
+            const receiverMapLocation = localSnapshotMap[transaction.to];
+            senderMapLocation.snapshots.push(newSenderSnapshot);
+            receiverMapLocation.snapshots.push(newReceiverSnapshot);
+            const targets = [...senderMapLocation.snapshotNodes, ...receiverMapLocation.snapshotNodes];
             transaction.from != getGenesisAddress() ? targets.push(transaction.from) : null;
             targets.push(transaction.to);
             info('Sending out updated snapshot.');
@@ -252,10 +274,17 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
         io.emit('message', responseIsTransactionHashValid(result));
         break;
       }
-      case MessageType.SNAPSHOT_VALIDATION_REQUEST: {
-        const { snapshot, sender, transactionId }: { snapshot: string, sender: string, transactionId: string } = JSON.parse(data);
-        const result = validateSnapshot(snapshot, sender, transactionId);
-        io.emit('message', responseIsSnapshotValid(result));
+      case MessageType.SNAPSHOT_REQUEST: {
+        const { snapshotOwner, transactionId }: { snapshotOwner: string, transactionId: string } = JSON.parse(data);
+        const senderSnapshots = localSnapshotMap[snapshotOwner].snapshots;
+        const lastSnapshot = senderSnapshots[senderSnapshots.length - 1] || '';
+        io.emit('message', responseSnapshotMsg({ snapshotOwner, transactionId, snapshot: lastSnapshot }));
+        break;
+      }
+      case MessageType.LEDGER_REQUEST: {
+        const { transactionId, ledgerType }: { transactionId: string, ledgerType: LedgerType } = JSON.parse(data);
+        const ledger = getLedger(ledgerType);
+        io.emit('message', responseLedgerMsg({ transactionId, ledger }));
         break;
       }
       case MessageType.TEST_CONFIG: {
@@ -263,10 +292,9 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
         const data = JSON.parse(message.data);
         const { testConfig, snapshotMap, selectedPods }: { testConfig: TestConfig, snapshotMap: ISnapshotMap, selectedPods: Pod[] } = data;
         localSnapshotMap = snapshotMap;
-        console.log(`localsnapshotmap: ${JSON.stringify(localSnapshotMap)}`);
         localTestConfig = testConfig;
-        info(`Local test config: ${JSON.stringify(localTestConfig)}`);
-        info(`Received test config: ${JSON.stringify(testConfig)}`);
+        // info(`Local test config: ${JSON.stringify(localTestConfig)}`);
+        // info(`Received test config: ${JSON.stringify(testConfig)}`);
         let isSelected = false;
         let index = 0;
         localSelectedPods = selectedPods;
@@ -290,8 +318,8 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
       }
       case MessageType.SNAPSHOT_MAP_UPDATED: {
         const snapshotMap: ISnapshotMap = JSON.parse(data);
-        info('Received new snapshotmap');
-        localSnapshotMap = snapshotMap;        
+        // info(`Received new snapshotmap: ${JSON.stringify(snapshotMap)}`);
+        localSnapshotMap = snapshotMap;
         break;
       }
       case MessageType.WIPE_LEDGER: {

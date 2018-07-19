@@ -1,14 +1,14 @@
 import * as CryptoJS from 'crypto-js';
 import * as ecdsa from 'elliptic';
 import * as ioClient from 'socket.io-client';
-import { Ledger, getLedgerBalance } from './ledger';
+import { Ledger, getLedgerBalance, LedgerType } from './ledger';
 import { EventType, LogEvent } from './logEvent';
 import { debug, info } from './logger';
-import { isTransactionValid, isSnapshotHashValid } from './message';
+import { isTransactionValid, requestSnapshotMsg, requestLedgerMsg } from './message';
 import { IMessage, MessageType, getPodIndexByPublicKey, getPods, getTestConfig, handleMessage, isTransactionHashValid, write, getSnapshotMap, getSelectedPods } from './p2p';
 import { Pod, PodType } from './pod';
 import { Result } from './result';
-import { getEntryByTransactionId, toHexString, generateLedgerSnapshot } from './utils';
+import { getEntryByTransactionId, toHexString } from './utils';
 import { getPrivateFromWallet, getPublicFromWallet } from './wallet';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
@@ -145,6 +145,21 @@ interface ISnapshotMap {
     snapshotNodes: string[];
     snapshots: string [];
   };
+}
+
+interface ISnapshotResponse {
+  snapshotOwner: string;
+  transactionId: string;
+  snapshot: string;
+  ownerRole: ActorRoles;
+}
+
+enum ActorRoles {
+  SENDER = 0,
+  RECEIVER = 1,
+  CURRENT_VALIDATOR = 2,
+  PREVIOUS_VALIDATOR = 3,
+  SNAPSHOT_VALIDATOR = 4,
 }
 
 const numSnapshotNodes = 4;     // Default is 8
@@ -398,20 +413,18 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
 };
 
 const validateTransaction = (transaction: Transaction, senderLedger: Ledger,
-  callback: (results: Result[], transaction: Transaction) => void): void => {
+  callback: (results: (Result | Ledger | ISnapshotResponse)[], transaction: Transaction) => void): void => {
   // console.log(`[validateTransaction] transactionId: ${transaction.id}`);
 
   if (transaction.from == genesisAddress) {
     info(`Genesis transaction`);
     return callback([new Result(true, '', transaction.id)], transaction);
   }
-  const validationPromiseArray: Promise<Result>[] = [];
+  const validationPromiseArray: Promise<Result | Ledger | ISnapshotResponse>[] = [];
   const partnerPods = getPods().filter(pod => pod.podType === PodType.PARTNER_POD);
   const snapshotNodes = selectRandom(partnerPods, numSnapshotNodes);
   const senderSnapshotNodes = snapshotNodes.slice(0, numSnapshotNodes / 2);
   const receiverSnapshotNodes = snapshotNodes.slice(numSnapshotNodes / 2, numSnapshotNodes);
-  const senderLedgerSnapshot = generateLedgerSnapshot(senderLedger);
-  info(`SenderLedgerSnapshot: ${senderLedgerSnapshot}`);
   const expectedTransactionId: string = getTransactionId(transaction);
   // const requestReceiverLedgerPromise: Promise<Ledger> = requestReceiverLedger(transaction);
   let result = new Result(false, '', transaction.id);
@@ -428,15 +441,17 @@ const validateTransaction = (transaction: Transaction, senderLedger: Ledger,
       // console.log(result.reason);
       callback([result], transaction);
     }
+    const requestReceiverLedgerPromise: Promise<Ledger> = requestReceiverLedger(transaction);
+    validationPromiseArray.push(requestReceiverLedgerPromise);
     for (let i = 0; i < senderSnapshotNodes.length; i += 1) {
       const snapshotNode = senderSnapshotNodes[i];
-      const snapshotValidationPromise: Promise<Result> = requestSnapshotValidation(snapshotNode, senderLedgerSnapshot, transaction);
+      const snapshotValidationPromise: Promise<Result | ISnapshotResponse> = requestSnapshot(snapshotNode, transaction.from, transaction);
       validationPromiseArray.push(snapshotValidationPromise);
     }
     for (let i = 0; i < receiverSnapshotNodes.length; i += 1) {
       const snapshotNode = receiverSnapshotNodes[i];
       // CHANGE TO RECEIVER LEDGER SNAPSHOT WHEN IMPLEMENTED
-      const snapshotValidationPromise: Promise<Result> = requestSnapshotValidation(snapshotNode, senderLedgerSnapshot, transaction);
+      const snapshotValidationPromise: Promise<Result | ISnapshotResponse> = requestSnapshot(snapshotNode, transaction.to, transaction);
       validationPromiseArray.push(snapshotValidationPromise);
     }
     // console.log('Signature was valid... validating ledger.');
@@ -494,7 +509,7 @@ const validateTransactionHash = (id: string, currentId: string, hash: string): R
   return new Result(res, reason, id);
 };
 
-const requestSnapshotValidation = (pod: Pod, snapshot: string, transaction: Transaction): Promise<Result> => {
+const requestSnapshot = (pod: Pod, snapshotOwner: string, transaction: Transaction): Promise<Result | ISnapshotResponse> => {
   return new Promise((resolve, reject) => {
     new LogEvent(
       transaction.from,
@@ -512,7 +527,7 @@ const requestSnapshotValidation = (pod: Pod, snapshot: string, transaction: Tran
       const result = new Result(false, reason, transaction.id);
       reject(result);
     }, 10000);
-    const isSnapshotValidMsg = isSnapshotHashValid({ snapshot, sender: transaction.from, transactionId: transaction.id });
+    const msg = requestSnapshotMsg({ snapshotOwner, transactionId: transaction.id });
     socket.on('connect', () => {
       clearTimeout(connectTimeout);
       new LogEvent(
@@ -524,13 +539,57 @@ const requestSnapshotValidation = (pod: Pod, snapshot: string, transaction: Tran
         undefined,
         pod.address,
       );
-      write(socket, isSnapshotValidMsg);
+      write(socket, msg);
     });
     socket.on('message', (message: IMessage) => {
-      if (message.type === MessageType.SNAPSHOT_VALIDATION_RESULT) {
-        const result: Result = JSON.parse(message.data);
+      if (message.type === MessageType.SNAPSHOT_RESULT) {
+        const data = JSON.parse(message.data);
         socket.disconnect();
-        resolve(result);
+        resolve(data);
+      }
+    });
+  });
+};
+
+const requestReceiverLedger = (transaction: Transaction): Promise<Ledger> => {
+  const pods = getPods();
+  const pod = pods[getPodIndexByPublicKey(transaction.to, pods)];
+  return new Promise((resolve, reject) => {
+    new LogEvent(
+      transaction.from,
+      transaction.to,
+      transaction.id,
+      EventType.CONNECT_TO_RECEIVER_START,
+      'info',
+      undefined,
+      pod.address,
+    );
+    const podIp = transaction.local ? `${pod.localIp}:${pod.port}` : pod.ip;
+    const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
+    const connectTimeout = setTimeout(() => {
+      const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
+      const result = new Result(false, reason, transaction.id);
+      reject(result);
+    }, 10000);
+    const msg = requestLedgerMsg({ transactionId: transaction.id, ledgerType: LedgerType.MY_LEDGER });
+    socket.on('connect', () => {
+      clearTimeout(connectTimeout);
+      new LogEvent(
+        transaction.from,
+        transaction.to,
+        transaction.id,
+        EventType.CONNECT_TO_RECEIVER_END,
+        'info',
+        undefined,
+        pod.address,
+      );
+      write(socket, msg);
+    });
+    socket.on('message', (message: IMessage) => {
+      if (message.type === MessageType.LEDGER_RESULT) {
+        const data = JSON.parse(message.data);
+        socket.disconnect();
+        resolve(data.ledger);
       }
     });
   });
@@ -539,6 +598,7 @@ const requestSnapshotValidation = (pod: Pod, snapshot: string, transaction: Tran
 const validateSnapshot = (snapshot: string, sender: string, transactionId: string) => {
   const snapshotMap = getSnapshotMap();
   info(`[validateSnapshot] snapshot: ${snapshot}`);
+  info(`sender: ${sender}`);
   const senderSnapshots = snapshotMap[sender].snapshots;
   info(`[validateSnapshot] senderSnapshots: ${JSON.stringify(senderSnapshots)}`);
   const lastSnapshot = senderSnapshots[senderSnapshots.length - 1];
@@ -551,5 +611,6 @@ const validateSnapshot = (snapshot: string, sender: string, transactionId: strin
 
 export {
   Transaction, getTransactionId, ISnapshotMap, requestValidateTransaction, genesisTransaction,
-  validateTransaction, validateTransactionHash, getGenesisAddress, validateSnapshot,
+  validateTransaction, validateTransactionHash, getGenesisAddress, validateSnapshot, ISnapshotResponse,
+  ActorRoles,
 };

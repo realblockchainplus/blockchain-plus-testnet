@@ -54,6 +54,7 @@ class LogEvent {
       });
     }
   }
+
   partialPod(address: string): Partial<Pod> {
     const pods = getPods();
     const pod: Partial<Pod> = { ...pods[getPodIndexByPublicKey(address, pods)] };
@@ -133,6 +134,8 @@ enum EventType {
   WRITE_TO_WITNESS_LEDGER_END = 32,
   CONNECT_TO_SNAPSHOT_NODE_START = 33,
   CONNECT_TO_SNAPSHOT_NODE_END = 34,
+  CONNECT_TO_RECEIVER_START = 35,
+  CONNECT_TO_RECEIVER_END = 36,
 }
 
 export {
