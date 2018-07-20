@@ -1,10 +1,11 @@
 import * as fs from 'fs';
 
 import { EventType, LogEvent } from './logEvent';
-import { loopTest, getTestConfig } from './p2p';
+import { loopTest } from './p2p';
 import { Transaction } from './transaction';
 import { getEntryInLedgerByTransactionId, createDummyTransaction } from './utils';
 import { info, debug } from './logger';
+import { getPublicFromWallet } from './wallet';
 
 let ledgerLocation = ``;
 const myLedgerFilename = 'my_ledger.json';
@@ -75,15 +76,14 @@ const initLedger = (port: number): void => {
  * Updates a [[Ledger]] based on the specified [[LedgerType]].
  */
 const updateLedger = (transaction: Transaction, type: LedgerType): void => {
-  const localTestConfig = getTestConfig();
-  const maxLedgerLength = localTestConfig.maxLedgerLength || 1;
+  info(`[updateLedger]`);
   const _transaction = updateTransaction(transaction, type);
+  info(`[updateLedger] init _transaction`);
   const ledger: Ledger = getLocalLedger(type);
+  info(`[updateLedger] get ledger`);
   // debug(getEntryInLedgerByTransactionId(_transaction.id, ledger));
   if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined) {
-    if (ledger.entries.length > maxLedgerLength && type === LedgerType.MY_LEDGER) {
-      ledger.entries.pop();
-    }
+    info(`[updateLedger] before write ledger`);
     ledger.entries.push(_transaction);
     writeLedger(ledger, type);
   }
@@ -110,6 +110,7 @@ const updateTransaction = (transaction: Transaction, type: LedgerType): Transact
  * Writes to the ledger specified by [[LedgerType]].
  */
 const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): void => {
+  info(`[writeLedger]`);
   const ledgerFilename = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
   debug(`Ledger File Name: ${ledgerFilename}`);
   const transaction = ledger.entries[ledger.entries.length - 1];
@@ -130,7 +131,7 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
     eventTypeEnd,
     'silly',
   );
-  if (ledger.entries.length > 1 && type === LedgerType.MY_LEDGER) {
+  if (type === LedgerType.MY_LEDGER) {
     debug('Looping...');
     new LogEvent(
       transaction.from,
@@ -144,6 +145,25 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
   }
 };
 
+const getLedgerBalance = (ledger: Ledger, publicKey?: string): number => {
+  const walletAddress = publicKey || getPublicFromWallet();
+  let ledgerBalance = 0;
+  for (let i = 0; i < ledger.entries.length; i += 1) {
+    const entry = ledger.entries[i];
+    // console.dir(entry);
+    // console.log(entry.to, publicKey);
+    if (entry.to == walletAddress) {
+      // console.log(`Address matches publicKey. Adding ${entry.amount} to currentHoldings.`);
+      ledgerBalance += entry.amount;
+    }
+    if (entry.from == walletAddress) {
+      // console.log(`From matches publicKey. Removing ${entry.amount} from currentHoldings.`);
+      ledgerBalance -= entry.amount;
+    }
+  }
+  return ledgerBalance;
+};
+
 export {
-  Ledger, updateLedger, getLedger, getLocalLedger, LedgerType, initLedger,
+  Ledger, updateLedger, getLedger, getLedgerBalance, getLocalLedger, LedgerType, initLedger,
 };

@@ -1,3 +1,5 @@
+import * as objectHash from 'object-hash';
+
 import { getLocalLedger, Ledger, LedgerType } from './ledger';
 // import * as os from 'os';
 import { Transaction } from './transaction';
@@ -20,7 +22,7 @@ const getEntryByTransactionId = (transactionId: string, currentTransactionId: st
     );
   }
   const { entries }: { entries: Transaction[] } = getLocalLedger(type);
-  let index = -1; 
+  let index = -1;
   for (let i = 0; i < entries.length; i += 1) {
     const entry = entries[i];
     if (entry.id === transactionId) {
@@ -42,7 +44,7 @@ const getEntryByTransactionId = (transactionId: string, currentTransactionId: st
 
 const getEntryInLedgerByTransactionId = (transactionId: string, ledger: Ledger): Transaction => {
   const { entries }: { entries: Transaction[] } = ledger;
-  let index = -1; 
+  let index = -1;
   for (let i = 0; i < entries.length; i += 1) {
     const entry = entries[i];
     if (entry.id === transactionId) {
@@ -73,8 +75,8 @@ const getLocalIp = () => {
 };
 
 const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[]): number => {
-  console.time('getPodIndexByPublicKey');
-  let index = -1; 
+  // console.time('getPodIndexByPublicKey');
+  let index = -1;
   for (let i = 0; i < _pods.length; i += 1) {
     const pod = _pods[i];
     if (pod.address === publicKey) {
@@ -82,13 +84,13 @@ const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[]): number => {
       break;
     }
   }
-  console.timeEnd('getPodIndexByPublicKey');
+  // console.timeEnd('getPodIndexByPublicKey');
   return index;
 };
 
 const getPodIndexBySocket = (socket: ClientSocket | ServerSocket, _pods: Pod[]): number => {
   console.time('getPodIndexBySocket');
-  let index = -1; 
+  let index = -1;
   for (let i = 0; i < _pods.length; i += 1) {
     const pod = _pods[i];
     if (pod.socketId === socket.id) {
@@ -129,10 +131,13 @@ const createDummyTransaction = (): Transaction => {
   return tx;
 };
 
-const testFunc = () => {};
+const generateLedgerSnapshot = (ledger: Ledger) => {
+  const hash = objectHash.MD5(ledger);
+  return hash;
+};
 
 export {
   createDummyTransaction, getCurrentTimestamp, getEntryByTransactionId,
   getEntryInLedgerByTransactionId, getLocalIp, getPodIndexByPublicKey, getPodIndexBySocket,
-  isValidAddress, randomNumberFromRange, toHexString, testFunc,
+  isValidAddress, randomNumberFromRange, toHexString, generateLedgerSnapshot,
 };

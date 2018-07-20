@@ -49,11 +49,12 @@ class LogEvent {
     }
     else {
       conn.once('open', () => {
-        console.log('Connection is now open. Sending...');
+        // console.log('Connection is now open. Sending...');
         this.sendLogEvent();
       });
     }
   }
+
   partialPod(address: string): Partial<Pod> {
     const pods = getPods();
     const pod: Partial<Pod> = { ...pods[getPodIndexByPublicKey(address, pods)] };
@@ -131,6 +132,10 @@ enum EventType {
   WRITE_TO_MY_LEDGER_END = 30,
   WRITE_TO_WITNESS_LEDGER_START = 31,
   WRITE_TO_WITNESS_LEDGER_END = 32,
+  CONNECT_TO_SNAPSHOT_NODE_START = 33,
+  CONNECT_TO_SNAPSHOT_NODE_END = 34,
+  CONNECT_TO_RECEIVER_START = 35,
+  CONNECT_TO_RECEIVER_END = 36,
 }
 
 export {

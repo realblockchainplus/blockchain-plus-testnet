@@ -2,9 +2,13 @@ node_modules
 node
 *.txt
 *.pem
+*.pub
 .env
 js
+coverage
+.nyc_output
 src/*.js
 src/*.map
 bash.exe.stackdump
 .vscode/launch.json
+unused

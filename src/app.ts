@@ -8,16 +8,19 @@ import * as minimist from 'minimist';
 
 dotenv.config();
 
+// import { createEC2Instance } from './aws';
 import { sendTestConfig } from './message';
 import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll, wipeLedgers } from './p2p';
-import { Pod } from './pod';
+import { Pod, PodType } from './pod';
 import { info } from './logger';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
+import { ISnapshotMap, getGenesisAddress } from './transaction';
 import { randomNumberFromRange } from './utils';
 import { getPublicFromWallet, initWallet } from './wallet';
 import { AddressInfo } from 'net';
 import { LogEvent, EventType } from './logEvent';
+import { configureSecurityGroups, createEC2Cluster, AWSRegionCode, terminateEC2Cluster } from './aws';
 
 const config = require('../node/config/config.json');
 
@@ -36,7 +39,7 @@ const portMax = config.portMax;
 
 // Either a port is passed through the npm run command, or a random port is selected
 // For non-local tests the port 80 is passed through npm run
-const port = argv.p || randomNumberFromRange(portMin, portMax, true);
+const port = parseInt(argv.p, 10) || randomNumberFromRange(portMin, portMax, true);
 
 // For local testing a cluster is created
 const localCluster = argv.c === 'true';
@@ -53,7 +56,7 @@ const numPartner = argv.np || 0;
  * * wipeLedgers
  * * getAddress
  */
-const initHttpServer = (): void => {
+const initHttpServer = (port: number, callback = (server: http.Server) => {}): void => {
   const app = express();
   const server = new http.Server(app);
 
@@ -76,6 +79,24 @@ const initHttpServer = (): void => {
   //   requestValidateTransaction(transaction, getLocalLedger(LedgerType.MY_LEDGER));
   //   res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.to}.`);
   // });
+
+  app.post('/terminateInstances', (req, res) => {
+    const { regions } = req.body;
+    terminateEC2Cluster(regions);
+    res.send('No problemo.');
+  });
+
+  app.post('/createEC2Cluster', (req, res) => {
+    const { totalNodes, regions, imageName }: { totalNodes: number, regions: AWSRegionCode[], imageName: string } = req.body;
+    createEC2Cluster(totalNodes, regions, imageName);
+    res.send('aaa');
+  });
+
+  app.post('/configureSecurityGroups', (req, res) => {
+    const { create } = req.body;
+    configureSecurityGroups(create);
+    res.send('bbb');
+  });
 
   app.get('/getPeers', (req, res) => {
     const pods = JSON.stringify(getPods());
@@ -130,7 +151,26 @@ const initHttpServer = (): void => {
       const regularPods: Pod[] = pods.filter(pod => pod.podType === 0);
       selectedPods = selectRandom(regularPods, testConfig.numSenders * 2, '');
     }
-    // debug(localLogger);
+
+    const snapshotMap: ISnapshotMap = {};
+
+    for (let i = 0; i < selectedPods.length; i += 1) {
+      const selectedPod = selectedPods[i];
+      const snapshotPods = selectRandom(pods.filter(pod => pod.podType === PodType.PARTNER_POD), 4);
+      console.log('assigning snapshot map');
+      snapshotMap[selectedPod.address] = {
+        snapshotNodes: [...snapshotPods.map(pod => pod.address)],
+        snapshots: [],
+      };
+    }
+
+    const snapshotPods = selectRandom(pods.filter(pod => pod.podType === PodType.PARTNER_POD), 4);
+    snapshotMap[getGenesisAddress()] = {
+      snapshotNodes: [...snapshotPods.map(pod => pod.address)],
+      snapshots: [],
+    };
+
+    //     debug(localLogger);
     new LogEvent(
       '',
       '',
@@ -138,7 +178,7 @@ const initHttpServer = (): void => {
       EventType.TEST_START,
       'silly',
     );
-    io.emit('message', sendTestConfig({ selectedPods, testConfig }));
+    io.emit('message', sendTestConfig({ selectedPods, snapshotMap, testConfig }));
     res.send('Test Started!');
     // localLogger.once('message', (message: IMessage) => {
     //   if (message.type === MessageType.LOGGER_READY) {
@@ -152,11 +192,7 @@ const initHttpServer = (): void => {
   });
 
   server.listen(port, () => {
-    const address = server.address() as AddressInfo;
-    info(`[Node] New Node created on port: ${address.port}`);
-    initWallet(address.port);
-    initP2PServer(server);
-    initP2PNode(server);
+    callback(server);
   });
 };
 
@@ -171,5 +207,13 @@ if (localCluster) {
   }
 }
 else {
-  initHttpServer();
+  initHttpServer(port, (server) => {
+    const address = server.address() as AddressInfo;
+    info(`[Node] New Node created on port: ${address.port}`);
+    initWallet(address.port);
+    initP2PServer(server);
+    initP2PNode(server);
+  });
 }
+
+export { initHttpServer };
