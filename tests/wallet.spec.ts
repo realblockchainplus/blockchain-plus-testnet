@@ -2,7 +2,6 @@ import { getPublicFromWallet } from '../src/wallet';
 import * as chai from 'chai';
 import * as chaiFs from 'chai-fs';
 import 'mocha';
-import { getLedgerBalance, getLedger, LedgerType } from '../src/ledger';
 
 chai.use(chaiFs);
 const { expect } = chai;
