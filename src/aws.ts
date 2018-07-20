@@ -103,7 +103,7 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
             for (let i = 0; i < data.Instances!.length; i += 1) {
               const instance = data.Instances![i];
               // console.dir(`[runInstances] Success: ${JSON.stringify(instance)}`);
-              const ssm = new AWS.SSM({ apiVersion: '2014-11-06' });
+              const ssm = new AWS.SSM({ region, apiVersion: '2014-11-06' });
               const sendCommandParams: AWS.SSM.SendCommandRequest = {
                 DocumentName: documentName,
                 InstanceIds: [instance.InstanceId as string],

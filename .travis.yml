@@ -10,6 +10,7 @@ script:
 after_success:
   - npm run all-scripts
   - npm run docs
+  if: tag IS present
 
 deploy:
   - provider: pages
