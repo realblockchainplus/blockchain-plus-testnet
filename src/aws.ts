@@ -1,4 +1,6 @@
 import * as AWS from 'aws-sdk';
+
+import { info } from './logger';
 import { PodType } from './pod';
 
 interface IRegionBreakdown {
@@ -67,6 +69,8 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
     documentName += 'Update';
   }
 
+  documentName += 'Node';
+
   const IamInstanceProfile: AWS.EC2.IamInstanceProfile = {
     Arn: 'arn:aws:iam::490668483643:instance-profile/EC2-bcp-tn-regular',
   };
@@ -102,32 +106,44 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
           else {
             for (let i = 0; i < data.Instances!.length; i += 1) {
               const instance = data.Instances![i];
-              // console.dir(`[runInstances] Success: ${JSON.stringify(instance)}`);
-              const ssm = new AWS.SSM({ region, apiVersion: '2014-11-06' });
-              const sendCommandParams: AWS.SSM.SendCommandRequest = {
-                DocumentName: documentName,
-                InstanceIds: [instance.InstanceId as string],
+              const waitForParams: AWS.EC2.DescribeInstancesRequest = {
+                InstanceIds: [instance.InstanceId!],
               };
-              ssm.sendCommand(sendCommandParams, (e, d) => {
-                if (e) {
-                  console.log(`[sendCommand] Error: ${e}`);
-                }
-                else {
-                  console.log(`${documentName} command sent.`);
-                  const tags = {
-                    Resources: [instance.InstanceId!],
-                    Tags: [tag],
-                  };
-                  ec2.createTags(tags, (_err, _data) => {
-                    if (_err) {
-                      console.log(`[createTags] Error: ${_err}`);
+              ec2.waitFor('instanceRunning', waitForParams, (we, wd) => {
+                const ssm = new AWS.SSM({ region, apiVersion: '2014-11-06' });
+                ssm.config.update({
+                  accessKeyId: process.env.ACCESS_KEY_ID,
+                  secretAccessKey: process.env.SECRET_ACCESS_KEY,
+                });
+                const sendCommandParams: AWS.SSM.SendCommandRequest = {
+                  DocumentName: documentName,
+                  InstanceIds: [instance.InstanceId as string],
+                };
+                info(region);
+                info(`[sendCommandParams]: ${JSON.stringify(sendCommandParams)}`);
+                setTimeout(() => {
+                  ssm.sendCommand(sendCommandParams, (e, d) => {
+                    if (e) {
+                      console.log(`[sendCommand] Error: ${e}`);
                     }
                     else {
-                      console.log('Instance tagged');
-                      callback(instance);
+                      console.log(`${documentName} command sent.`);
+                      const tags = {
+                        Resources: [instance.InstanceId!],
+                        Tags: [tag],
+                      };
+                      ec2.createTags(tags, (_err, _data) => {
+                        if (_err) {
+                          console.log(`[createTags] Error: ${_err}`);
+                        }
+                        else {
+                          console.log('Instance tagged');
+                          callback(instance);
+                        }
+                      });
                     }
                   });
-                }
+                }, 60000);
               });
             }
           }
@@ -138,7 +154,8 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
 };
 
 const createEC2Cluster = (totalNodes: number, regions: AWSRegionCode[], imageName: string) => {
-  const regularNodes = Math.floor(totalNodes * 0.8);
+  regions.length === 0 ? Object.keys(AWSRegionCode).map((key: string) => regions.push(AWSRegionCode[key as any] as AWSRegionCode)) : null;
+  const regularNodes = Math.floor(totalNodes * 0.7);
   const partnerNodes = totalNodes - regularNodes;
   const regionBreakdownArray: IRegionBreakdown[] = [];
   const populateRegionBreakdown = (callback: () => void) => {
@@ -174,8 +191,8 @@ const createEC2Cluster = (totalNodes: number, regions: AWSRegionCode[], imageNam
   populateRegionBreakdown(() => distributeNodes(() => {
     for (let i = 0; i < regionBreakdownArray.length; i += 1) {
       const regionBreakdown = regionBreakdownArray[i];
-      createEC2Instance(PodType.REGULAR_POD, regionBreakdown.id, regionBreakdown.numRegular, imageName, true);
-      createEC2Instance(PodType.PARTNER_POD, regionBreakdown.id, regionBreakdown.numPartner, imageName, true);
+      regionBreakdown.numRegular > 0 && (createEC2Instance(PodType.REGULAR_POD, regionBreakdown.id, regionBreakdown.numRegular, imageName, true));
+      regionBreakdown.numPartner > 0 && (createEC2Instance(PodType.PARTNER_POD, regionBreakdown.id, regionBreakdown.numPartner, imageName, true));
     }
   }));
 };
@@ -364,6 +381,7 @@ const createNewImage = (region: AWSRegionCode, commitTag: string, callback: () =
 };
 
 const terminateEC2Cluster = (regions: AWSRegionCode[]): void => {
+  info(`[terminateEC2Cluster]`);
   regions.length === 0 ? Object.keys(AWSRegionCode).map((key: string) => regions.push(AWSRegionCode[key as any] as AWSRegionCode)) : null;
   for (let i = 0; i < regions.length; i += 1) {
     const region = regions[i];
@@ -393,7 +411,9 @@ const terminateEC2Cluster = (regions: AWSRegionCode[]): void => {
         console.log(`[describeInstances] Error: ${err}`);
       }
       else {
+        info(`[describeInstances]`);
         const { Reservations } = data;
+        info(`data: ${JSON.stringify(data)}`);
         for (let k = 0; k < Reservations!.length; k += 1) {
           const Reservation = Reservations![k];
           const { Instances } = Reservation;
@@ -401,7 +421,8 @@ const terminateEC2Cluster = (regions: AWSRegionCode[]): void => {
           const terminateInstancesParams: AWS.EC2.TerminateInstancesRequest = {
             InstanceIds: instanceIds,
           };
-
+          info(`${JSON.stringify(instanceIds)}`);
+          info(`before terminate instance`);
           ec2.terminateInstances(terminateInstancesParams, (_err, _data) => {
             if (_err) {
               console.log(`[terminateInstances] Error: ${_err}`);
