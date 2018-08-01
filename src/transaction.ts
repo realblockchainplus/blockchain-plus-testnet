@@ -202,11 +202,12 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
     'info',
   );
   // console.log('Starting for loop for sending out validation checks...');
+  const localTestConfig = getTestConfig();
   const validators = transaction.getValidators();
   for (let i = 0; i < validators.length; i += 1) {
     const pod = validators[i];
     console.log(`Transaction.local: ${transaction.local}`);
-    const podIp = transaction.local ? `${pod.localIp}:${pod.port}` : pod.ip;
+    const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
     // console.time('requestValidation');
     // console.log(`Connecting to ${podIp}`);
     new Promise((resolve, reject) => {
@@ -511,6 +512,7 @@ const validateTransactionHash = (id: string, currentId: string, hash: string): R
 
 const requestSnapshot = (pod: Pod, snapshotOwner: string, transaction: Transaction): Promise<Result | ISnapshotResponse> => {
   return new Promise((resolve, reject) => {
+    const localTestConfig = getTestConfig();
     new LogEvent(
       transaction.from,
       transaction.to,
@@ -520,7 +522,7 @@ const requestSnapshot = (pod: Pod, snapshotOwner: string, transaction: Transacti
       undefined,
       pod.address,
     );
-    const podIp = transaction.local ? `${pod.localIp}:${pod.port}` : pod.ip;
+    const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
     const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
     const connectTimeout = setTimeout(() => {
       const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
@@ -553,6 +555,7 @@ const requestSnapshot = (pod: Pod, snapshotOwner: string, transaction: Transacti
 
 const requestReceiverLedger = (transaction: Transaction): Promise<Ledger> => {
   const pods = getPods();
+  const localTestConfig = getTestConfig();
   const pod = pods[getPodIndexByPublicKey(transaction.to, pods)];
   return new Promise((resolve, reject) => {
     new LogEvent(
@@ -564,7 +567,7 @@ const requestReceiverLedger = (transaction: Transaction): Promise<Ledger> => {
       undefined,
       pod.address,
     );
-    const podIp = transaction.local ? `${pod.localIp}:${pod.port}` : pod.ip;
+    const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
     const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
     const connectTimeout = setTimeout(() => {
       const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
