@@ -209,7 +209,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
     console.log(`Transaction.local: ${transaction.local}`);
     const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
     // console.time('requestValidation');
-    // console.log(`Connecting to ${podIp}`);
+    console.log(`Connecting to ${podIp}`);
     new Promise((resolve, reject) => {
       new LogEvent(
         transaction.from,
