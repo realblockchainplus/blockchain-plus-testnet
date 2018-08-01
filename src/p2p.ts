@@ -209,8 +209,8 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
             for (let i = 0; i < targets.length; i += 1) {
               const target = targets[i];
               const pod = pods[getPodIndexByPublicKey(target, pods)];
-              const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
-              const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
+              const podIp = localTestConfig.local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}`;
+              const socket = ioClient(podIp, { transports: ['websocket'] });
               socket.on('connect', () => {
                 write(socket, snapshotMapUpdated(localSnapshotMap));
                 socket.disconnect();

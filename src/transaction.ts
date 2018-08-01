@@ -207,7 +207,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   for (let i = 0; i < validators.length; i += 1) {
     const pod = validators[i];
     console.log(`Transaction.local: ${transaction.local}`);
-    const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
+    const podIp = localTestConfig.local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}`;
     // console.time('requestValidation');
     console.log(`Connecting to ${podIp}`);
     new Promise((resolve, reject) => {
@@ -222,7 +222,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       );
       debug(`Connecting to validator: ${podIp}`);
       // console.time(`connectValidator-${i}-${transaction.id}`);
-      const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
+      const socket = ioClient(podIp, { transports: ['websocket'] });
       socket.on('connect', () => {
         // console.timeEnd(`connectValidator-${i}-${transaction.id}`);
         new LogEvent(
@@ -246,9 +246,9 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       });
       setTimeout(() => { reject(`Connection to ${podIp} could not be made in 10 seconds.`); }, 10000);
     }).then((fulfilled) => {
-      // console.log(fulfilled);
+      console.log(fulfilled);
     }, (rejected) => {
-      // console.log(rejected);
+      console.log(rejected);
     });
   }
 };
@@ -326,7 +326,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
         const result = validateTransactionHash(entry.id, transaction.id, entry.hash);
         resolve(result);
       } else {
-        const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
+        const podIp = localTestConfig.local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}`;
         // console.log(`Connecting to ${podIp}`);
         new LogEvent(
           transaction.from,
@@ -338,7 +338,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
           pod.address,
         );
         // console.time(`connectPreviousValidator-${k}-${entry.id}`);
-        const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
+        const socket = ioClient(podIp, { transports: ['websocket'] });
         const connectTimeout = setTimeout(() => {
           const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
           const result = new Result(false, reason, entry.id);
@@ -522,8 +522,8 @@ const requestSnapshot = (pod: Pod, snapshotOwner: string, transaction: Transacti
       undefined,
       pod.address,
     );
-    const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
-    const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
+    const podIp = localTestConfig.local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}`;
+    const socket = ioClient(podIp, { transports: ['websocket'] });
     const connectTimeout = setTimeout(() => {
       const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
       const result = new Result(false, reason, transaction.id);
@@ -567,8 +567,8 @@ const requestReceiverLedger = (transaction: Transaction): Promise<Ledger> => {
       undefined,
       pod.address,
     );
-    const podIp = localTestConfig.local ? `${pod.localIp}:${pod.port}` : pod.ip;
-    const socket = ioClient(`http://${podIp}`, { transports: ['websocket'] });
+    const podIp = localTestConfig.local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}`;
+    const socket = ioClient(podIp, { transports: ['websocket'] });
     const connectTimeout = setTimeout(() => {
       const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
       const result = new Result(false, reason, transaction.id);
