@@ -11,6 +11,10 @@ after_success:
   - npm run docs
   - npm run all-scripts
 
+branches:
+  except:
+    - master
+
 deploy:
   - provider: pages
     github_token: $GITHUB_TOKEN
