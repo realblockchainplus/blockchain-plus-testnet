@@ -8,9 +8,8 @@ script:
   - npm run test
 
 after_success:
-  - npm run all-scripts
   - npm run docs
-  if: tag IS present
+  - npm run all-scripts
 
 deploy:
   - provider: pages
