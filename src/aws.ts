@@ -323,7 +323,7 @@ const createNewImage = (region: AWSRegionCode, commitTag: string, callback: () =
   const ec2 = initEC2(region);
   getImagesByTag(ec2, imageTag, (images) => {
     images!.sort((a, b) => {
-      return Date.parse(a.CreationDate as string) - Date.parse(b.CreationDate as string);
+      return Date.parse(b.CreationDate as string) - Date.parse(a.CreationDate as string);
     });
     const mostRecentImage = images![0];
     console.log(`Most Recent Image -- Region: ${region} | Image: ${mostRecentImage.Name}`);
