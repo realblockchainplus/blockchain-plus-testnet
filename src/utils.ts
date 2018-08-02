@@ -137,7 +137,7 @@ const generateLedgerSnapshot = (ledger: Ledger) => {
 };
 
 const getPodIp = (local: boolean, pod: Pod) => {
-  return local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}:3001`;
+  return local ? `http://${pod.localIp}:${pod.port}` : `http://${pod.ip}`;
 };
 
 export {
