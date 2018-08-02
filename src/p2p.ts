@@ -1,41 +1,48 @@
 import * as http from 'http';
 import * as minimist from 'minimist';
+import { AddressInfo } from 'net';
 import * as socketIo from 'socket.io';
 import * as ioClient from 'socket.io-client';
 
-import { getLocalLedger, Ledger, LedgerType, updateLedger, initLedger, getLedger } from './ledger';
-import { err, warning, info, debug } from './logger';
+import { getLedger, getLocalLedger, initLedger, Ledger, LedgerType, updateLedger } from './ledger';
 import { EventType, LogEvent } from './logEvent';
+import { debug, err, info, warning } from './logger';
 import {
+  IMessage,
   isTransactionHashValid,
   killMsg,
-  IMessage,
   MessageType,
   podListUpdated,
+  responseIdentityMsg,
   responseIsTransactionHashValid,
   responseIsTransactionValid,
-  wipeLedgersMsg,
-  responseIdentityMsg,
+  responseLedgerMsg,
   responseSnapshotMsg,
   snapshotMapUpdated,
-  responseLedgerMsg,
+  wipeLedgersMsg,
 } from './message';
 import { Pod } from './pod';
 import { Result } from './result';
 import { TestConfig } from './testConfig';
 import {
+  ActorRoles,
+  getGenesisAddress,
+  ISnapshotMap,
+  ISnapshotResponse,
   requestValidateTransaction,
   Transaction,
   validateTransaction,
   validateTransactionHash,
-  ISnapshotMap,
-  getGenesisAddress,
-  ISnapshotResponse,
-  ActorRoles,
 } from './transaction';
-import { getCurrentTimestamp, getPodIndexBySocket, getPodIndexByPublicKey, createDummyTransaction, generateLedgerSnapshot } from './utils';
-import { getPublicFromWallet, fundWallet } from './wallet';
-import { AddressInfo } from 'net';
+import {
+  createDummyTransaction,
+  generateLedgerSnapshot,
+  getCurrentTimestamp,
+  getPodIndexByPublicKey,
+  getPodIndexBySocket,
+  getPodIp,
+} from './utils';
+import { fundWallet, getPublicFromWallet } from './wallet';
 
 const config = require('../node/config/config.json');
 
@@ -209,7 +216,7 @@ const handleMessage = (socket: ClientSocket | ServerSocket, message: IMessage): 
             for (let i = 0; i < targets.length; i += 1) {
               const target = targets[i];
               const pod = pods[getPodIndexByPublicKey(target, pods)];
-              const podIp = localTestConfig.local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}`;
+              const podIp = getPodIp(localTestConfig.local, pod);
               const socket = ioClient(podIp, { transports: ['websocket'] });
               socket.on('connect', () => {
                 write(socket, snapshotMapUpdated(localSnapshotMap));

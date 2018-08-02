@@ -136,8 +136,12 @@ const generateLedgerSnapshot = (ledger: Ledger) => {
   return hash;
 };
 
+const getPodIp = (local: boolean, pod: Pod) => {
+  return local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}:3001`;
+};
+
 export {
   createDummyTransaction, getCurrentTimestamp, getEntryByTransactionId,
   getEntryInLedgerByTransactionId, getLocalIp, getPodIndexByPublicKey, getPodIndexBySocket,
-  isValidAddress, randomNumberFromRange, toHexString, generateLedgerSnapshot,
+  isValidAddress, randomNumberFromRange, toHexString, generateLedgerSnapshot, getPodIp,
 };

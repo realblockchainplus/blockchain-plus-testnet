@@ -8,7 +8,7 @@ import { isTransactionValid, requestSnapshotMsg, requestLedgerMsg } from './mess
 import { IMessage, MessageType, getPodIndexByPublicKey, getPods, getTestConfig, handleMessage, isTransactionHashValid, write, getSnapshotMap, getSelectedPods } from './p2p';
 import { Pod, PodType } from './pod';
 import { Result } from './result';
-import { getEntryByTransactionId, toHexString } from './utils';
+import { getEntryByTransactionId, toHexString, getPodIp } from './utils';
 import { getPrivateFromWallet, getPublicFromWallet } from './wallet';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
@@ -207,7 +207,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   for (let i = 0; i < validators.length; i += 1) {
     const pod = validators[i];
     console.log(`Transaction.local: ${transaction.local}`);
-    const podIp = localTestConfig.local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}`;
+    const podIp = getPodIp(localTestConfig.local, pod);
     // console.time('requestValidation');
     console.log(`Connecting to ${podIp}`);
     new Promise((resolve, reject) => {
@@ -326,7 +326,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
         const result = validateTransactionHash(entry.id, transaction.id, entry.hash);
         resolve(result);
       } else {
-        const podIp = localTestConfig.local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}`;
+        const podIp = getPodIp(localTestConfig.local, pod);
         // console.log(`Connecting to ${podIp}`);
         new LogEvent(
           transaction.from,
@@ -522,7 +522,7 @@ const requestSnapshot = (pod: Pod, snapshotOwner: string, transaction: Transacti
       undefined,
       pod.address,
     );
-    const podIp = localTestConfig.local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}`;
+    const podIp = getPodIp(localTestConfig.local, pod);
     const socket = ioClient(podIp, { transports: ['websocket'] });
     const connectTimeout = setTimeout(() => {
       const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
@@ -567,7 +567,7 @@ const requestReceiverLedger = (transaction: Transaction): Promise<Ledger> => {
       undefined,
       pod.address,
     );
-    const podIp = localTestConfig.local ? `http://${pod.localIp}:${pod.port}` : `https://${pod.ip}`;
+    const podIp = getPodIp(localTestConfig.local, pod);
     const socket = ioClient(podIp, { transports: ['websocket'] });
     const connectTimeout = setTimeout(() => {
       const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
