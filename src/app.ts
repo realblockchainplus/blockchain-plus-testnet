@@ -49,14 +49,15 @@ const numPartner = argv.np || 0;
 /**
  * Initializes a http server with a limited API to allow for
  * user commands.
- *
- * Commands:
- * * getAddress
- * * killAll
- * * wipeLedgers
- * * getAddress
+ * @module routers/httpServer
+ * @requires express
  */
+
 const initHttpServer = (port: number, callback = (server: http.Server) => {}): void => {
+  /**
+   * express module
+   * @const
+  */
   const app = express();
   const server = new http.Server(app);
 
@@ -68,24 +69,31 @@ const initHttpServer = (port: number, callback = (server: http.Server) => {}): v
     }
   });
 
-  // app.post('/postTransaction', (req, res) => {
-  //   const transaction = new Transaction(
-  //     getPublicFromWallet(),
-  //     req.body.transaction.to,
-  //     req.body.transaction.amount,
-  //     getCurrentTimestamp(),
-  //   );
-
-  //   requestValidateTransaction(transaction, getLocalLedger(LedgerType.MY_LEDGER));
-  //   res.send(`${req.body.transaction.amount} sent to ${req.body.transaction.to}.`);
-  // });
-
+  /**
+   * Terminates all EC2 instances with the tag 'type:partner' or 'type:regular' and the key 'bcp-tn-node'
+   * @name post/terminateInstances
+   * @function
+   * @memberof module:routers/httpServer
+   * @inner
+   * @param {AWSRegionCode[]} regions - An array of the region codes that the terminated nodes must belong to
+   */
   app.post('/terminateInstances', (req, res) => {
     const { regions } = req.body;
     terminateEC2Cluster(regions);
     res.send('No problemo.');
   });
 
+  /**
+ * Creates a balanced cluster of EC2 instances across the specified regions. If no region is specified, the instances will be automatically spread
+ * across all 8 regions.
+ * @name post/createEC2Cluster
+ * @function
+ * @memberof module:routers/httpServer
+ * @inner
+ * @param {number} totalNodes - Number of nodes that will be created
+ * @param {AWSRegionCode[]} regions - An array of the region codes that the nodes should be distributed among
+ * @param {string} imageName - Name of the image to use when creating nodes. Uses semantic versioning, example: bcp-tn-node-1.0.1.alpha.5
+ */
   app.post('/createEC2Cluster', (req, res) => {
     const { totalNodes, regions, imageName }: { totalNodes: number, regions: AWSRegionCode[], imageName: string } = req.body;
     createEC2Cluster(totalNodes, regions, imageName);
