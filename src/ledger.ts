@@ -17,6 +17,8 @@ let ledgers: { myLedger: Ledger, witnessLedger: Ledger };
  * Definition of a Ledger. There are two types of ledger:
  * * [[LedgerType.MY_LEDGER]]
  * * [[LedgerType.WITNESS_LEDGER]]
+ *
+ * @class Ledger
  */
 class Ledger {
   public entries: Transaction[];
@@ -44,6 +46,9 @@ enum LedgerType {
 
 /**
  * Returns a copy of a [[Ledger]] based on the specified [[LedgerType]] from the file system.
+ *
+ * @param {LedgerType} type
+ * @returns {Ledger}
  */
 const getLedger = (type: LedgerType): Ledger => {
   const ledgerFilename: string = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
@@ -54,10 +59,21 @@ const getLedger = (type: LedgerType): Ledger => {
 /**
  * Returns a copy of a [[Ledger]] based on the specified [[LedgerType]] from the current memory.
  */
+/**
+ *
+ *
+ * @param {LedgerType} ledgerType
+ * @returns {Ledger}
+ */
 const getLocalLedger = (ledgerType: LedgerType): Ledger => ledgerType === LedgerType.MY_LEDGER ? ledgers.myLedger : ledgers.witnessLedger;
 
 /**
  * Initializes the ledger folder and files.
+ */
+/**
+ *
+ *
+ * @param {number} port
  */
 const initLedger = (port: number): void => {
   const myLedger = new Ledger([], 0);
@@ -74,6 +90,12 @@ const initLedger = (port: number): void => {
 
 /**
  * Updates a [[Ledger]] based on the specified [[LedgerType]].
+ */
+/**
+ *
+ *
+ * @param {Transaction} transaction
+ * @param {LedgerType} type
  */
 const updateLedger = (transaction: Transaction, type: LedgerType): void => {
   info(`[updateLedger]`);
@@ -98,6 +120,13 @@ const updateLedger = (transaction: Transaction, type: LedgerType): void => {
  *
  * Used to set [[Transaction.amount]] to null if [[LedgerType.WITNESS_LEDGER]].
  */
+/**
+ *
+ *
+ * @param {Transaction} transaction
+ * @param {LedgerType} type
+ * @returns {Transaction}
+ */
 const updateTransaction = (transaction: Transaction, type: LedgerType): Transaction => {
   const _transaction = createDummyTransaction();
   Object.assign(_transaction, transaction);
@@ -108,6 +137,13 @@ const updateTransaction = (transaction: Transaction, type: LedgerType): Transact
 
 /**
  * Writes to the ledger specified by [[LedgerType]].
+ */
+/**
+ *
+ *
+ * @param {Ledger} ledger
+ * @param {LedgerType} type
+ * @param {boolean} [test=false]
  */
 const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): void => {
   info(`[writeLedger]`);
@@ -145,6 +181,13 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
   }
 };
 
+/**
+ *
+ *
+ * @param {Ledger} ledger
+ * @param {string} [publicKey]
+ * @returns {number}
+ */
 const getLedgerBalance = (ledger: Ledger, publicKey?: string): number => {
   const walletAddress = publicKey || getPublicFromWallet();
   let ledgerBalance = 0;

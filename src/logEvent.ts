@@ -10,6 +10,11 @@ import { getPublicFromWallet } from './wallet';
 import { getPods, getPodIndexByPublicKey, getTestConfig } from './p2p';
 import { getCurrentTimestamp } from './utils';
 
+/**
+ *
+ *
+ * @class LogEvent
+ */
 class LogEvent {
   public sender: Partial<Pod>;
   public receiver: Partial<Pod>;
@@ -24,6 +29,19 @@ class LogEvent {
   public validator?: Partial<Pod>;
   public connectionTo?: Partial<Pod>;
 
+  /**
+   *Creates an instance of LogEvent.
+   * @param {string} sender
+   * @param {string} receiver
+   * @param {string} transactionId
+   * @param {EventType} eventType
+   * @param {winston.NPMLoggingLevel} logLevel
+   * @param {string} [validator]
+   * @param {string} [connectionTo]
+   * @param {TestConfig} [testConfig]
+   * @param {number} [ledgerLength]
+   * @memberof LogEvent
+   */
   constructor(sender: string, receiver: string, transactionId: string, eventType: EventType,
     logLevel: winston.NPMLoggingLevel, validator?: string, connectionTo?: string,
     testConfig?: TestConfig, ledgerLength?: number) {
@@ -42,6 +60,11 @@ class LogEvent {
     this.sendToDb();
   }
 
+  /**
+   *
+   *
+   * @memberof LogEvent
+   */
   sendToDb() {
     if (conn.readyState === 1) {
       // console.log('Connection is ready. Sending...');
@@ -55,6 +78,13 @@ class LogEvent {
     }
   }
 
+  /**
+   *
+   *
+   * @param {string} address
+   * @returns {Partial<Pod>}
+   * @memberof LogEvent
+   */
   partialPod(address: string): Partial<Pod> {
     const pods = getPods();
     const pod: Partial<Pod> = { ...pods[getPodIndexByPublicKey(address, pods)] };
@@ -63,6 +93,11 @@ class LogEvent {
     return pod;
   }
 
+  /**
+   *
+   *
+   * @memberof LogEvent
+   */
   sendLogEvent() {
     debug(`[sendLogEvent]: ${this.eventType}`);
     const logEvent = this.hydrateLogEventModel();
@@ -78,6 +113,12 @@ class LogEvent {
     // ref.push(JSON.parse(JSON.stringify(this)));
   }
 
+  /**
+   *
+   *
+   * @returns
+   * @memberof LogEvent
+   */
   hydrateLogEventModel() {
     const testId = this.testId || 'TEMP';
     const logEventModel = conn.model(`logEvent-${testId}`, LogEventSchema.set('collection', testId));
@@ -99,6 +140,11 @@ class LogEvent {
   }
 }
 
+/**
+ *
+ *
+ * @enum {number}
+ */
 enum EventType {
   POD_JOINED = 1,
   POD_LEFT = 2,

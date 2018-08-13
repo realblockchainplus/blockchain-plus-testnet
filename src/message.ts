@@ -5,11 +5,21 @@ import { Transaction, ISnapshotMap } from './transaction';
 import { TestConfig } from './testConfig';
 import { LogEvent } from './logEvent';
 
+/**
+ *
+ *
+ * @interface IMessage
+ */
 interface IMessage {
   type: MessageType;
   data: any;
 }
 
+/**
+ *
+ *
+ * @enum {number}
+ */
 enum MessageType {
   SELECTED_FOR_VALIDATION = 1,
   RESPONSE_IDENTITY = 2,
@@ -30,26 +40,59 @@ enum MessageType {
   LEDGER_RESULT = 17,
 }
 
+/**
+ *
+ *
+ * @param {Result} result
+ * @returns {IMessage}
+ */
 const responseIsTransactionHashValid = (result: Result): IMessage => ({
   type: MessageType.TRANSACTION_CONFIRMATION_RESULT,
   data: JSON.stringify(result),
 });
 
+/**
+ *
+ *
+ * @param {Pod[]} pods
+ * @returns {IMessage}
+ */
 const podListUpdated = (pods: Pod[]): IMessage => ({
   type: MessageType.POD_LIST_UPDATED,
   data: JSON.stringify(pods),
 });
 
+/**
+ *
+ *
+ * @param {ISnapshotMap} snapshotMap
+ * @returns {IMessage}
+ */
 const snapshotMapUpdated = (snapshotMap: ISnapshotMap): IMessage => ({
   type: MessageType.SNAPSHOT_MAP_UPDATED,
   data: JSON.stringify(snapshotMap),
 });
 
+/**
+ *
+ *
+ * @returns {IMessage}
+ */
 const killMsg = (): IMessage => ({
   type: MessageType.KILL_SERVER_PROCESS,
   data: null,
 });
 
+/**
+ *
+ *
+ * @param {{
+ *   transactionId: string,
+ *   currentTransactionId: string,
+ *   hash: string,
+ * }} transactionData
+ * @returns {IMessage}
+ */
 const isTransactionHashValid = (transactionData: {
   transactionId: string,
   currentTransactionId: string,
@@ -61,6 +104,15 @@ const isTransactionHashValid = (transactionData: {
   };
 };
 
+/**
+ *
+ *
+ * @param {{
+ *   snapshotOwner: string,
+ *   transactionId: string,
+ * }} data
+ * @returns {IMessage}
+ */
 const requestSnapshotMsg = (data: {
   snapshotOwner: string,
   transactionId: string,
@@ -71,6 +123,15 @@ const requestSnapshotMsg = (data: {
   };
 };
 
+/**
+ *
+ *
+ * @param {{
+ *   transactionId: string,
+ *   ledgerType: LedgerType,
+ * }} data
+ * @returns {IMessage}
+ */
 const requestLedgerMsg = (data: {
   transactionId: string,
   ledgerType: LedgerType,
@@ -81,6 +142,15 @@ const requestLedgerMsg = (data: {
   };
 };
 
+/**
+ *
+ *
+ * @param {{
+ *   transactionId: string,
+ *   ledger: Ledger,
+ * }} data
+ * @returns {IMessage}
+ */
 const responseLedgerMsg = (data: {
   transactionId: string,
   ledger: Ledger,
@@ -91,6 +161,16 @@ const responseLedgerMsg = (data: {
   };
 };
 
+/**
+ *
+ *
+ * @param {{
+ *   snapshotOwner: string,
+ *   transactionId: string,
+ *   snapshot: string,
+ * }} data
+ * @returns {IMessage}
+ */
 const responseSnapshotMsg = (data: {
   snapshotOwner: string,
   transactionId: string,
@@ -102,6 +182,13 @@ const responseSnapshotMsg = (data: {
   };
 };
 
+/**
+ *
+ *
+ * @param {Result[]} results
+ * @param {Transaction} transaction
+ * @returns {IMessage}
+ */
 const responseIsTransactionValid = (results: Result[], transaction: Transaction): IMessage => {
   return {
     type: MessageType.VALIDATION_RESULT,
@@ -109,6 +196,12 @@ const responseIsTransactionValid = (results: Result[], transaction: Transaction)
   };
 };
 
+/**
+ *
+ *
+ * @param {Pod} pod
+ * @returns {IMessage}
+ */
 const responseIdentityMsg = (pod: Pod): IMessage => {
   return {
     type: MessageType.RESPONSE_IDENTITY,
@@ -116,6 +209,15 @@ const responseIdentityMsg = (pod: Pod): IMessage => {
   };
 };
 
+/**
+ *
+ *
+ * @param {{
+ *   transaction: Transaction,
+ *   senderLedger: Ledger,
+ * }} transactionData
+ * @returns {IMessage}
+ */
 const isTransactionValid = (transactionData: {
   transaction: Transaction,
   senderLedger: Ledger,
@@ -126,6 +228,16 @@ const isTransactionValid = (transactionData: {
   };
 };
 
+/**
+ *
+ *
+ * @param {{
+ *   selectedPods: Pod[],
+ *   snapshotMap: ISnapshotMap,
+ *   testConfig: TestConfig,
+ * }} testConfig
+ * @returns {IMessage}
+ */
 const sendTestConfig = (testConfig: {
   selectedPods: Pod[],
   snapshotMap: ISnapshotMap,
@@ -135,16 +247,32 @@ const sendTestConfig = (testConfig: {
   data: JSON.stringify(testConfig),
 });
 
+/**
+ *
+ *
+ * @returns {IMessage}
+ */
 const wipeLedgersMsg = (): IMessage => ({
   type: MessageType.WIPE_LEDGER,
   data: null,
 });
 
+/**
+ *
+ *
+ * @returns {IMessage}
+ */
 const testStartMsg = (): IMessage => ({
   type: MessageType.TEST_START,
   data: null,
 });
 
+/**
+ *
+ *
+ * @param {LogEvent} event
+ * @returns {IMessage}
+ */
 const logEventMsg = (event: LogEvent): IMessage => ({
   type: MessageType.LOG_EVENT,
   data: JSON.stringify(event),

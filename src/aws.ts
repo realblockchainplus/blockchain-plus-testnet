@@ -2,13 +2,21 @@ import * as AWS from 'aws-sdk';
 
 import { info } from './logger';
 import { PodType } from './pod';
-
+/**
+ * 
+ *
+ * @interface IRegionBreakdown
+ */
 interface IRegionBreakdown {
   id: AWSRegionCode;
   numRegular: number;
   numPartner: number;
 }
-
+/**
+ *
+ *
+ * @enum {number}
+ */
 enum AWSRegionCode {
   US_EAST = 'us-east-1',
   US_WEST = 'us-west-2',
@@ -39,7 +47,12 @@ const imageTag: AWS.EC2.Tag = {
   Key: 'category',
   Value: defaultImage,
 };
-
+/**
+ *
+ *
+ * @param {AWSRegionCode} [region]
+ * @returns {AWS.EC2}
+ */
 const initEC2 = (region?: AWSRegionCode): AWS.EC2 => {
   const ec2 = new AWS.EC2({ region, apiVersion: '2016-11-15' });
   ec2.config.update({
@@ -48,7 +61,16 @@ const initEC2 = (region?: AWSRegionCode): AWS.EC2 => {
   });
   return ec2;
 };
-
+/**
+ *
+ *
+ * @param {PodType} type
+ * @param {AWSRegionCode} region
+ * @param {number} nodeCount
+ * @param {string} imageName
+ * @param {boolean} startNode
+ * @param {(instance: AWS.EC2.Instance) => void} [callback=() => {}]
+ */
 const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: number, imageName: string,
   startNode: boolean, callback: (instance: AWS.EC2.Instance) => void = () => {}) => {
   console.log('[createEC2Instance]');
@@ -152,7 +174,13 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
     }
   });
 };
-
+/**
+ *
+ *
+ * @param {number} totalNodes
+ * @param {AWSRegionCode[]} regions
+ * @param {string} imageName
+ */
 const createEC2Cluster = (totalNodes: number, regions: AWSRegionCode[], imageName: string) => {
   regions.length === 0 ? Object.keys(AWSRegionCode).map((key: string) => regions.push(AWSRegionCode[key as any] as AWSRegionCode)) : null;
   const regularNodes = Math.floor(totalNodes * 0.7);
@@ -197,6 +225,13 @@ const createEC2Cluster = (totalNodes: number, regions: AWSRegionCode[], imageNam
   }));
 };
 
+/**
+ *
+ *
+ * @param {AWS.EC2} ec2
+ * @param {AWS.EC2.Tag} imageTag
+ * @param {((images: AWS.EC2.Image[] | undefined) => void)} callback
+ */
 const getImagesByTag = (ec2: AWS.EC2, imageTag: AWS.EC2.Tag, callback: (images: AWS.EC2.Image[] | undefined) => void) => {
   const params: AWS.EC2.DescribeImagesRequest = {
     Filters: [
@@ -220,6 +255,13 @@ const getImagesByTag = (ec2: AWS.EC2, imageTag: AWS.EC2.Tag, callback: (images: 
   });
 };
 
+/**
+ *
+ *
+ * @param {AWS.EC2} ec2
+ * @param {string} imageName
+ * @param {((imageId: string | undefined) => void)} callback
+ */
 const getImageIdByImageName = (ec2: AWS.EC2, imageName: string, callback: (imageId: string | undefined) => void) => {
   const params: AWS.EC2.DescribeImagesRequest = {
     Filters: [
@@ -246,6 +288,11 @@ const getImageIdByImageName = (ec2: AWS.EC2, imageName: string, callback: (image
   });
 };
 
+/**
+ *
+ *
+ * @param {boolean} create
+ */
 const configureSecurityGroups = (create: boolean) => {
   const regions = Object.keys(AWSRegionCode).map((key: string) => AWSRegionCode[key as any]);
   for (let i = 0; i < regions.length; i += 1) {
@@ -319,6 +366,13 @@ const configureSecurityGroups = (create: boolean) => {
   }
 };
 
+/**
+ *
+ *
+ * @param {AWSRegionCode} region
+ * @param {string} commitTag
+ * @param {() => void} callback
+ */
 const createNewImage = (region: AWSRegionCode, commitTag: string, callback: () => void) => {
   const ec2 = initEC2(region);
   getImagesByTag(ec2, imageTag, (images) => {
@@ -380,6 +434,11 @@ const createNewImage = (region: AWSRegionCode, commitTag: string, callback: () =
   });
 };
 
+/**
+ *
+ *
+ * @param {AWSRegionCode[]} regions
+ */
 const terminateEC2Cluster = (regions: AWSRegionCode[]): void => {
   info(`[terminateEC2Cluster]`);
   regions.length === 0 ? Object.keys(AWSRegionCode).map((key: string) => regions.push(AWSRegionCode[key as any] as AWSRegionCode)) : null;

@@ -21,6 +21,7 @@ import {
   wipeLedgersMsg,
 } from './message';
 import { Pod } from './pod';
+import { getClientSocket, IPodMap, podMap, updatePodMap } from './podMap';
 import { Result } from './result';
 import { TestConfig } from './testConfig';
 import {
@@ -42,7 +43,6 @@ import {
   getPodIp,
 } from './utils';
 import { fundWallet, getPublicFromWallet } from './wallet';
-import { IPodMap, getClientSocket } from './podMap';
 
 const config = require('../node/config/config.json');
 
@@ -66,26 +66,81 @@ let localSnapshotMap: ISnapshotMap;
 let startTime: number;
 let endTime: number;
 let selectedReceiver: Pod;
-let localPodMap: IPodMap = {};
+let localPodMap: IPodMap = podMap;
 
 let localTestConfig = new TestConfig(60, 2, true, false, 'TEMP');
 
 const validationResults: { [txId: string]: IValidationResult[] } = {};
 
+/**
+ *
+ *
+ * @interface IValidationResult
+ */
 interface IValidationResult {
   message: IMessage;
 }
 
+/**
+ * Returns an array containing all pods on the network.
+ *
+ * @returns {Pod[]}
+ */
 const getPods = (): Pod[] => pods;
+/**
+ * Returns the node's SocketIo.Server instance.
+ *
+ * @returns {Server}
+ */
 const getIo = (): Server => io;
+/**
+ * Returns HTTP Server the node is running on.
+ *
+ * @returns {http.Server}
+ */
 const getServer = (): http.Server => gServer;
+/**
+ * Returns the socket connected to the local winston logging service.
+ *
+ * @returns {ClientSocket}
+ */
 const getLogger = (): ClientSocket => localLogger;
+/**
+ * Returns a object containing the test configuration for the current test.
+ *
+ * @returns {TestConfig}
+ */
 const getTestConfig = (): TestConfig => localTestConfig;
+/**
+ * Returns an array containing the sender, receiver, and validator pods for the current test.
+ *
+ * @returns {Pod[]}
+ */
 const getSelectedPods = (): Pod[] => localSelectedPods;
+/**
+ * Returns the most recent snapshot map received by the network.
+ *
+ * @returns {ISnapshotMap}
+ */
 const getSnapshotMap = (): ISnapshotMap => localSnapshotMap;
+/**
+ *  Returns the port this node is running on.
+ *
+ * @returns {number}
+ */
 const getPort = (): number => port;
+/**
+ *  Returns the pod map in use by this node.
+ *
+ * @returns {IPodMap}
+ */
 const getPodMap = (): IPodMap => localPodMap;
 
+/**
+ *  Begins a test.
+ *
+ * @param {Pod} receiver
+ */
 const beginTest = (receiver: Pod): void => {
   debug('beginTest');
   selectedReceiver = receiver;
@@ -106,6 +161,10 @@ const beginTest = (receiver: Pod): void => {
   fundWallet();
 };
 
+/**
+ *  Loops the current test if the test has not reached the specified duration.
+ *
+ */
 const loopTest = (): void => {
   debug(`End time of test: ${endTime}, Current time: ${getCurrentTimestamp()}`);
   if (endTime > getCurrentTimestamp()) {
@@ -125,7 +184,13 @@ const loopTest = (): void => {
   }
 };
 
-const closeConnection = (socket: ServerSocket): void => {
+/**
+ *  Handles the closing of a socket connection. Updates and distributes the
+ *  current pod list to all connected pods.
+ *
+ * @param {ServerSocket} socket
+ */
+const handleCloseConnection = (socket: ServerSocket): void => {
   const pod = pods[getPodIndexBySocket(socket, pods)];
   pods.splice(pods.indexOf(pod), 1);
   const numRegular = pods.filter(pod => pod.podType === 0).length;
@@ -135,6 +200,13 @@ const closeConnection = (socket: ServerSocket): void => {
   io.emit('message', podListUpdated(pods));
 };
 
+/**
+ *  Message handler function for socketIo Server sockets.
+ *
+ * @param {ServerSocket} socket
+ * @param {IMessage} message
+ * @returns {void}
+ */
 const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void => {
   try {
     if (message === null) {
@@ -215,7 +287,7 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
               const target = targets[i];
               const pod = pods[getPodIndexByPublicKey(target, pods)];
               const podIp = getPodIp(localTestConfig.local, pod);
-              const snapshotSocket = getClientSocket(localPodMap, podIp);
+              const snapshotSocket = localPodMap[podIp];
               snapshotSocket.on('connect', () => {
                 write(snapshotSocket, snapshotMapUpdated(localSnapshotMap));
               });
@@ -261,6 +333,12 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
   }
 };
 
+/**
+ *  Message handler function for socketIo Client sockets.
+ *
+ * @param {IMessage} message
+ * @returns {void}
+ */
 const handleMessageAsClient = (message: IMessage): void => {
   try {
     if (message === null) {
@@ -295,6 +373,7 @@ const handleMessageAsClient = (message: IMessage): void => {
           break;
         }
         pods = _data;
+        updatePodMap(pods);
         // console.log(`Number of pods: ${pods.length}`);
         break;
       }
@@ -350,6 +429,11 @@ const handleMessageAsClient = (message: IMessage): void => {
   }
 }
 
+/**
+ *  Handles new connections to the node's Server socket.
+ *
+ * @param {ServerSocket} socket
+ */
 const handleNewConnection = (socket: ServerSocket): void => {
   // console.log('New connection, emitting [identity]');
   if (isSeed) {
@@ -360,11 +444,16 @@ const handleNewConnection = (socket: ServerSocket): void => {
     handleMessageAsServer(socket, message);
   });
   if (isSeed) {
-    socket.on('disconnect', () => closeConnection(socket));
-    socket.on('error', () => closeConnection(socket));
+    socket.on('disconnect', () => handleCloseConnection(socket));
+    socket.on('error', () => handleCloseConnection(socket));
   }
 };
 
+/**
+ *  Handler function for an array of [[Results]].
+ *
+ * @param {string} transactionId
+ */
 const handleValidationResults = (transactionId: string): void => {
   let isValid = true;
   const _validationResults = validationResults[transactionId];
@@ -400,6 +489,12 @@ const handleValidationResults = (transactionId: string): void => {
   }
 };
 
+/**
+ *  Initializes a P2P Node 
+ *
+ * @param {http.Server} server
+ * @returns {void}
+ */
 const initP2PNode = (server: http.Server): void => {
   // console.log('initP2PNode');
   gServer = server;
@@ -409,7 +504,7 @@ const initP2PNode = (server: http.Server): void => {
     return;
   }
   const pod = new Pod(type, port);
-  const socket: ClientSocket = getClientSocket(localPodMap, config.seedServerIp);
+  const socket: ClientSocket = getClientSocket(localPodMap, config.seedServerIp, 'initP2PNode');
   localSocket = socket;
   socket.on('connect', () => {
     localPodMap[config.seedServerIp] = socket;
@@ -443,7 +538,7 @@ const initP2PServer = (server: http.Server): any => {
     // localLogger = ioClient(config.loggerServerIp);
     // console.log('after connecting to logger');
     io.on('disconnect', (socket: ServerSocket) => {
-      closeConnection(socket);
+      handleCloseConnection(socket);
     });
   }
 };
