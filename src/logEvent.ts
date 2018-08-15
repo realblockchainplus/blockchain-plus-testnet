@@ -1,6 +1,3 @@
-import * as winston from 'winston';
-
-// import { db } from './firebase';
 import { debug } from './logger';
 import { LogEventSchema } from './models/logEvent.model';
 import { conn } from './db';
@@ -20,7 +17,7 @@ class LogEvent {
   public receiver: Partial<Pod>;
   public eventType: EventType;
   public transactionId: string;
-  public logLevel: winston.NPMLoggingLevel;
+  public logLevel: LogLevel;
   public owner: Partial<Pod>;
   public timestamp: number;
   public testId: string;
@@ -35,7 +32,7 @@ class LogEvent {
    * @param {string} receiver
    * @param {string} transactionId
    * @param {EventType} eventType
-   * @param {winston.NPMLoggingLevel} logLevel
+   * @param {LogLevel} logLevel
    * @param {string} [validator]
    * @param {string} [connectionTo]
    * @param {TestConfig} [testConfig]
@@ -43,7 +40,7 @@ class LogEvent {
    * @memberof LogEvent
    */
   constructor(sender: string, receiver: string, transactionId: string, eventType: EventType,
-    logLevel: winston.NPMLoggingLevel, validator?: string, connectionTo?: string,
+    logLevel: LogLevel, validator?: string, connectionTo?: string,
     testConfig?: TestConfig, ledgerLength?: number) {
     this.sender = this.partialPod(sender);
     this.receiver = this.partialPod(receiver);
@@ -184,6 +181,15 @@ enum EventType {
   CONNECT_TO_RECEIVER_END = 36,
 }
 
+enum LogLevel {
+  ERROR, 
+  WARN,
+  INFO, 
+  VERBOSE,
+  DEBUG,
+  SILLY
+}
+
 export {
-  LogEvent, EventType,
+  LogEvent, EventType, LogLevel,
 };
