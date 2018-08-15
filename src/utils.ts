@@ -3,7 +3,7 @@ import * as objectHash from 'object-hash';
 import { getLocalLedger, Ledger, LedgerType } from './ledger';
 // import * as os from 'os';
 import { Transaction } from './transaction';
-import { LogEvent, EventType } from './logEvent';
+import { LogEvent, EventType, LogLevel } from './logEvent';
 import { Pod } from './pod';
 import { ClientSocket, ServerSocket } from './p2p';
 
@@ -18,7 +18,7 @@ const getEntryByTransactionId = (transactionId: string, currentTransactionId: st
       '',
       currentTransactionId,
       EventType.GET_ENTRY_FROM_LEDGER_START,
-      'silly',
+      LogLevel.SILLY,
     );
   }
   const { entries }: { entries: Transaction[] } = getLocalLedger(type);
@@ -36,7 +36,7 @@ const getEntryByTransactionId = (transactionId: string, currentTransactionId: st
       '',
       currentTransactionId,
       EventType.GET_ENTRY_FROM_LEDGER_END,
-      'silly',
+      LogLevel.SILLY,
     );
   }
   return entries[index];

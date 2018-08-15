@@ -1,6 +1,7 @@
 import * as ioClient from 'socket.io-client';
 import { Pod } from './pod';
 import { getPodIp } from './utils';
+import { getPort } from './p2p';
 
 interface IPodMap {
   [index: string]: SocketIOClient.Socket;
@@ -14,19 +15,22 @@ const getClientSocket = (podMap: IPodMap, podIp: string, funcName: string): Sock
 }
 
 const updatePodMap = (pods: Pod[]) => {
+  const port: number = getPort();
   pods.map(pod => {
-    const podIp = getPodIp(true, pod);
-    const socket = getClientSocket(podMap, podIp, 'updatePodMap');
-    if (podMap[podIp] && !socket.connected) {
-      socket.once('connect', () => {
+    if (pod.port !== port) {
+      const podIp = getPodIp(true, pod);
+      const socket = getClientSocket(podMap, podIp, 'updatePodMap');
+      if (podMap[podIp] && !socket.connected) {
+        socket.once('connect', () => {
+          podMap[podIp] = socket;
+        });
+      }
+      else if (podMap[podIp] && socket.connected) {
         podMap[podIp] = socket;
-      });
-    }
-    else if (podMap[podIp] && socket.connected) {
-      podMap[podIp] = socket;
-    }
-    else {
-      podMap[podIp] = socket;
+      }
+      else {
+        podMap[podIp] = socket;
+      }
     }
   });
 }

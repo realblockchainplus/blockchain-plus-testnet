@@ -2,21 +2,17 @@ import * as AWS from 'aws-sdk';
 
 import { info } from './logger';
 import { PodType } from './pod';
-/**
- * 
- *
- * @interface IRegionBreakdown
- */
+/** Interface for a breakdown of a region's node count. */
 interface IRegionBreakdown {
+  /** AWS Region Code identifying the region of this node breakdown */
   id: AWSRegionCode;
+  /** Number of regular nodes in the identified region */
   numRegular: number;
+  /** Number of partner nodes in the identified region */
   numPartner: number;
 }
-/**
- *
- *
- * @enum {number}
- */
+
+/** Enum for AWS Region Codes */
 enum AWSRegionCode {
   US_EAST = 'us-east-1',
   US_WEST = 'us-west-2',
@@ -28,29 +24,41 @@ enum AWSRegionCode {
   GERMANY = 'eu-central-1',
 }
 
+/** Base string used to build specific strings */
 const baseName = 'bcp-tn-node';
+
+/** Default keypair string */
 const defaultKeyPair = baseName;
+
+/** Default security group string */
 const defaultSecurityGroup = `${baseName}-default`;
+
+/** Default image tag string */
 const defaultImage = `${baseName}-image`;
 
+/** Tag used for regular nodes */
 const regularTag: AWS.EC2.Tag = {
   Key: 'type',
   Value: 'regular',
 };
 
+/** Tag used for partner nodes */
 const partnerTag: AWS.EC2.Tag = {
   Key: 'type',
   Value: 'partner',
 };
 
+/** Tag used for images */
 const imageTag: AWS.EC2.Tag = {
   Key: 'category',
   Value: defaultImage,
 };
+
 /**
+ * Returns an EC2 service object configured with the specified region
  *
- *
- * @param {AWSRegionCode} [region]
+ * @param region  Specific region to configure EC2 service object. If undefined, it will use
+ * the locally configured region or error out if both are undefined.
  * @returns {AWS.EC2}
  */
 const initEC2 = (region?: AWSRegionCode): AWS.EC2 => {
@@ -61,15 +69,16 @@ const initEC2 = (region?: AWSRegionCode): AWS.EC2 => {
   });
   return ec2;
 };
+
 /**
+ * Creates an EC2 instance
  *
- *
- * @param {PodType} type
- * @param {AWSRegionCode} region
- * @param {number} nodeCount
- * @param {string} imageName
- * @param {boolean} startNode
- * @param {(instance: AWS.EC2.Instance) => void} [callback=() => {}]
+ * @param type  Determines the size of the instance and the tag
+ * @param region  Region in which to create an instance
+ * @param nodeCount  Number of instances to create
+ * @param imageName  AMI to use when creating the instance
+ * @param startNode  Should the instance start the node
+ * @param callback  Callback containing the created instance
  */
 const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: number, imageName: string,
   startNode: boolean, callback: (instance: AWS.EC2.Instance) => void = () => {}) => {
@@ -175,11 +184,11 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
   });
 };
 /**
+ * Creates a cluster of EC2 instances
  *
- *
- * @param {number} totalNodes
- * @param {AWSRegionCode[]} regions
- * @param {string} imageName
+ * @param totalNodes  Number of nodes to create
+ * @param regions  Array of region codes that the function should spread nodes across
+ * @param imageName  AMI to use when creating the instances
  */
 const createEC2Cluster = (totalNodes: number, regions: AWSRegionCode[], imageName: string) => {
   regions.length === 0 ? Object.keys(AWSRegionCode).map((key: string) => regions.push(AWSRegionCode[key as any] as AWSRegionCode)) : null;
@@ -226,11 +235,11 @@ const createEC2Cluster = (totalNodes: number, regions: AWSRegionCode[], imageNam
 };
 
 /**
+ * Returns an array of images in a callback based on the imageTag and EC2 service object provided
  *
- *
- * @param {AWS.EC2} ec2
- * @param {AWS.EC2.Tag} imageTag
- * @param {((images: AWS.EC2.Image[] | undefined) => void)} callback
+ * @param ec2  EC2 service object to use when interacting with AWS api
+ * @param imageTag  Tag to use for filtering EC2 images
+ * @param callback  Callback containing an array of images matching the imageTag within the specified region
  */
 const getImagesByTag = (ec2: AWS.EC2, imageTag: AWS.EC2.Tag, callback: (images: AWS.EC2.Image[] | undefined) => void) => {
   const params: AWS.EC2.DescribeImagesRequest = {
@@ -256,11 +265,11 @@ const getImagesByTag = (ec2: AWS.EC2, imageTag: AWS.EC2.Tag, callback: (images: 
 };
 
 /**
+ * Returns an imageId in a callback based on the imageName and EC2 service object provided
  *
- *
- * @param {AWS.EC2} ec2
- * @param {string} imageName
- * @param {((imageId: string | undefined) => void)} callback
+ * @param ec2  EC2 service object to use when interacting with AWS api
+ * @param imageName  imageName to use for filtering EC2 images
+ * @param callback  Callback containing an imageId that matches the imageName within the specified region
  */
 const getImageIdByImageName = (ec2: AWS.EC2, imageName: string, callback: (imageId: string | undefined) => void) => {
   const params: AWS.EC2.DescribeImagesRequest = {
@@ -289,9 +298,9 @@ const getImageIdByImageName = (ec2: AWS.EC2, imageName: string, callback: (image
 };
 
 /**
+ * Creates or deletes an unrestrictive security group for all 8 regions. TEMP function
  *
- *
- * @param {boolean} create
+ * @param create  Determines whether the function will create or delete the security groups
  */
 const configureSecurityGroups = (create: boolean) => {
   const regions = Object.keys(AWSRegionCode).map((key: string) => AWSRegionCode[key as any]);
@@ -367,11 +376,11 @@ const configureSecurityGroups = (create: boolean) => {
 };
 
 /**
+ * Creates a new image by cloning the most recent image, and pulling / compiling the master branch.
  *
- *
- * @param {AWSRegionCode} region
- * @param {string} commitTag
- * @param {() => void} callback
+ * @param region  Determines which region the most recent image will come from, and where the new image will be saved
+ * @param commitTag  Semantic versioning tag, the new image will use this as it's image name
+ * @param callback  Fires when instance used to create the new image is terminated
  */
 const createNewImage = (region: AWSRegionCode, commitTag: string, callback: () => void) => {
   const ec2 = initEC2(region);
@@ -435,9 +444,9 @@ const createNewImage = (region: AWSRegionCode, commitTag: string, callback: () =
 };
 
 /**
+ * Terminates all EC2 instances with the tag 'type:partner' or 'type:regular' and the key 'bcp-tn-node' 
  *
- *
- * @param {AWSRegionCode[]} regions
+ * @param regions  An array of region codes where the instances should be terminated from. If left empty, function will target all 8 regions.
  */
 const terminateEC2Cluster = (regions: AWSRegionCode[]): void => {
   info(`[terminateEC2Cluster]`);

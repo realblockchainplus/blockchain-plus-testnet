@@ -4,7 +4,7 @@ import { AddressInfo } from 'net';
 import * as socketIo from 'socket.io';
 
 import { getLedger, getLocalLedger, initLedger, Ledger, LedgerType, updateLedger } from './ledger';
-import { EventType, LogEvent } from './logEvent';
+import { EventType, LogEvent, LogLevel } from './logEvent';
 import { debug, err, info, warning } from './logger';
 import {
   IMessage,
@@ -152,7 +152,7 @@ const beginTest = (receiver: Pod): void => {
     '',
     '',
     EventType.TEST_START,
-    'info',
+    LogLevel.INFO,
     undefined,
     undefined,
     localTestConfig,
@@ -246,7 +246,7 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
           transaction.to,
           transaction.id,
           EventType.REQUEST_VALIDATION_START,
-          'info',
+          LogLevel.INFO,
         );
         validateTransaction(transaction, senderLedger, (responses: (Result | Ledger | ISnapshotResponse)[]) => {
           const _tx = createDummyTransaction();
@@ -299,7 +299,7 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
             transaction.to,
             transaction.id,
             EventType.REQUEST_VALIDATION_END,
-            'info',
+            LogLevel.INFO,
           );
           console.log(io.clients);
           socket.emit('message', responseIsTransactionValid(results, _tx));
