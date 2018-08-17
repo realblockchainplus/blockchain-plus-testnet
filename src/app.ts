@@ -155,7 +155,6 @@ const initHttpServer = (port: number, callback = (server: http.Server) => {}): v
       selectedPods = selectRandom(regularPods, testConfig.numSenders * 2, '');
     }
 
-
     // Build initial snapshot map. Whitepaper uses 8 snapshot nodes, currently set to 4
     // Needs to be replaced with external chaos number generator whenever possible
     const snapshotMap: ISnapshotMap = {};

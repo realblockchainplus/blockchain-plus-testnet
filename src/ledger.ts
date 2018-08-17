@@ -19,11 +19,7 @@ const witnessLedgerFilename = 'witness_ledger.json';
 let ledgers: { myLedger: Ledger, witnessLedger: Ledger };
 
 /**
- * Definition of a Ledger. There are two types of ledger:
- * * [[LedgerType.MY_LEDGER]]
- * * [[LedgerType.WITNESS_LEDGER]]
- *
- * @class Ledger
+ * Definition of a Ledger.
  */
 class Ledger {
   /** Array of Transactions */
@@ -31,7 +27,6 @@ class Ledger {
 
   /** Type of ledger */
   public LedgerType: LedgerType;
-
 
   /** Creates an instance of Ledger. */
   constructor(entries: Transaction[], LedgerType: LedgerType) {
@@ -126,16 +121,11 @@ const updateTransaction = (transaction: Transaction, type: LedgerType): Transact
 };
 
 /**
- * Writes to the ledger specified by [[LedgerType]].
+ * Writes to the ledger specified by LedgerType.
+ * @param ledger  Ledger to write to
+ * @param type  Type of ledger, used to determine where to write the new ledger to
  */
-/**
- *
- *
- * @param {Ledger} ledger
- * @param {LedgerType} type
- * @param {boolean} [test=false]
- */
-const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): void => {
+const writeLedger = (ledger: Ledger, type: LedgerType): void => {
   info(`[writeLedger]`);
   const ledgerFilename = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
   debug(`Ledger File Name: ${ledgerFilename}`);
@@ -166,16 +156,15 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
       EventType.TRANSACTION_END,
       LogLevel.INFO,
     );
-    // console.timeEnd('transaction');
     loopTest();
   }
 };
 
 /**
+ * Returns the balance of a specified account
  *
- *
- * @param {Ledger} ledger
- * @param {string} [publicKey]
+ * @param ledger  Ledger to get balance from
+ * @param publicKey  Key of account to check balance of -- Might be useless, ledger should always be a personal ledger anyway
  * @returns {number}
  */
 const getLedgerBalance = (ledger: Ledger, publicKey?: string): number => {
@@ -186,11 +175,9 @@ const getLedgerBalance = (ledger: Ledger, publicKey?: string): number => {
     // console.dir(entry);
     // console.log(entry.to, publicKey);
     if (entry.to == walletAddress) {
-      // console.log(`Address matches publicKey. Adding ${entry.amount} to currentHoldings.`);
       ledgerBalance += entry.amount;
     }
     if (entry.from == walletAddress) {
-      // console.log(`From matches publicKey. Removing ${entry.amount} from currentHoldings.`);
       ledgerBalance -= entry.amount;
     }
   }
