@@ -559,6 +559,6 @@ const wipeLedgers = (): void => {
 
 export {
   beginTest, loopTest, initP2PServer, initP2PNode, getPods, getIo, getServer, getTestConfig, write, handleMessageAsClient, IMessage,
-  killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType, getLogger, wipeLedgers, getSelectedPods, ClientSocket,
+  killAll, isTransactionHashValid, MessageType, getLogger, wipeLedgers, getSelectedPods, ClientSocket,
   ServerSocket, Server, getPort, getSnapshotMap, getPodMap,
 };

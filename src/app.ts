@@ -2,7 +2,6 @@ import * as bodyParser from 'body-parser';
 import { spawn } from 'child_process';
 import * as cors from 'cors';
 import * as dotenv from 'dotenv';
-dotenv.config();
 import * as express from 'express';
 import * as http from 'http';
 import * as minimist from 'minimist';
@@ -12,14 +11,15 @@ import { AWSRegionCode, createEC2Cluster, terminateEC2Cluster } from './aws';
 import { EventType, LogEvent, LogLevel } from './logEvent';
 import { info } from './logger';
 import { sendTestConfig } from './message';
-import { getIo, getPodIndexByPublicKey, getPods, initP2PNode, initP2PServer, killAll } from './p2p';
+import { getIo, getPods, initP2PNode, initP2PServer, killAll } from './p2p';
 import { Pod, PodType } from './pod';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
 import { getGenesisAddress, ISnapshotMap } from './transaction';
-import { randomNumberFromRange } from './utils';
+import { getPodIndexByPublicKey, randomNumberFromRange } from './utils';
 import { initWallet } from './wallet';
 
+dotenv.config();
 // import { createEC2Instance } from './aws';
 const config = require('../node/config/config.json');
 

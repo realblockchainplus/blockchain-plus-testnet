@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import { EventType, LogEvent, LogLevel } from './logEvent';
 import { loopTest } from './p2p';
 import { Transaction } from './transaction';
-import { getEntryInLedgerByTransactionId, createDummyTransaction } from './utils';
+import { createDummyTransaction, getEntryByTransactionId } from './utils';
 import { info, debug } from './logger';
 import { getPublicFromWallet } from './wallet';
 
@@ -95,7 +95,7 @@ const updateLedger = (transaction: Transaction, type: LedgerType): void => {
   const ledger: Ledger = getLocalLedger(type);
   info(`[updateLedger] get ledger`);
   // debug(getEntryInLedgerByTransactionId(_transaction.id, ledger));
-  if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined) {
+  if (getEntryByTransactionId(_transaction.id, '', ledger) === undefined) {
     info(`[updateLedger] before write ledger`);
     ledger.entries.push(_transaction);
     writeLedger(ledger, type);

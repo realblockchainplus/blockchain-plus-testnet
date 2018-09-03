@@ -1,58 +1,78 @@
 import * as objectHash from 'object-hash';
 
 import { getLocalLedger, Ledger, LedgerType } from './ledger';
-// import * as os from 'os';
-import { Transaction } from './transaction';
-import { LogEvent, EventType, LogLevel } from './logEvent';
-import { Pod } from './pod';
+import { EventType, LogEvent, LogLevel } from './logEvent';
 import { ClientSocket, ServerSocket } from './p2p';
+import { Pod } from './pod';
+import { Transaction } from './transaction';
 
+// import * as os from 'os';
 const getCurrentTimestamp = (): number => {
   return new Date().getTime();
 };
 
-const getEntryByTransactionId = (transactionId: string, currentTransactionId: string, type: LedgerType): Transaction => {
-  if (type === LedgerType.WITNESS_LEDGER) {
-    new LogEvent(
-      '',
-      '',
-      currentTransactionId,
-      EventType.GET_ENTRY_FROM_LEDGER_START,
-      LogLevel.SILLY,
-    );
-  }
-  const { entries }: { entries: Transaction[] } = getLocalLedger(type);
-  let index = -1;
-  for (let i = 0; i < entries.length; i += 1) {
-    const entry = entries[i];
-    if (entry.id === transactionId) {
-      index = i;
-      break;
+const getEntryByTransactionId = (transactionId: string, currentTransactionId: string, ledger?: Ledger, type?: LedgerType): Transaction | undefined => {
+  if (ledger) {
+    if (ledger.LedgerType === LedgerType.WITNESS_LEDGER) {
+      new LogEvent(
+        '',
+        '',
+        currentTransactionId,
+        EventType.GET_ENTRY_FROM_LEDGER_START,
+        LogLevel.SILLY,
+      );
     }
-  }
-  if (type === LedgerType.WITNESS_LEDGER) {
-    new LogEvent(
-      '',
-      '',
-      currentTransactionId,
-      EventType.GET_ENTRY_FROM_LEDGER_END,
-      LogLevel.SILLY,
-    );
-  }
-  return entries[index];
-};
-
-const getEntryInLedgerByTransactionId = (transactionId: string, ledger: Ledger): Transaction => {
-  const { entries }: { entries: Transaction[] } = ledger;
-  let index = -1;
-  for (let i = 0; i < entries.length; i += 1) {
-    const entry = entries[i];
-    if (entry.id === transactionId) {
-      index = i;
-      break;
+    const { entries }: { entries: Transaction[] } = ledger;
+    let index = -1;
+    for (let i = 0; i < entries.length; i += 1) {
+      const entry = entries[i];
+      if (entry.id === transactionId) {
+        index = i;
+        break;
+      }
     }
+    if (ledger.LedgerType === LedgerType.WITNESS_LEDGER) {
+      new LogEvent(
+        '',
+        '',
+        currentTransactionId,
+        EventType.GET_ENTRY_FROM_LEDGER_END,
+        LogLevel.SILLY,
+      );
+    }
+    return entries[index];
   }
-  return entries[index];
+  else if (type) {
+    if (type === LedgerType.WITNESS_LEDGER) {
+      new LogEvent(
+        '',
+        '',
+        currentTransactionId,
+        EventType.GET_ENTRY_FROM_LEDGER_START,
+        LogLevel.SILLY,
+      );
+    }
+    const { entries }: { entries: Transaction[] } = getLocalLedger(type);
+    let index = -1;
+    for (let i = 0; i < entries.length; i += 1) {
+      const entry = entries[i];
+      if (entry.id === transactionId) {
+        index = i;
+        break;
+      }
+    }
+    if (type === LedgerType.WITNESS_LEDGER) {
+      new LogEvent(
+        '',
+        '',
+        currentTransactionId,
+        EventType.GET_ENTRY_FROM_LEDGER_END,
+        LogLevel.SILLY,
+      );
+    }
+    return entries[index];
+  }
+  return undefined;
 };
 
 const getLocalIp = () => {
@@ -142,6 +162,6 @@ const getPodIp = (local: boolean, pod: Pod) => {
 
 export {
   createDummyTransaction, getCurrentTimestamp, getEntryByTransactionId,
-  getEntryInLedgerByTransactionId, getLocalIp, getPodIndexByPublicKey, getPodIndexBySocket,
+  getLocalIp, getPodIndexByPublicKey, getPodIndexBySocket,
   isValidAddress, randomNumberFromRange, toHexString, generateLedgerSnapshot, getPodIp,
 };

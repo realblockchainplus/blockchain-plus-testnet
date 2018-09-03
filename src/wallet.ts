@@ -1,7 +1,7 @@
 import { ec } from 'elliptic';
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 
-import { initLedger, LedgerType, getLocalLedger } from './ledger';
+import { getLocalLedger, initLedger, LedgerType } from './ledger';
 import { genesisTransaction, requestValidateTransaction } from './transaction';
 
 const EC = new ec('secp256k1');

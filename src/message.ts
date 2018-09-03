@@ -1,9 +1,9 @@
 import { Ledger, LedgerType } from './ledger';
+import { LogEvent } from './logEvent';
 import { Pod } from './pod';
 import { Result } from './result';
-import { Transaction, ISnapshotMap } from './transaction';
 import { TestConfig } from './testConfig';
-import { LogEvent } from './logEvent';
+import { ISnapshotMap, Transaction } from './transaction';
 
 /**
  *

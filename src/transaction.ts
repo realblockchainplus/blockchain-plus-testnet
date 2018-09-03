@@ -1,16 +1,28 @@
 import * as CryptoJS from 'crypto-js';
 import * as ecdsa from 'elliptic';
-import { Ledger, getLedgerBalance, LedgerType } from './ledger';
+
+import { getLedgerBalance, Ledger, LedgerType } from './ledger';
 import { EventType, LogEvent, LogLevel } from './logEvent';
 import { debug, info } from './logger';
-import { isTransactionValid, requestSnapshotMsg, requestLedgerMsg } from './message';
-import { IMessage, MessageType, getPodIndexByPublicKey, getPods, getTestConfig, handleMessageAsClient, isTransactionHashValid, write, getSnapshotMap, getSelectedPods, getPodMap } from './p2p';
+import { isTransactionValid, requestLedgerMsg, requestSnapshotMsg } from './message';
+import {
+  getPodMap,
+  getPods,
+  getSelectedPods,
+  getSnapshotMap,
+  getTestConfig,
+  handleMessageAsClient,
+  IMessage,
+  isTransactionHashValid,
+  MessageType,
+  write,
+} from './p2p';
 import { Pod, PodType } from './pod';
 import { Result } from './result';
-import { getEntryByTransactionId, toHexString, getPodIp } from './utils';
-import { getPrivateFromWallet, getPublicFromWallet } from './wallet';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
+import { getEntryByTransactionId, getPodIndexByPublicKey, getPodIp, toHexString } from './utils';
+import { getPrivateFromWallet, getPublicFromWallet } from './wallet';
 
 const ec = new ecdsa.ec('secp256k1');
 
@@ -518,7 +530,7 @@ const validateSignature = (transaction: Transaction): Result => {
 };
 
 const validateTransactionHash = (id: string, currentId: string, hash: string): Result => {
-  const transaction: Transaction = getEntryByTransactionId(id, currentId, 1);
+  const transaction = getEntryByTransactionId(id, currentId, undefined, 1);
   let res: boolean = false;
   let reason: string = 'Transaction hash is valid';
   if (transaction === undefined) {

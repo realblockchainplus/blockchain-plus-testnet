@@ -1,11 +1,11 @@
+import { conn } from './db';
 import { debug } from './logger';
 import { LogEventSchema } from './models/logEvent.model';
-import { conn } from './db';
+import { getPods, getTestConfig } from './p2p';
 import { Pod } from './pod';
 import { TestConfig } from './testConfig';
+import { getCurrentTimestamp, getPodIndexByPublicKey } from './utils';
 import { getPublicFromWallet } from './wallet';
-import { getPods, getPodIndexByPublicKey, getTestConfig } from './p2p';
-import { getCurrentTimestamp } from './utils';
 
 /**
  *

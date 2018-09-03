@@ -1,9 +1,8 @@
-import { getPodIndexByPublicKey } from './p2p';
-import { Pod } from './pod';
+import { EventType, LogEvent, LogLevel } from './logEvent';
 import { info } from './logger';
+import { Pod } from './pod';
+import { getPodIndexByPublicKey, randomNumberFromRange } from './utils';
 import { getPublicFromWallet } from './wallet';
-import { randomNumberFromRange } from './utils';
-import { LogEvent, EventType, LogLevel } from './logEvent';
 
 const selectRandom = (pods: Pod[], num: number, to: string = ''): Pod[] => {
   new LogEvent(
