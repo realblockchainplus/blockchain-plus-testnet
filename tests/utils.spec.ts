@@ -41,6 +41,7 @@ describe('Create a ledger snapshot', () => {
     const result = generateLedgerSnapshot(ledger);
     expect(result).length.to.equal(32);
   });
+});
 
 describe('Get entry using transaction id', () => {
   it('should return a transaction', () => {
@@ -48,7 +49,7 @@ describe('Get entry using transaction id', () => {
     const ledger = new Ledger([testTransaction], LedgerType.MY_LEDGER);
     const result = getEntryByTransactionId(testTransaction.id, '', ledger);
     expect(result).to.be.an.instanceof(Transaction);
-  })
+  });
 
   it('should return a transaction', () => {
     initLedger(80);
@@ -56,14 +57,14 @@ describe('Get entry using transaction id', () => {
     updateLedger(testTransaction, LedgerType.MY_LEDGER);
     const result = getEntryByTransactionId(testTransaction.id, '', undefined, LedgerType.MY_LEDGER);
     expect(result).to.be.an.instanceof(Transaction);
-  })
+  });
 
   it('should return undefined', () => {
     const testTransaction = new Transaction('', '', 0, getCurrentTimestamp());
     const ledger = new Ledger([testTransaction], LedgerType.MY_LEDGER);
     const result = getEntryByTransactionId('abcd', '', ledger);
     expect(result).to.be.an('undefined');
-  })
+  });
 });
 
 describe('Get pod index using a public key', () => {
@@ -73,7 +74,7 @@ describe('Get pod index using a public key', () => {
     pods.push(pod);
     const result = getPodIndexByPublicKey(pod.address, pods);
     expect(result).to.be.greaterThan(-1);
-  })
+  });
 
   it('should return -1', () => {
     const pods: Pod[] = [];
@@ -81,7 +82,7 @@ describe('Get pod index using a public key', () => {
     pods.push(pod);
     const result = getPodIndexByPublicKey('abcd', pods);
     expect(result).to.equal(-1);
-  })
+  });
 });
 
 describe('Check if an address is valid', () => {
@@ -114,5 +115,4 @@ describe('Create a hex string from a byte array', () => {
     const isValidHexString = parseInt(result, 16).toString() === result.toLowerCase();
     expect(isValidHexString).to.be.true;
   });
-})
-
+});
