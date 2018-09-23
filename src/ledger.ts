@@ -1,27 +1,34 @@
 import * as fs from 'fs';
 
-import { EventType, LogEvent } from './logEvent';
+import { EventType, LogEvent, LogLevel } from './logEvent';
 import { loopTest } from './p2p';
 import { Transaction } from './transaction';
-import { getEntryInLedgerByTransactionId, createDummyTransaction } from './utils';
+import { createDummyTransaction, getEntryByTransactionId } from './utils';
 import { info, debug } from './logger';
 import { getPublicFromWallet } from './wallet';
 
-let ledgerLocation = ``;
+/** Base ledgerLocation string */
+let ledgerLocation = '';
+
+/** Default filename for a personal ledger */
 const myLedgerFilename = 'my_ledger.json';
+
+/** Default filename for a witness ledger */
 const witnessLedgerFilename = 'witness_ledger.json';
 
 let ledgers: { myLedger: Ledger, witnessLedger: Ledger };
 
 /**
- * Definition of a Ledger. There are two types of ledger:
- * * [[LedgerType.MY_LEDGER]]
- * * [[LedgerType.WITNESS_LEDGER]]
+ * Definition of a Ledger.
  */
 class Ledger {
+  /** Array of Transactions */
   public entries: Transaction[];
+
+  /** Type of ledger */
   public LedgerType: LedgerType;
 
+  /** Creates an instance of Ledger. */
   constructor(entries: Transaction[], LedgerType: LedgerType) {
     this.entries = entries;
     this.LedgerType = LedgerType;
@@ -43,7 +50,9 @@ enum LedgerType {
 }
 
 /**
- * Returns a copy of a [[Ledger]] based on the specified [[LedgerType]] from the file system.
+ * Returns a copy of a Ledger based on the specified LedgerType from the file system.
+ *
+ * @param type  Type of ledger to return
  */
 const getLedger = (type: LedgerType): Ledger => {
   const ledgerFilename: string = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
@@ -52,12 +61,14 @@ const getLedger = (type: LedgerType): Ledger => {
 };
 
 /**
- * Returns a copy of a [[Ledger]] based on the specified [[LedgerType]] from the current memory.
+ * Returns a copy of a Ledger based on the specified LedgerType from the current memory.
+ * @param type
  */
-const getLocalLedger = (ledgerType: LedgerType): Ledger => ledgerType === LedgerType.MY_LEDGER ? ledgers.myLedger : ledgers.witnessLedger;
+const getLocalLedger = (type: LedgerType): Ledger => type === LedgerType.MY_LEDGER ? ledgers.myLedger : ledgers.witnessLedger;
 
 /**
  * Initializes the ledger folder and files.
+ * @param port  The ledger is named after the port the node is running on. TEMP
  */
 const initLedger = (port: number): void => {
   const myLedger = new Ledger([], 0);
@@ -73,17 +84,19 @@ const initLedger = (port: number): void => {
 };
 
 /**
- * Updates a [[Ledger]] based on the specified [[LedgerType]].
+ * Updates a Ledger based on the specified LedgerType.
+ * @param transaction  Transaction that will be placed into the ledger entries
+ * @param type  Ledger type to determine which ledger will be updated
  */
 const updateLedger = (transaction: Transaction, type: LedgerType): void => {
-  info(`[updateLedger]`);
+  info('[updateLedger]');
   const _transaction = updateTransaction(transaction, type);
-  info(`[updateLedger] init _transaction`);
+  info('[updateLedger] init _transaction');
   const ledger: Ledger = getLocalLedger(type);
-  info(`[updateLedger] get ledger`);
+  info('[updateLedger] get ledger');
   // debug(getEntryInLedgerByTransactionId(_transaction.id, ledger));
-  if (getEntryInLedgerByTransactionId(_transaction.id, ledger) === undefined) {
-    info(`[updateLedger] before write ledger`);
+  if (getEntryByTransactionId(_transaction.id, '', ledger) === undefined) {
+    info('[updateLedger] before write ledger');
     ledger.entries.push(_transaction);
     writeLedger(ledger, type);
   }
@@ -94,9 +107,10 @@ const updateLedger = (transaction: Transaction, type: LedgerType): void => {
 };
 
 /**
- * Updates [[Transaction.amount]] based on the specified [[LedgerType]].
- *
- * Used to set [[Transaction.amount]] to null if [[LedgerType.WITNESS_LEDGER]].
+ * Updates the amount field in a transaction based on the specified LedgerType.
+ * Used to set Transaction.amount to null if LedgerType === WITNESS_LEDGER
+ * @param transaction  Transaction to be updated
+ * @param type  Type of ledger to determine amount field
  */
 const updateTransaction = (transaction: Transaction, type: LedgerType): Transaction => {
   const _transaction = createDummyTransaction();
@@ -107,10 +121,12 @@ const updateTransaction = (transaction: Transaction, type: LedgerType): Transact
 };
 
 /**
- * Writes to the ledger specified by [[LedgerType]].
+ * Writes to the ledger specified by LedgerType.
+ * @param ledger  Ledger to write to
+ * @param type  Type of ledger, used to determine where to write the new ledger to
  */
-const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): void => {
-  info(`[writeLedger]`);
+const writeLedger = (ledger: Ledger, type: LedgerType): void => {
+  info('[writeLedger]');
   const ledgerFilename = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
   debug(`Ledger File Name: ${ledgerFilename}`);
   const transaction = ledger.entries[ledger.entries.length - 1];
@@ -120,7 +136,7 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
     transaction.to,
     transaction.id,
     eventTypeStart,
-    'silly',
+    LogLevel.SILLY,
   );
   fs.writeFileSync(`${ledgerLocation}/${ledgerFilename}`, JSON.stringify(ledger));
   const eventTypeEnd = type === LedgerType.MY_LEDGER ? EventType.WRITE_TO_MY_LEDGER_END : EventType.WRITE_TO_WITNESS_LEDGER_END;
@@ -129,7 +145,7 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
     transaction.to,
     transaction.id,
     eventTypeEnd,
-    'silly',
+    LogLevel.SILLY,
   );
   if (type === LedgerType.MY_LEDGER) {
     debug('Looping...');
@@ -138,13 +154,19 @@ const writeLedger = (ledger: Ledger, type: LedgerType, test: boolean = false): v
       transaction.to,
       transaction.id,
       EventType.TRANSACTION_END,
-      'info',
+      LogLevel.INFO,
     );
-    // console.timeEnd('transaction');
     loopTest();
   }
 };
 
+/**
+ * Returns the balance of a specified account
+ *
+ * @param ledger  Ledger to get balance from
+ * @param publicKey  Key of account to check balance of -- Might be useless, ledger should always be a personal ledger anyway
+ * @returns {number}
+ */
 const getLedgerBalance = (ledger: Ledger, publicKey?: string): number => {
   const walletAddress = publicKey || getPublicFromWallet();
   let ledgerBalance = 0;
@@ -153,11 +175,9 @@ const getLedgerBalance = (ledger: Ledger, publicKey?: string): number => {
     // console.dir(entry);
     // console.log(entry.to, publicKey);
     if (entry.to == walletAddress) {
-      // console.log(`Address matches publicKey. Adding ${entry.amount} to currentHoldings.`);
       ledgerBalance += entry.amount;
     }
     if (entry.from == walletAddress) {
-      // console.log(`From matches publicKey. Removing ${entry.amount} from currentHoldings.`);
       ledgerBalance -= entry.amount;
     }
   }

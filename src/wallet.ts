@@ -1,7 +1,7 @@
 import { ec } from 'elliptic';
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
 
-import { initLedger, LedgerType, getLocalLedger } from './ledger';
+import { getLocalLedger, initLedger, LedgerType } from './ledger';
 import { genesisTransaction, requestValidateTransaction } from './transaction';
 
 const EC = new ec('secp256k1');
@@ -56,8 +56,6 @@ const initWallet = (port: number): void => {
     const newPrivateKey = generatePrivateKey();
     writeFileSync(privateKeyLocation, newPrivateKey);
   }
-  // console.log('new wallet with private key created to : %s', privateKeyLocation);
-  // console.log(`Public address: ${getPublicFromWallet()}`);
 };
 
 export {

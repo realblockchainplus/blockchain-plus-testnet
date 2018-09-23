@@ -1,21 +1,23 @@
-import * as winston from 'winston';
-
-// import { db } from './firebase';
+import { conn } from './db';
 import { debug } from './logger';
 import { LogEventSchema } from './models/logEvent.model';
-import { conn } from './db';
+import { getPods, getTestConfig } from './p2p';
 import { Pod } from './pod';
 import { TestConfig } from './testConfig';
+import { getCurrentTimestamp, getPodIndexByPublicKey } from './utils';
 import { getPublicFromWallet } from './wallet';
-import { getPods, getPodIndexByPublicKey, getTestConfig } from './p2p';
-import { getCurrentTimestamp } from './utils';
 
+/**
+ *
+ *
+ * @class LogEvent
+ */
 class LogEvent {
   public sender: Partial<Pod>;
   public receiver: Partial<Pod>;
   public eventType: EventType;
   public transactionId: string;
-  public logLevel: winston.NPMLoggingLevel;
+  public logLevel: LogLevel;
   public owner: Partial<Pod>;
   public timestamp: number;
   public testId: string;
@@ -24,8 +26,21 @@ class LogEvent {
   public validator?: Partial<Pod>;
   public connectionTo?: Partial<Pod>;
 
+  /**
+   *Creates an instance of LogEvent.
+   * @param {string} sender
+   * @param {string} receiver
+   * @param {string} transactionId
+   * @param {EventType} eventType
+   * @param {LogLevel} logLevel
+   * @param {string} [validator]
+   * @param {string} [connectionTo]
+   * @param {TestConfig} [testConfig]
+   * @param {number} [ledgerLength]
+   * @memberof LogEvent
+   */
   constructor(sender: string, receiver: string, transactionId: string, eventType: EventType,
-    logLevel: winston.NPMLoggingLevel, validator?: string, connectionTo?: string,
+    logLevel: LogLevel, validator?: string, connectionTo?: string,
     testConfig?: TestConfig, ledgerLength?: number) {
     this.sender = this.partialPod(sender);
     this.receiver = this.partialPod(receiver);
@@ -42,6 +57,11 @@ class LogEvent {
     this.sendToDb();
   }
 
+  /**
+   *
+   *
+   * @memberof LogEvent
+   */
   sendToDb() {
     if (conn.readyState === 1) {
       // console.log('Connection is ready. Sending...');
@@ -55,6 +75,13 @@ class LogEvent {
     }
   }
 
+  /**
+   *
+   *
+   * @param {string} address
+   * @returns {Partial<Pod>}
+   * @memberof LogEvent
+   */
   partialPod(address: string): Partial<Pod> {
     const pods = getPods();
     const pod: Partial<Pod> = { ...pods[getPodIndexByPublicKey(address, pods)] };
@@ -63,6 +90,11 @@ class LogEvent {
     return pod;
   }
 
+  /**
+   *
+   *
+   * @memberof LogEvent
+   */
   sendLogEvent() {
     debug(`[sendLogEvent]: ${this.eventType}`);
     const logEvent = this.hydrateLogEventModel();
@@ -78,6 +110,12 @@ class LogEvent {
     // ref.push(JSON.parse(JSON.stringify(this)));
   }
 
+  /**
+   *
+   *
+   * @returns
+   * @memberof LogEvent
+   */
   hydrateLogEventModel() {
     const testId = this.testId || 'TEMP';
     const logEventModel = conn.model(`logEvent-${testId}`, LogEventSchema.set('collection', testId));
@@ -99,6 +137,11 @@ class LogEvent {
   }
 }
 
+/**
+ *
+ *
+ * @enum {number}
+ */
 enum EventType {
   POD_JOINED = 1,
   POD_LEFT = 2,
@@ -138,6 +181,15 @@ enum EventType {
   CONNECT_TO_RECEIVER_END = 36,
 }
 
+enum LogLevel {
+  ERROR,
+  WARN,
+  INFO,
+  VERBOSE,
+  DEBUG,
+  SILLY,
+}
+
 export {
-  LogEvent, EventType,
+  LogEvent, EventType, LogLevel,
 };

@@ -5,7 +5,6 @@ const TestConfigSchema = new mongoose.Schema({
   duration: Number,
   numSenders: Number,
   local: Boolean,
-  maxLedgerLength: Number,
   sendersAsValidators: Boolean,
 });
 

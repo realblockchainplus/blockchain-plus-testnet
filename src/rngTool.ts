@@ -1,9 +1,8 @@
-import { getPodIndexByPublicKey } from './p2p';
-import { Pod } from './pod';
+import { EventType, LogEvent, LogLevel } from './logEvent';
 import { info } from './logger';
+import { Pod } from './pod';
+import { getPodIndexByPublicKey, randomNumberFromRange } from './utils';
 import { getPublicFromWallet } from './wallet';
-import { randomNumberFromRange } from './utils';
-import { LogEvent, EventType } from './logEvent';
 
 const selectRandom = (pods: Pod[], num: number, to: string = ''): Pod[] => {
   new LogEvent(
@@ -11,7 +10,7 @@ const selectRandom = (pods: Pod[], num: number, to: string = ''): Pod[] => {
     '',
     '',
     EventType.SELECT_RANDOM_PODS_START,
-    'silly',
+    LogLevel.SILLY,
   );
   const randomNumbers: number[] = buildRandomSet(pods, num, to);
   const _pods: Pod[] = [];
@@ -23,7 +22,7 @@ const selectRandom = (pods: Pod[], num: number, to: string = ''): Pod[] => {
     '',
     '',
     EventType.SELECT_RANDOM_PODS_END,
-    'silly',
+    LogLevel.SILLY,
   );
   info(`[selectRandom] Selected pods length: ${_pods.length}`);
   return _pods;

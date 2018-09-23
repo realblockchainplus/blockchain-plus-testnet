@@ -1,4 +1,4 @@
-import { getLocalIp, getCurrentTimestamp } from './utils';
+import { getCurrentTimestamp, getLocalIp } from './utils';
 import { getPublicFromWallet } from './wallet';
 
 class Pod {

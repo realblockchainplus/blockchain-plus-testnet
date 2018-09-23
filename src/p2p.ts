@@ -2,9 +2,10 @@ import * as http from 'http';
 import * as minimist from 'minimist';
 import { AddressInfo } from 'net';
 import * as socketIo from 'socket.io';
+import * as ioClient from 'socket.io-client';
 
 import { getLedger, getLocalLedger, initLedger, Ledger, LedgerType, updateLedger } from './ledger';
-import { EventType, LogEvent } from './logEvent';
+import { EventType, LogEvent, LogLevel } from './logEvent';
 import { debug, err, info, warning } from './logger';
 import {
   IMessage,
@@ -21,6 +22,7 @@ import {
   wipeLedgersMsg,
 } from './message';
 import { Pod } from './pod';
+import { updatePodMap } from './podMap';
 import { Result } from './result';
 import { TestConfig } from './testConfig';
 import {
@@ -42,7 +44,6 @@ import {
   getPodIp,
 } from './utils';
 import { fundWallet, getPublicFromWallet } from './wallet';
-import { IPodMap, getClientSocket } from './podMap';
 
 const config = require('../node/config/config.json');
 
@@ -61,31 +62,72 @@ let io: Server;
 let gServer: http.Server;
 let port: number;
 let localSocket: ClientSocket;
-let localLogger: ClientSocket;
 let localSnapshotMap: ISnapshotMap;
 let startTime: number;
 let endTime: number;
 let selectedReceiver: Pod;
-let localPodMap: IPodMap = {};
 
 let localTestConfig = new TestConfig(60, 2, true, false, 'TEMP');
 
 const validationResults: { [txId: string]: IValidationResult[] } = {};
 
+/**
+ *
+ *
+ * @interface IValidationResult
+ */
 interface IValidationResult {
+  socket: ClientSocket;
   message: IMessage;
 }
 
+/**
+ * Returns an array containing all pods on the network.
+ *
+ * @returns {Pod[]}
+ */
 const getPods = (): Pod[] => pods;
+/**
+ * Returns the node's SocketIo.Server instance.
+ *
+ * @returns {Server}
+ */
 const getIo = (): Server => io;
+/**
+ * Returns HTTP Server the node is running on.
+ *
+ * @returns {http.Server}
+ */
 const getServer = (): http.Server => gServer;
-const getLogger = (): ClientSocket => localLogger;
+/**
+ * Returns a object containing the test configuration for the current test.
+ *
+ * @returns {TestConfig}
+ */
 const getTestConfig = (): TestConfig => localTestConfig;
+/**
+ * Returns an array containing the sender, receiver, and validator pods for the current test.
+ *
+ * @returns {Pod[]}
+ */
 const getSelectedPods = (): Pod[] => localSelectedPods;
+/**
+ * Returns the most recent snapshot map received by the network.
+ *
+ * @returns {ISnapshotMap}
+ */
 const getSnapshotMap = (): ISnapshotMap => localSnapshotMap;
+/**
+ *  Returns the port this node is running on.
+ *
+ * @returns {number}
+ */
 const getPort = (): number => port;
-const getPodMap = (): IPodMap => localPodMap;
-
+/**
+ *  Begins a test.
+ *
+ * @param {Pod} receiver
+ */
 const beginTest = (receiver: Pod): void => {
   debug('beginTest');
   selectedReceiver = receiver;
@@ -97,7 +139,7 @@ const beginTest = (receiver: Pod): void => {
     '',
     '',
     EventType.TEST_START,
-    'info',
+    LogLevel.INFO,
     undefined,
     undefined,
     localTestConfig,
@@ -106,6 +148,10 @@ const beginTest = (receiver: Pod): void => {
   fundWallet();
 };
 
+/**
+ *  Loops the current test if the test has not reached the specified duration.
+ *
+ */
 const loopTest = (): void => {
   debug(`End time of test: ${endTime}, Current time: ${getCurrentTimestamp()}`);
   if (endTime > getCurrentTimestamp()) {
@@ -125,7 +171,13 @@ const loopTest = (): void => {
   }
 };
 
-const closeConnection = (socket: ServerSocket): void => {
+/**
+ *  Handles the closing of a socket connection. Updates and distributes the
+ *  current pod list to all connected pods.
+ *
+ * @param {ServerSocket} socket
+ */
+const handleCloseConnection = (socket: ServerSocket): void => {
   const pod = pods[getPodIndexBySocket(socket, pods)];
   pods.splice(pods.indexOf(pod), 1);
   const numRegular = pods.filter(pod => pod.podType === 0).length;
@@ -135,10 +187,17 @@ const closeConnection = (socket: ServerSocket): void => {
   io.emit('message', podListUpdated(pods));
 };
 
+/**
+ *  Message handler function for socketIo Server sockets.
+ *
+ * @param {ServerSocket} socket
+ * @param {IMessage} message
+ * @returns {void}
+ */
 const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void => {
   try {
     if (message === null) {
-      warning('could not parse received JSON message: ' + message);
+      warning(`Could not parse received JSON message: ${message}`);
       return;
     }
     const { type, data }: { type: number, data: any } = message;
@@ -174,7 +233,7 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
           transaction.to,
           transaction.id,
           EventType.REQUEST_VALIDATION_START,
-          'info',
+          LogLevel.INFO,
         );
         validateTransaction(transaction, senderLedger, (responses: (Result | Ledger | ISnapshotResponse)[]) => {
           const _tx = createDummyTransaction();
@@ -215,9 +274,10 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
               const target = targets[i];
               const pod = pods[getPodIndexByPublicKey(target, pods)];
               const podIp = getPodIp(localTestConfig.local, pod);
-              const snapshotSocket = getClientSocket(localPodMap, podIp);
+              const snapshotSocket = ioClient(podIp);
               snapshotSocket.on('connect', () => {
                 write(snapshotSocket, snapshotMapUpdated(localSnapshotMap));
+                socket.disconnect();
               });
             }
           }
@@ -227,7 +287,7 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
             transaction.to,
             transaction.id,
             EventType.REQUEST_VALIDATION_END,
-            'info',
+            LogLevel.INFO,
           );
           console.log(io.clients);
           socket.emit('message', responseIsTransactionValid(results, _tx));
@@ -261,10 +321,16 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
   }
 };
 
-const handleMessageAsClient = (message: IMessage): void => {
+/**
+ *  Message handler function for socketIo Client sockets.
+ *
+ * @param {IMessage} message
+ * @returns {void}
+ */
+const handleMessageAsClient = (socket: ClientSocket, message: IMessage): void => {
   try {
     if (message === null) {
-      warning('could not parse received JSON message: ' + message);
+      warning(`Could not parse received JSON message: ${message}`);
       return;
     }
     const { type, data }: { type: number, data: any } = message;
@@ -277,7 +343,7 @@ const handleMessageAsClient = (message: IMessage): void => {
         }
         const publicKey = getPublicFromWallet();
         if (transaction.from === publicKey || transaction.to === publicKey) {
-          validationResults[transaction.id].push({ message });
+          validationResults[transaction.id].push({ socket, message });
         }
         else {
           err('Node received validation result meant for another node.');
@@ -295,6 +361,7 @@ const handleMessageAsClient = (message: IMessage): void => {
           break;
         }
         pods = _data;
+        updatePodMap(pods);
         // console.log(`Number of pods: ${pods.length}`);
         break;
       }
@@ -347,9 +414,15 @@ const handleMessageAsClient = (message: IMessage): void => {
       }
     }
   } catch (e) {
+    info(`[handleMessageAsClient] Error: ${e}`);
   }
-}
+};
 
+/**
+ *  Handles new connections to the node's Server socket.
+ *
+ * @param {ServerSocket} socket
+ */
 const handleNewConnection = (socket: ServerSocket): void => {
   // console.log('New connection, emitting [identity]');
   if (isSeed) {
@@ -360,17 +433,22 @@ const handleNewConnection = (socket: ServerSocket): void => {
     handleMessageAsServer(socket, message);
   });
   if (isSeed) {
-    socket.on('disconnect', () => closeConnection(socket));
-    socket.on('error', () => closeConnection(socket));
+    socket.on('disconnect', () => handleCloseConnection(socket));
+    socket.on('error', () => handleCloseConnection(socket));
   }
 };
 
+/**
+ *  Handler function for an array of [[Results]].
+ *
+ * @param {string} transactionId
+ */
 const handleValidationResults = (transactionId: string): void => {
   let isValid = true;
   const _validationResults = validationResults[transactionId];
   for (let i = 0; i < _validationResults.length; i += 1) {
     const validationResult = _validationResults[i];
-    const { message } = validationResult;
+    const { socket, message } = validationResult;
     const { results }:
       { results: Result[] } = JSON.parse(message.data);
     results.map((result) => {
@@ -382,6 +460,7 @@ const handleValidationResults = (transactionId: string): void => {
         console.log(`Validation Result returned ${result.res}`);
         console.log(`Reason: ${result.reason}`);
       }
+      socket.disconnect();
     });
   }
   if (isValid) {
@@ -400,6 +479,12 @@ const handleValidationResults = (transactionId: string): void => {
   }
 };
 
+/**
+ *  Initializes a P2P Node
+ *
+ * @param {http.Server} server
+ * @returns {void}
+ */
 const initP2PNode = (server: http.Server): void => {
   // console.log('initP2PNode');
   gServer = server;
@@ -409,20 +494,18 @@ const initP2PNode = (server: http.Server): void => {
     return;
   }
   const pod = new Pod(type, port);
-  const socket: ClientSocket = getClientSocket(localPodMap, config.seedServerIp);
+  const socket: ClientSocket = ioClient(config.seedServerIp);
   localSocket = socket;
   socket.on('connect', () => {
-    localPodMap[config.seedServerIp] = socket;
     pod.socketId = socket.id;
     const message = responseIdentityMsg(pod);
-    // console.dir(message.data);
     socket.on('identity', () => {
       // console.log('Received [identity]');
       write(socket, message);
     });
     socket.on('message', (msg: IMessage) => {
       // console.log(`Received message: ${msg.type}`);
-      handleMessageAsClient(msg);
+      handleMessageAsClient(socket, msg);
     });
     socket.on('disconnect', () => {
       // console.log('[initP2PNode] socket disconnected');
@@ -443,7 +526,7 @@ const initP2PServer = (server: http.Server): any => {
     // localLogger = ioClient(config.loggerServerIp);
     // console.log('after connecting to logger');
     io.on('disconnect', (socket: ServerSocket) => {
-      closeConnection(socket);
+      handleCloseConnection(socket);
     });
   }
 };
@@ -464,6 +547,6 @@ const wipeLedgers = (): void => {
 
 export {
   beginTest, loopTest, initP2PServer, initP2PNode, getPods, getIo, getServer, getTestConfig, write, handleMessageAsClient, IMessage,
-  killAll, getPodIndexByPublicKey, isTransactionHashValid, MessageType, getLogger, wipeLedgers, getSelectedPods, ClientSocket,
-  ServerSocket, Server, getPort, getSnapshotMap, getPodMap,
+  killAll, isTransactionHashValid, MessageType, wipeLedgers, getSelectedPods, ClientSocket,
+  ServerSocket, Server, getPort, getSnapshotMap,
 };
