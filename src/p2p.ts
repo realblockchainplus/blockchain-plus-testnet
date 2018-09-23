@@ -2,6 +2,7 @@ import * as http from 'http';
 import * as minimist from 'minimist';
 import { AddressInfo } from 'net';
 import * as socketIo from 'socket.io';
+import * as ioClient from 'socket.io-client';
 
 import { getLedger, getLocalLedger, initLedger, Ledger, LedgerType, updateLedger } from './ledger';
 import { EventType, LogEvent, LogLevel } from './logEvent';
@@ -21,7 +22,7 @@ import {
   wipeLedgersMsg,
 } from './message';
 import { Pod } from './pod';
-import { getClientSocket, IPodMap, podMap, updatePodMap } from './podMap';
+import { updatePodMap } from './podMap';
 import { Result } from './result';
 import { TestConfig } from './testConfig';
 import {
@@ -61,12 +62,10 @@ let io: Server;
 let gServer: http.Server;
 let port: number;
 let localSocket: ClientSocket;
-let localLogger: ClientSocket;
 let localSnapshotMap: ISnapshotMap;
 let startTime: number;
 let endTime: number;
 let selectedReceiver: Pod;
-let localPodMap: IPodMap = podMap;
 
 let localTestConfig = new TestConfig(60, 2, true, false, 'TEMP');
 
@@ -78,6 +77,7 @@ const validationResults: { [txId: string]: IValidationResult[] } = {};
  * @interface IValidationResult
  */
 interface IValidationResult {
+  socket: ClientSocket;
   message: IMessage;
 }
 
@@ -99,12 +99,6 @@ const getIo = (): Server => io;
  * @returns {http.Server}
  */
 const getServer = (): http.Server => gServer;
-/**
- * Returns the socket connected to the local winston logging service.
- *
- * @returns {ClientSocket}
- */
-const getLogger = (): ClientSocket => localLogger;
 /**
  * Returns a object containing the test configuration for the current test.
  *
@@ -129,13 +123,6 @@ const getSnapshotMap = (): ISnapshotMap => localSnapshotMap;
  * @returns {number}
  */
 const getPort = (): number => port;
-/**
- *  Returns the pod map in use by this node.
- *
- * @returns {IPodMap}
- */
-const getPodMap = (): IPodMap => localPodMap;
-
 /**
  *  Begins a test.
  *
@@ -287,9 +274,10 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
               const target = targets[i];
               const pod = pods[getPodIndexByPublicKey(target, pods)];
               const podIp = getPodIp(localTestConfig.local, pod);
-              const snapshotSocket = localPodMap[podIp];
+              const snapshotSocket = ioClient(podIp);
               snapshotSocket.on('connect', () => {
                 write(snapshotSocket, snapshotMapUpdated(localSnapshotMap));
+                socket.disconnect();
               });
             }
           }
@@ -339,7 +327,7 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
  * @param {IMessage} message
  * @returns {void}
  */
-const handleMessageAsClient = (message: IMessage): void => {
+const handleMessageAsClient = (socket: ClientSocket, message: IMessage): void => {
   try {
     if (message === null) {
       warning(`Could not parse received JSON message: ${message}`);
@@ -355,7 +343,7 @@ const handleMessageAsClient = (message: IMessage): void => {
         }
         const publicKey = getPublicFromWallet();
         if (transaction.from === publicKey || transaction.to === publicKey) {
-          validationResults[transaction.id].push({ message });
+          validationResults[transaction.id].push({ socket, message });
         }
         else {
           err('Node received validation result meant for another node.');
@@ -460,7 +448,7 @@ const handleValidationResults = (transactionId: string): void => {
   const _validationResults = validationResults[transactionId];
   for (let i = 0; i < _validationResults.length; i += 1) {
     const validationResult = _validationResults[i];
-    const { message } = validationResult;
+    const { socket, message } = validationResult;
     const { results }:
       { results: Result[] } = JSON.parse(message.data);
     results.map((result) => {
@@ -472,6 +460,7 @@ const handleValidationResults = (transactionId: string): void => {
         console.log(`Validation Result returned ${result.res}`);
         console.log(`Reason: ${result.reason}`);
       }
+      socket.disconnect();
     });
   }
   if (isValid) {
@@ -491,7 +480,7 @@ const handleValidationResults = (transactionId: string): void => {
 };
 
 /**
- *  Initializes a P2P Node 
+ *  Initializes a P2P Node
  *
  * @param {http.Server} server
  * @returns {void}
@@ -505,20 +494,18 @@ const initP2PNode = (server: http.Server): void => {
     return;
   }
   const pod = new Pod(type, port);
-  const socket: ClientSocket = getClientSocket(localPodMap, config.seedServerIp, 'initP2PNode');
+  const socket: ClientSocket = ioClient(config.seedServerIp);
   localSocket = socket;
   socket.on('connect', () => {
-    localPodMap[config.seedServerIp] = socket;
     pod.socketId = socket.id;
     const message = responseIdentityMsg(pod);
-    // console.dir(message.data);
     socket.on('identity', () => {
       // console.log('Received [identity]');
       write(socket, message);
     });
     socket.on('message', (msg: IMessage) => {
       // console.log(`Received message: ${msg.type}`);
-      handleMessageAsClient(msg);
+      handleMessageAsClient(socket, msg);
     });
     socket.on('disconnect', () => {
       // console.log('[initP2PNode] socket disconnected');
@@ -560,6 +547,6 @@ const wipeLedgers = (): void => {
 
 export {
   beginTest, loopTest, initP2PServer, initP2PNode, getPods, getIo, getServer, getTestConfig, write, handleMessageAsClient, IMessage,
-  killAll, isTransactionHashValid, MessageType, getLogger, wipeLedgers, getSelectedPods, ClientSocket,
-  ServerSocket, Server, getPort, getSnapshotMap, getPodMap,
+  killAll, isTransactionHashValid, MessageType, wipeLedgers, getSelectedPods, ClientSocket,
+  ServerSocket, Server, getPort, getSnapshotMap,
 };

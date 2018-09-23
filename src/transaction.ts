@@ -1,12 +1,12 @@
 import * as CryptoJS from 'crypto-js';
 import * as ecdsa from 'elliptic';
+import * as ioClient from 'socket.io-client';
 
 import { getLedgerBalance, Ledger, LedgerType } from './ledger';
 import { EventType, LogEvent, LogLevel } from './logEvent';
 import { debug, info } from './logger';
 import { isTransactionValid, requestLedgerMsg, requestSnapshotMsg } from './message';
 import {
-  getPodMap,
   getPods,
   getSelectedPods,
   getSnapshotMap,
@@ -214,7 +214,6 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   );
   // console.log('Starting for loop for sending out validation checks...');
   const localTestConfig = getTestConfig();
-  const localPodMap = getPodMap();
   const validators = transaction.getValidators();
   for (let i = 0; i < validators.length; i += 1) {
     const pod = validators[i];
@@ -234,40 +233,32 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       );
       debug(`Connecting to validator: ${podIp}`);
       // console.time(`connectValidator-${i}-${transaction.id}`);
-      const socket = localPodMap[podIp];
+      const socket = ioClient(podIp);
       const msg = isTransactionValid({ transaction, senderLedger });
-      if (socket.connected) {
-        console.log('socket is connected');
+      const connectTimeout = setTimeout(() => {
+        const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
+        const result = new Result(false, reason, transaction.id);
+        reject(result);
+      }, 10000);
+      console.log('socket is waiting for connection');
+      socket.once('connect', () => {
+        // console.timeEnd(`connectValidator-${i}-${transaction.id}`);
+        clearTimeout(connectTimeout);
+        new LogEvent(
+          transaction.from,
+          transaction.to,
+          transaction.id,
+          EventType.CONNECT_TO_VALIDATOR_END,
+          LogLevel.INFO,
+          undefined,
+          pod.address,
+        );
         write(socket, msg);
-      }
-      else {
-        const connectTimeout = setTimeout(() => {
-          const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
-          const result = new Result(false, reason, transaction.id);
-          reject(result);
-        }, 10000);
-        console.log('socket is waiting for connection');
-        socket.once('connect', () => {
-          console.log('socket has connected');
-          localPodMap[podIp] = socket;
-          // console.timeEnd(`connectValidator-${i}-${transaction.id}`);
-          clearTimeout(connectTimeout);
-          new LogEvent(
-            transaction.from,
-            transaction.to,
-            transaction.id,
-            EventType.CONNECT_TO_VALIDATOR_END,
-            LogLevel.INFO,
-            undefined,
-            pod.address,
-          );
-          write(socket, isTransactionValid({ transaction, senderLedger }));
-          // console.dir(senderLedger);
-          resolve(`[requestValidateTransaction] Connected to ${podIp}... sending transaction details for transaction with id: ${transaction.id}.`);
-        });
-      }
+        // console.dir(senderLedger);
+        resolve(`[requestValidateTransaction] Connected to ${podIp}... sending transaction details for transaction with id: ${transaction.id}.`);
+      });
       socket.once('message', (message: IMessage) => {
-        handleMessageAsClient(message);
+        handleMessageAsClient(socket, message);
       });
       socket.once('disconnect', () => {
         // console.log('[requestValidateTransaction] socket disconnected.');
@@ -285,7 +276,6 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
   // console.time(`validateLedger-${transaction.id}`);
   const pods = getPods();
   const localTestConfig = getTestConfig();
-  const localPodMap = getPodMap();
   new LogEvent(
     transaction.to,
     transaction.from,
@@ -367,37 +357,29 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
           pod.address,
         );
         // console.time(`connectPreviousValidator-${k}-${entry.id}`);
-        const socket = localPodMap[podIp];
+        const socket = ioClient(podIp);
         const isTransactionHashValidMsg = isTransactionHashValid({ transactionId: entry.id, currentTransactionId: transaction.id, hash: entry.hash });
-        if (socket.connected) {
-          console.log('socket is connected');
-          write(socket, isTransactionHashValidMsg)
-        }
-        else {
-          const connectTimeout = setTimeout(() => {
-            const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
-            const result = new Result(false, reason, entry.id);
-            reject(result);
-          }, 10000);
-          console.log('socket is waiting for connection');
-          socket.once('connect', () => {
-            console.log('socket has connected');
-            localPodMap[podIp] = socket;
-            // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
-            // console.log(`[validateLedger] Connected to ${podIp}... sending transaction details.`);
-            clearTimeout(connectTimeout);
-            new LogEvent(
-              transaction.from,
-              transaction.to,
-              transaction.id,
-              EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END,
-              LogLevel.INFO,
-              undefined,
-              pod.address,
-            );
-            write(socket, isTransactionHashValidMsg);
-          });
-        }
+        const connectTimeout = setTimeout(() => {
+          const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
+          const result = new Result(false, reason, entry.id);
+          reject(result);
+        }, 10000);
+        console.log('socket is waiting for connection');
+        socket.once('connect', () => {
+          // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
+          // console.log(`[validateLedger] Connected to ${podIp}... sending transaction details.`);
+          clearTimeout(connectTimeout);
+          new LogEvent(
+            transaction.from,
+            transaction.to,
+            transaction.id,
+            EventType.CONNECT_TO_PREVIOUS_VALIDATOR_END,
+            LogLevel.INFO,
+            undefined,
+            pod.address,
+          );
+          write(socket, isTransactionHashValidMsg);
+        });
         socket.once('disconnect', () => {
           // console.log('Socket was disconnected.');
         });
@@ -550,7 +532,6 @@ const validateTransactionHash = (id: string, currentId: string, hash: string): R
 const requestSnapshot = (pod: Pod, snapshotOwner: string, transaction: Transaction): Promise<Result | ISnapshotResponse> => {
   return new Promise((resolve, reject) => {
     const localTestConfig = getTestConfig();
-    const localPodMap = getPodMap();
     new LogEvent(
       transaction.from,
       transaction.to,
@@ -561,35 +542,27 @@ const requestSnapshot = (pod: Pod, snapshotOwner: string, transaction: Transacti
       pod.address,
     );
     const podIp = getPodIp(localTestConfig.local, pod);
-    const socket = localPodMap[podIp];
+    const socket = ioClient(podIp);
     const msg = requestSnapshotMsg({ snapshotOwner, transactionId: transaction.id });
-    if (socket.connected) {
-      console.log('socket is connected');
+    const connectTimeout = setTimeout(() => {
+      const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
+      const result = new Result(false, reason, transaction.id);
+      reject(result);
+    }, 10000);
+    console.log('socket is waiting for connection');
+    socket.once('connect', () => {
+      clearTimeout(connectTimeout);
+      new LogEvent(
+        transaction.from,
+        transaction.to,
+        transaction.id,
+        EventType.CONNECT_TO_SNAPSHOT_NODE_END,
+        LogLevel.INFO,
+        undefined,
+        pod.address,
+      );
       write(socket, msg);
-    }
-    else {
-      const connectTimeout = setTimeout(() => {
-        const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
-        const result = new Result(false, reason, transaction.id);
-        reject(result);
-      }, 10000);
-      console.log('socket is waiting for connection');
-      socket.once('connect', () => {
-        console.log('socket has connected');
-        localPodMap[podIp] = socket;
-        clearTimeout(connectTimeout);
-        new LogEvent(
-          transaction.from,
-          transaction.to,
-          transaction.id,
-          EventType.CONNECT_TO_SNAPSHOT_NODE_END,
-          LogLevel.INFO,
-          undefined,
-          pod.address,
-        );
-        write(socket, msg);
-      });
-    }
+    });
     socket.once('message', (message: IMessage) => {
       if (message.type === MessageType.SNAPSHOT_RESULT) {
         const data = JSON.parse(message.data);
@@ -602,7 +575,6 @@ const requestSnapshot = (pod: Pod, snapshotOwner: string, transaction: Transacti
 const requestReceiverLedger = (transaction: Transaction): Promise<Ledger> => {
   const pods = getPods();
   const localTestConfig = getTestConfig();
-  const localPodMap = getPodMap();
   const pod = pods[getPodIndexByPublicKey(transaction.to, pods)];
   return new Promise((resolve, reject) => {
     new LogEvent(
@@ -615,35 +587,27 @@ const requestReceiverLedger = (transaction: Transaction): Promise<Ledger> => {
       pod.address,
     );
     const podIp = getPodIp(localTestConfig.local, pod);
-    const socket = localPodMap[podIp];
+    const socket = ioClient(podIp);
     const msg = requestLedgerMsg({ transactionId: transaction.id, ledgerType: LedgerType.MY_LEDGER });
-    if (socket.connected) {
-      console.log('socket is connected');
+    const connectTimeout = setTimeout(() => {
+      const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
+      const result = new Result(false, reason, transaction.id);
+      reject(result);
+    }, 10000);
+    console.log('socket is waiting for connection');
+    socket.once('connect', () => {
+      clearTimeout(connectTimeout);
+      new LogEvent(
+        transaction.from,
+        transaction.to,
+        transaction.id,
+        EventType.CONNECT_TO_RECEIVER_END,
+        LogLevel.INFO,
+        undefined,
+        pod.address,
+      );
       write(socket, msg);
-    }
-    else {
-      const connectTimeout = setTimeout(() => {
-        const reason = `Connection to ${podIp} could not be made in 10 seconds.`;
-        const result = new Result(false, reason, transaction.id);
-        reject(result);
-      }, 10000);
-      console.log('socket is waiting for connection');
-      socket.once('connect', () => {
-        console.log('socket has connected');
-        localPodMap[podIp] = socket;
-        clearTimeout(connectTimeout);
-        new LogEvent(
-          transaction.from,
-          transaction.to,
-          transaction.id,
-          EventType.CONNECT_TO_RECEIVER_END,
-          LogLevel.INFO,
-          undefined,
-          pod.address,
-        );
-        write(socket, msg);
-      });
-    }
+    });
     socket.once('message', (message: IMessage) => {
       if (message.type === MessageType.LEDGER_RESULT) {
         const data = JSON.parse(message.data);
