@@ -2,6 +2,7 @@ import * as bodyParser from 'body-parser';
 import { spawn } from 'child_process';
 import * as cors from 'cors';
 import * as dotenv from 'dotenv';
+dotenv.config();
 import * as express from 'express';
 import * as http from 'http';
 import * as minimist from 'minimist';
@@ -19,7 +20,6 @@ import { getGenesisAddress, ISnapshotMap } from './transaction';
 import { getPodIndexByPublicKey, randomNumberFromRange } from './utils';
 import { initWallet } from './wallet';
 
-dotenv.config();
 // import { createEC2Instance } from './aws';
 const config = require('../node/config/config.json');
 
