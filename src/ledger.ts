@@ -8,7 +8,7 @@ import { info, debug } from './logger';
 import { getPublicFromWallet } from './wallet';
 
 /** Base ledgerLocation string */
-let ledgerLocation = ``;
+let ledgerLocation = '';
 
 /** Default filename for a personal ledger */
 const myLedgerFilename = 'my_ledger.json';
@@ -89,14 +89,14 @@ const initLedger = (port: number): void => {
  * @param type  Ledger type to determine which ledger will be updated
  */
 const updateLedger = (transaction: Transaction, type: LedgerType): void => {
-  info(`[updateLedger]`);
+  info('[updateLedger]');
   const _transaction = updateTransaction(transaction, type);
-  info(`[updateLedger] init _transaction`);
+  info('[updateLedger] init _transaction');
   const ledger: Ledger = getLocalLedger(type);
-  info(`[updateLedger] get ledger`);
+  info('[updateLedger] get ledger');
   // debug(getEntryInLedgerByTransactionId(_transaction.id, ledger));
   if (getEntryByTransactionId(_transaction.id, '', ledger) === undefined) {
-    info(`[updateLedger] before write ledger`);
+    info('[updateLedger] before write ledger');
     ledger.entries.push(_transaction);
     writeLedger(ledger, type);
   }
@@ -126,7 +126,7 @@ const updateTransaction = (transaction: Transaction, type: LedgerType): Transact
  * @param type  Type of ledger, used to determine where to write the new ledger to
  */
 const writeLedger = (ledger: Ledger, type: LedgerType): void => {
-  info(`[writeLedger]`);
+  info('[writeLedger]');
   const ledgerFilename = type === LedgerType.MY_LEDGER ? myLedgerFilename : witnessLedgerFilename;
   debug(`Ledger File Name: ${ledgerFilename}`);
   const transaction = ledger.entries[ledger.entries.length - 1];

@@ -182,12 +182,12 @@ enum EventType {
 }
 
 enum LogLevel {
-  ERROR, 
+  ERROR,
   WARN,
-  INFO, 
+  INFO,
   VERBOSE,
   DEBUG,
-  SILLY
+  SILLY,
 }
 
 export {

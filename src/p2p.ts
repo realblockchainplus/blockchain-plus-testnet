@@ -210,7 +210,7 @@ const handleCloseConnection = (socket: ServerSocket): void => {
 const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void => {
   try {
     if (message === null) {
-      warning('could not parse received JSON message: ' + message);
+      warning(`Could not parse received JSON message: ${message}`);
       return;
     }
     const { type, data }: { type: number, data: any } = message;
@@ -342,7 +342,7 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
 const handleMessageAsClient = (message: IMessage): void => {
   try {
     if (message === null) {
-      warning('could not parse received JSON message: ' + message);
+      warning(`Could not parse received JSON message: ${message}`);
       return;
     }
     const { type, data }: { type: number, data: any } = message;
@@ -426,8 +426,9 @@ const handleMessageAsClient = (message: IMessage): void => {
       }
     }
   } catch (e) {
+    info(`[handleMessageAsClient] Error: ${e}`);
   }
-}
+};
 
 /**
  *  Handles new connections to the node's Server socket.

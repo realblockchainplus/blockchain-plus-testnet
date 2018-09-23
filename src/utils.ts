@@ -182,6 +182,7 @@ const randomNumberFromRange = (min: number, max: number, floor = true): number =
  */
 const toHexString = (byteArray: any[]): string => {
   return Array.from(byteArray, (byte: any) => {
+    // tslint:disable-next-line:prefer-template
     return ('0' + (byte & 0xFF).toString(16)).slice(-2);
   }).join('');
 };

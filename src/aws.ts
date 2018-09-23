@@ -86,7 +86,7 @@ const createEC2Instance = (type: PodType, region: AWSRegionCode, nodeCount: numb
   const ec2 = initEC2(region);
   const InstanceType = type === PodType.REGULAR_POD ? 't2.medium' : 't2.large';
   const tag = type === PodType.REGULAR_POD ? regularTag : partnerTag;
-  let documentName = `BCP-`;
+  let documentName = 'BCP-';
   if (startNode) {
     documentName += 'Start';
     if (type === PodType.REGULAR_POD) {
@@ -444,12 +444,12 @@ const createNewImage = (region: AWSRegionCode, commitTag: string, callback: () =
 };
 
 /**
- * Terminates all EC2 instances with the tag 'type:partner' or 'type:regular' and the key 'bcp-tn-node' 
+ * Terminates all EC2 instances with the tag 'type:partner' or 'type:regular' and the key 'bcp-tn-node'
  *
  * @param regions  An array of region codes where the instances should be terminated from. If left empty, function will target all 8 regions.
  */
 const terminateEC2Cluster = (regions: AWSRegionCode[]): void => {
-  info(`[terminateEC2Cluster]`);
+  info('[terminateEC2Cluster]');
   regions.length === 0 ? Object.keys(AWSRegionCode).map((key: string) => regions.push(AWSRegionCode[key as any] as AWSRegionCode)) : null;
   for (let i = 0; i < regions.length; i += 1) {
     const region = regions[i];
@@ -479,7 +479,7 @@ const terminateEC2Cluster = (regions: AWSRegionCode[]): void => {
         console.log(`[describeInstances] Error: ${err}`);
       }
       else {
-        info(`[describeInstances]`);
+        info('[describeInstances]');
         const { Reservations } = data;
         info(`data: ${JSON.stringify(data)}`);
         for (let k = 0; k < Reservations!.length; k += 1) {
@@ -490,7 +490,7 @@ const terminateEC2Cluster = (regions: AWSRegionCode[]): void => {
             InstanceIds: instanceIds,
           };
           info(`${JSON.stringify(instanceIds)}`);
-          info(`before terminate instance`);
+          info('before terminate instance');
           ec2.terminateInstances(terminateInstancesParams, (_err, _data) => {
             if (_err) {
               console.log(`[terminateInstances] Error: ${_err}`);

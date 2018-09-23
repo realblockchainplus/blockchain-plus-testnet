@@ -56,8 +56,6 @@ const initWallet = (port: number): void => {
     const newPrivateKey = generatePrivateKey();
     writeFileSync(privateKeyLocation, newPrivateKey);
   }
-  // console.log('new wallet with private key created to : %s', privateKeyLocation);
-  // console.log(`Public address: ${getPublicFromWallet()}`);
 };
 
 export {
