@@ -155,10 +155,15 @@ const getPodIndexBySocket = (socket: ClientSocket | ServerSocket, _pods: Pod[]):
 const isValidAddress = (address: string): boolean => {
   if (address.length !== 130) {
     // console.log(`Invalid public key length. Expected 130, got: ${address.length}`);
-  } else if (address.match('^[a-fA-F0-9]+$') === null) {
+    return false;
+  }
+
+  if (address.match('^[a-fA-F0-9]+$') === null) {
     // console.log('public key must contain only hex characters');
     return false;
-  } else if (!address.startsWith('04')) {
+  }
+
+  if (!address.startsWith('04')) {
     // console.log('public key must start with 04');
     return false;
   }
