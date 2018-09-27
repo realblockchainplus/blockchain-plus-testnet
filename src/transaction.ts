@@ -240,7 +240,6 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
         const result = new Result(false, reason, transaction.id);
         reject(result);
       }, 10000);
-      console.log('socket is waiting for connection');
       socket.once('connect', () => {
         // console.timeEnd(`connectValidator-${i}-${transaction.id}`);
         clearTimeout(connectTimeout);
@@ -364,7 +363,6 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
           const result = new Result(false, reason, entry.id);
           reject(result);
         }, 10000);
-        console.log('socket is waiting for connection');
         socket.once('connect', () => {
           // console.timeEnd(`connectPreviousValidator-${k}-${entry.id}`);
           // console.log(`[validateLedger] Connected to ${podIp}... sending transaction details.`);
@@ -549,7 +547,6 @@ const requestSnapshot = (pod: Pod, snapshotOwner: string, transaction: Transacti
       const result = new Result(false, reason, transaction.id);
       reject(result);
     }, 10000);
-    console.log('socket is waiting for connection');
     socket.once('connect', () => {
       clearTimeout(connectTimeout);
       new LogEvent(
@@ -594,7 +591,6 @@ const requestReceiverLedger = (transaction: Transaction): Promise<Ledger> => {
       const result = new Result(false, reason, transaction.id);
       reject(result);
     }, 10000);
-    console.log('socket is waiting for connection');
     socket.once('connect', () => {
       clearTimeout(connectTimeout);
       new LogEvent(

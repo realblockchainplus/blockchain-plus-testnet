@@ -22,7 +22,6 @@ import {
   wipeLedgersMsg,
 } from './message';
 import { Pod } from './pod';
-import { updatePodMap } from './podMap';
 import { Result } from './result';
 import { TestConfig } from './testConfig';
 import {
@@ -361,7 +360,7 @@ const handleMessageAsClient = (socket: ClientSocket, message: IMessage): void =>
           break;
         }
         pods = _data;
-        updatePodMap(pods);
+        // updatePodMap(pods);
         // console.log(`Number of pods: ${pods.length}`);
         break;
       }
