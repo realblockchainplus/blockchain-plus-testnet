@@ -176,11 +176,12 @@ const loopTest = (): void => {
  *
  * @param {ServerSocket} socket
  */
-const handleCloseConnection = (socket: ServerSocket): void => {
+const handleCloseConnection = (socket: ServerSocket, reason: string): void => {
   const pod = pods[getPodIndexBySocket(socket, pods)];
   pods.splice(pods.indexOf(pod), 1);
   const numRegular = pods.filter(pod => pod.podType === 0).length;
   const numPartner = pods.filter(pod => pod.podType === 1).length;
+  console.log(`Connection with a socket closed. || Reason: ${reason}`);
   console.log(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`); // temporary. zeit doesnt show debug messages
   // info(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
   io.emit('message', podListUpdated(pods));
@@ -432,8 +433,8 @@ const handleNewConnection = (socket: ServerSocket): void => {
     handleMessageAsServer(socket, message);
   });
   if (isSeed) {
-    socket.on('disconnect', () => handleCloseConnection(socket));
-    socket.on('error', () => handleCloseConnection(socket));
+    socket.on('disconnect', reason =>  handleCloseConnection(socket, reason));
+    socket.on('error', error => handleCloseConnection(socket, error));
   }
 };
 
@@ -524,8 +525,8 @@ const initP2PServer = (server: http.Server): any => {
     // console.log('connecting to logger');
     // localLogger = ioClient(config.loggerServerIp);
     // console.log('after connecting to logger');
-    io.on('disconnect', (socket: ServerSocket) => {
-      handleCloseConnection(socket);
+    io.on('disconnect', (socket: any) => {
+      handleCloseConnection(socket, 'initP2PServer handle disconnect');
     });
   }
 };

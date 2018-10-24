@@ -9,7 +9,7 @@ import { Transaction } from './transaction';
 /**
  * Returns a timestamp in milliseconds of the current time.
  */
-const getCurrentTimestamp = (): number => {
+const getCurrentTimestamp = () => {
   return new Date().getTime();
 };
 
@@ -22,7 +22,7 @@ const getCurrentTimestamp = (): number => {
  * @param ledger  Ledger to search
  * @param type  Type of local ledger to search if ledger is not provided
  */
-const getEntryByTransactionId = (transactionId: string, currentTransactionId: string, ledger?: Ledger, type?: LedgerType): Transaction | undefined => {
+const getEntryByTransactionId = (transactionId: string, currentTransactionId: string, ledger?: Ledger, type?: LedgerType) => {
   if (ledger) {
     if (ledger.LedgerType === LedgerType.WITNESS_LEDGER) {
       new LogEvent(
@@ -33,7 +33,7 @@ const getEntryByTransactionId = (transactionId: string, currentTransactionId: st
         LogLevel.SILLY,
       );
     }
-    const { entries }: { entries: Transaction[] } = ledger;
+    const { entries } = ledger;
     let index = -1;
     for (let i = 0; i < entries.length; i += 1) {
       const entry = entries[i];
@@ -114,7 +114,7 @@ const getLocalIp = () => {
  * @param publicKey  Public key of the requested pod
  * @param _pods  Pod array to search
  */
-const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[]): number => {
+const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[]) => {
   // console.time('getPodIndexByPublicKey');
   let index = -1;
   for (let i = 0; i < _pods.length; i += 1) {
@@ -134,7 +134,7 @@ const getPodIndexByPublicKey = (publicKey: string, _pods: Pod[]): number => {
  * @param socket  Socket of the requested pod
  * @param _pods  Pod array to search
  */
-const getPodIndexBySocket = (socket: ClientSocket | ServerSocket, _pods: Pod[]): number => {
+const getPodIndexBySocket = (socket: ClientSocket | ServerSocket, _pods: Pod[]) => {
   console.time('getPodIndexBySocket');
   let index = -1;
   for (let i = 0; i < _pods.length; i += 1) {
@@ -152,7 +152,7 @@ const getPodIndexBySocket = (socket: ClientSocket | ServerSocket, _pods: Pod[]):
  * Checks if the provided address is a valid node address. A valid node address is a 130digit hex string.
  * @param address  Address to check.
  */
-const isValidAddress = (address: string): boolean => {
+const isValidAddress = (address: string) => {
   if (address.length !== 130) {
     // console.log(`Invalid public key length. Expected 130, got: ${address.length}`);
     return false;
@@ -176,7 +176,7 @@ const isValidAddress = (address: string): boolean => {
  * @param max  Maximum end of range
  * @param floor  Determines whether the returned number should be rounded down
  */
-const randomNumberFromRange = (min: number, max: number, floor = true): number => {
+const randomNumberFromRange = (min: number, max: number, floor = true) => {
   const randomNumber = (Math.random() * (max - min)) + min;
   return floor ? Math.floor(randomNumber) : randomNumber;
 };
@@ -185,7 +185,7 @@ const randomNumberFromRange = (min: number, max: number, floor = true): number =
  * Converts a byte array into a hex string
  * @param byteArray  Byte array to be converted
  */
-const toHexString = (byteArray: any[]): string => {
+const toHexString = (byteArray: any[]) => {
   return Array.from(byteArray, (byte: any) => {
     // tslint:disable-next-line:prefer-template
     return ('0' + (byte & 0xFF).toString(16)).slice(-2);
@@ -195,7 +195,7 @@ const toHexString = (byteArray: any[]): string => {
 /**
  * Creates a dummy transaction.
  */
-const createDummyTransaction = (): Transaction => {
+const createDummyTransaction = () => {
   const tx = new Transaction('', '', 0, 0);
   return tx;
 };

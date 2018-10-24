@@ -58,14 +58,14 @@ class Transaction {
     // this.partnerTwo = partnerTwo;
   }
 
-  assignValidatorsToTransaction = (validators: Pod[]): void => {
+  assignValidatorsToTransaction = (validators: Pod[]) => {
     this.witnessOne = validators[0].address || '';
     this.witnessTwo = validators[1].address || '';
     this.partnerOne = validators[2].address || '';
     this.partnerTwo = validators[3].address || '';
   }
 
-  generateSignature = (): string => {
+  generateSignature = () => {
     // console.log('generateSignature');
     new LogEvent(
       this.from,
@@ -86,7 +86,7 @@ class Transaction {
     return signature;
   }
 
-  generateHash = (): string => {
+  generateHash = () => {
     // console.log('generateHash');
     new LogEvent(
       this.from,
@@ -115,7 +115,7 @@ class Transaction {
     return hash;
   }
 
-  getValidators(): Pod[] {
+  getValidators() {
     // console.log('getValidators');
     const pods = getPods();
     return [
@@ -177,9 +177,9 @@ const numSnapshotNodes = 4;     // Default is 8
 const genesisTimestamp: number = 1525278308842;
 const genesisAddress: string = '04bfcab8722991ae774db48f934ca79cfb7dd991229153b9f732ba5334aafcd8e7266e47076996b55a14bf9913ee3145ce0cfc1372ada8ada74bd287450313534a';
 const genesisAmount: number = 500;
-const getGenesisAddress = (): string => genesisAddress;
+const getGenesisAddress = () => genesisAddress;
 
-const genesisTransaction = (publicKey: string): Transaction => {
+const genesisTransaction = (publicKey: string) => {
   // console.log('genesisTransaction');
   const localTestConfig = getTestConfig();
   const localSelectedPods = getSelectedPods();
@@ -194,7 +194,7 @@ const genesisTransaction = (publicKey: string): Transaction => {
   return transaction;
 };
 
-const getTransactionId = (transaction: Transaction): string => {
+const getTransactionId = (transaction: Transaction) => {
   // console.time('generateTransactionId');
   const { to, from, witnessOne, witnessTwo, partnerOne, partnerTwo, timestamp } = transaction;
   const transactionId = CryptoJS.SHA256(`${witnessOne}${witnessTwo}${partnerOne}${partnerTwo}${to}${from}${timestamp}`).toString();
@@ -202,7 +202,7 @@ const getTransactionId = (transaction: Transaction): string => {
   return transactionId;
 };
 
-const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledger): void => {
+const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledger) => {
   // console.time('transaction');
   // console.log('[requestValidateTransaction]');
   new LogEvent(
@@ -271,7 +271,7 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
   }
 };
 
-const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise<Result> => {
+const validateLedger = async (senderLedger: Ledger, transaction: Transaction): Promise<Result> => {
   // console.time(`validateLedger-${transaction.id}`);
   const pods = getPods();
   const localTestConfig = getTestConfig();
@@ -286,7 +286,7 @@ const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise
   if (senderLedger.entries.length === 1) {
     if (senderLedger.entries[0].from === getGenesisAddress()) {
       // console.log('Initial genesis transaction for wallet. Skipping...');
-      return new Promise((resolve, reject) => {
+      return await new Promise<Result>((resolve, reject) => {
         if (transaction.amount < genesisAmount) {
           const result = new Result(true, '', transaction.id);
           resolve(result);
