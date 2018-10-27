@@ -71,6 +71,16 @@ let localTestConfig = new TestConfig(60, 2, true, false, 'TEMP');
 
 const validationResults: { [txId: string]: IValidationResult[] } = {};
 
+const ioClientOpts = {
+  transports: ['websocket'],
+  reconnectionDelay: 1000,
+  reconnection: true,
+  reconnectionAttempts: 10,
+  agent: false,
+  upgrade: false,
+  rejectUnauthorized: false,
+};
+
 /**
  *
  *
@@ -129,7 +139,7 @@ const getPort = (): number => port;
  * @param {Pod} receiver
  */
 const beginTest = (receiver: Pod): void => {
-  debug('beginTest');
+  debug('[beginTest]');
   selectedReceiver = receiver;
   startTime = getCurrentTimestamp();
   endTime = startTime + localTestConfig.duration;
@@ -178,12 +188,19 @@ const loopTest = (): void => {
  * @param {ServerSocket} socket
  */
 const handleCloseConnection = (socket: ServerSocket, reason: string): void => {
+  console.log(socket.id);
   const pod = pods[getPodIndexBySocket(socket, pods)];
-  pods.splice(pods.indexOf(pod), 1);
-  const numRegular = pods.filter(pod => pod.podType === 0).length;
-  const numPartner = pods.filter(pod => pod.podType === 1).length;
+  if (pod) {
+    pod.active = false;
+  }
+  else {
+    console.log('[handleCloseConnection] Pod does not exist in pod array');
+  }
+  const activePods = pods.filter(pod => pod.active === true);
+  const numRegular = activePods.filter(pod => pod.podType === 0).length;
+  const numPartner = activePods.filter(pod => pod.podType === 1).length;
   console.log(`Connection with a socket closed. || Reason: ${reason}`);
-  console.log(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`); // temporary. zeit doesnt show debug messages
+  console.log(`Active Pods: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`); // temporary. zeit doesnt show debug messages
   // info(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
   io.emit('message', podListUpdated(pods));
 };
@@ -268,6 +285,7 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
         info('Selected for validation. Validating...');
         const { transaction, senderLedger }:
           { transaction: Transaction, senderLedger: Ledger } = JSON.parse(data);
+        info('Message parsed.');
         new LogEvent(
           transaction.from,
           transaction.to,
@@ -276,11 +294,12 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
           LogLevel.INFO,
         );
         validateTransaction(transaction, senderLedger, (responses: (Result | Ledger | ISnapshotResponse)[]) => {
+          info('[validateTransaction]');
           const _tx = createDummyTransaction();
           Object.assign(_tx, transaction);
 
           let validationResult = true;
-          info(`[validateTransaction] Responses: ${JSON.stringify(responses)}`);
+          // info(`[validateTransaction] Responses: ${JSON.stringify(responses)}`);
           const results = responses.filter(response => response instanceof Result) as Result[];
           const snapshots = responses.filter(response => response.hasOwnProperty('snapshotOwner')) as ISnapshotResponse[];
           let receiverLedger = {} as Ledger;
@@ -314,10 +333,10 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
               const target = targets[i];
               const pod = pods[getPodIndexByPublicKey(target, pods)];
               const podIp = getPodIp(localTestConfig.local, pod);
-              const snapshotSocket = ioClient(podIp);
+              const snapshotSocket = ioClient(podIp, ioClientOpts);
               snapshotSocket.on('connect', () => {
                 write(snapshotSocket, snapshotMapUpdated(localSnapshotMap));
-                socket.disconnect();
+                snapshotSocket.disconnect();
               });
             }
           }
@@ -329,8 +348,8 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
             EventType.REQUEST_VALIDATION_END,
             LogLevel.INFO,
           );
-          console.log(io.clients);
           socket.emit('message', responseIsTransactionValid(results, _tx));
+          socket.disconnect();
         });
         break;
       }
@@ -340,6 +359,7 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
         // console.log(`Selected to confirm a transaction hash for transaction with id: ${transactionId}.`);
         const result = validateTransactionHash(transactionId, currentTransactionId, hash);
         socket.emit('message', responseIsTransactionHashValid(result));
+        socket.disconnect();
         break;
       }
       case MessageType.SNAPSHOT_REQUEST: {
@@ -347,12 +367,14 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
         const senderSnapshots = localSnapshotMap[snapshotOwner].snapshots;
         const lastSnapshot = senderSnapshots[senderSnapshots.length - 1] || '';
         socket.emit('message', responseSnapshotMsg({ snapshotOwner, transactionId, snapshot: lastSnapshot }));
+        socket.disconnect();
         break;
       }
       case MessageType.LEDGER_REQUEST: {
         const { transactionId, ledgerType }: { transactionId: string, ledgerType: LedgerType } = JSON.parse(data);
         const ledger = getLedger(ledgerType);
         socket.emit('message', responseLedgerMsg({ transactionId, ledger }));
+        socket.disconnect();
         break;
       }
     }
@@ -376,7 +398,7 @@ const handleMessageAsClient = (socket: ClientSocket, message: IMessage): void =>
     const { type, data }: { type: number, data: any } = message;
     switch (type) {
       case MessageType.VALIDATION_RESULT: {
-        debug(JSON.stringify(data));
+        // debug(JSON.stringify(data));
         const { transaction }: { transaction: Transaction } = JSON.parse(data);
         if (!validationResults.hasOwnProperty(transaction.id)) {
           validationResults[transaction.id] = [];
@@ -384,6 +406,7 @@ const handleMessageAsClient = (socket: ClientSocket, message: IMessage): void =>
         const publicKey = getPublicFromWallet();
         if (transaction.from === publicKey || transaction.to === publicKey) {
           validationResults[transaction.id].push({ socket, message });
+          socket.disconnect();
         }
         else {
           err('Node received validation result meant for another node.');
@@ -397,7 +420,7 @@ const handleMessageAsClient = (socket: ClientSocket, message: IMessage): void =>
         // console.log('Pod list updated...');
         const _data = JSON.parse(data);
         if (_data.length === undefined) {
-          // console.log(`Pod list received was undefined. Ignoring. TEMPORARY, TRACK DOWN message SOURCE.`);
+          err('Pod list received was undefined. Ignoring. TEMPORARY, TRACK DOWN message SOURCE.');
           break;
         }
         pods = _data;
@@ -473,7 +496,8 @@ const handleNewConnection = (socket: ServerSocket): void => {
     handleMessageAsServer(socket, message);
   });
   if (isSeed) {
-    socket.on('disconnect', reason =>  handleCloseConnection(socket, reason));
+    socket.on('reconnect', () => handleMessageAsServer(socket, podReconnectMsg()));
+    socket.on('disconnect', reason => handleCloseConnection(socket, reason));
     socket.on('error', error => handleCloseConnection(socket, error));
   }
 };
@@ -488,7 +512,7 @@ const handleValidationResults = (transactionId: string): void => {
   const _validationResults = validationResults[transactionId];
   for (let i = 0; i < _validationResults.length; i += 1) {
     const validationResult = _validationResults[i];
-    const { socket, message } = validationResult;
+    const { message } = validationResult;
     const { results }:
       { results: Result[] } = JSON.parse(message.data);
     results.map((result) => {
@@ -500,7 +524,6 @@ const handleValidationResults = (transactionId: string): void => {
         console.log(`Validation Result returned ${result.res}`);
         console.log(`Reason: ${result.reason}`);
       }
-      socket.disconnect();
     });
   }
   if (isValid) {
@@ -516,6 +539,10 @@ const handleValidationResults = (transactionId: string): void => {
         updateLedger(_tx, 0);
       }
     }
+  }
+  else {
+    info('Last transaction failed. Looping...');
+    loopTest();
   }
 };
 
@@ -534,7 +561,7 @@ const initP2PNode = (server: http.Server): void => {
     return;
   }
   const pod = new Pod(type, port);
-  const socket: ClientSocket = ioClient(config.seedServerIp);
+  const socket: ClientSocket = ioClient(config.seedServerIp, ioClientOpts);
   localSocket = socket;
   socket.on('connect', () => {
     pod.socketId = socket.id;
@@ -555,7 +582,7 @@ const initP2PNode = (server: http.Server): void => {
 
 const initP2PServer = (server: http.Server): any => {
   // console.log('initP2PServer');
-  io = socketIo({ wsEngine: 'ws' });
+  io = socketIo();
   io.listen(server);
   io.on('connection', (socket: ServerSocket) => {
     // console.log('[initP2PServer] handleMessage');
