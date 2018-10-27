@@ -8,6 +8,7 @@ const PodSchema = new mongoose.Schema({
   port: Number,
   ip: String,
   socketId: String,
+  active: Boolean,
 });
 
 export { PodSchema };
