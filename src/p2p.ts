@@ -612,8 +612,12 @@ const wipeLedgers = (): void => {
   io.emit('message', wipeLedgersMsg());
 };
 
+const flushPodList = (): void => {
+  pods = [];
+};
+
 export {
   beginTest, loopTest, initP2PServer, initP2PNode, getPods, getIo, getServer, getTestConfig, write, handleMessageAsClient, IMessage,
   killAll, isTransactionHashValid, MessageType, wipeLedgers, getSelectedPods, ClientSocket,
-  ServerSocket, Server, getPort, getSnapshotMap,
+  ServerSocket, Server, getPort, getSnapshotMap, flushPodList,
 };

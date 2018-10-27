@@ -11,7 +11,7 @@ import { AWSRegionCode, createEC2Cluster, terminateEC2Cluster } from './aws';
 import { EventType, LogEvent, LogLevel } from './logEvent';
 import { info } from './logger';
 import { sendTestConfig } from './message';
-import { getIo, getPods, initP2PNode, initP2PServer, killAll } from './p2p';
+import { getIo, getPods, initP2PNode, initP2PServer, killAll, flushPodList } from './p2p';
 import { Pod, PodType } from './pod';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
@@ -102,6 +102,11 @@ const initHttpServer = (port: number, callback = (server: http.Server) => {}): v
   app.get('/killAll', (req, res) => {
     killAll();
     res.send('Killed all nodes.');
+  });
+
+  app.get('/flushPodList', (req, res) => {
+    flushPodList();
+    res.send('Flushed pod list.');
   });
 
   /**
