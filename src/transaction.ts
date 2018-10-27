@@ -17,7 +17,7 @@ import {
   MessageType,
   write,
 } from './p2p';
-import { Pod, PodType } from './pod';
+import { Pod } from './pod';
 import { Result } from './result';
 import { selectRandom } from './rngTool';
 import { TestConfig } from './testConfig';
@@ -259,19 +259,22 @@ const requestValidateTransaction = (transaction: Transaction, senderLedger: Ledg
       socket.once('message', (message: IMessage) => {
         handleMessageAsClient(socket, message);
       });
-      socket.once('disconnect', () => {
-        // console.log('[requestValidateTransaction] socket disconnected.');
+      socket.on('disconnect', (reason: any) => {
+        info(`Disconnected from peer. Reason: ${reason}`);
       });
-      setTimeout(() => { reject(`Connection to ${podIp} could not be made in 10 seconds.`); }, 10000);
+      socket.on('error', (error: any) => info(`[requestValidateTransaction] Error: ${error}`));
+      socket.on('reconnect_attempt', () => {
+        info('Attempting to reconnect...');
+      });
     }).then((fulfilled) => {
-      // console.log(fulfilled);
-    }, (rejected) => {
-      console.log(rejected);
+      debug(fulfilled);
+    }).catch((rejected: Result) => {
+      info(rejected.reason);
     });
   }
 };
 
-const validateLedger = async (senderLedger: Ledger, transaction: Transaction): Promise<Result> => {
+const validateLedger = (senderLedger: Ledger, transaction: Transaction): Promise<Result> => {
   // console.time(`validateLedger-${transaction.id}`);
   const pods = getPods();
   const localTestConfig = getTestConfig();

@@ -20,6 +20,7 @@ import {
   responseSnapshotMsg,
   snapshotMapUpdated,
   wipeLedgersMsg,
+  podReconnectMsg,
 } from './message';
 import { Pod } from './pod';
 import { Result } from './result';
@@ -205,22 +206,61 @@ const handleMessageAsServer = (socket: ServerSocket, message: IMessage): void =>
     switch (type) {
       case MessageType.RESPONSE_IDENTITY: {
         info('Received Pod Identity');
-        const pod: Pod = JSON.parse(data);
-        if (getPodIndexByPublicKey(pod.address, pods) === -1) {
-          debug(`Local IP of connecting node: ${pod.localIp}`);
+        const newPod: Pod = JSON.parse(data);
+        const podIndex = getPodIndexByPublicKey(newPod.address, pods);
+        if (podIndex === -1) {
+          debug(`Local IP of connecting node: ${newPod.localIp}`);
+          newPod.active = true;
           // @ts-ignore
-          pod.ip = socket['handshake'].headers['x-real-ip'];
-          pods.push(pod);
+          newPod.ip = socket['handshake'].headers['x-real-ip'];
+          pods.push(newPod);
           if (isSeed) {
-            const numRegular = pods.filter(_pod => _pod.podType === 0).length;
-            const numPartner = pods.filter(_pod => _pod.podType === 1).length;
-            console.log(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`); // temporary
+            const regularPods = pods.filter(_pod => _pod.podType === 0);
+            const numRegular = regularPods.length;
+            const numRegularActive = regularPods.filter(_pod => _pod.active === true).length;
+            const partnerPods = pods.filter(_pod => _pod.podType === 1);
+            const numPartner = partnerPods.length;
+            const numPartnerActive = partnerPods.filter(_pod => _pod.active === true).length;
+
+            console.log(`New Pod Joined           | [Regular: ${numRegularActive}/${numRegular}, Partner: ${numPartnerActive}/${numPartner}, Total: ${numRegularActive + numPartnerActive}/${numRegular + numPartner}]`); // temporary
             // info(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
             io.emit('message', podListUpdated(pods));
           }
         }
         else {
-          info('Pod already exists in Pods, do nothing.');
+          info('Pod already exists in Pods, re-enabling...');
+          const existingPod = pods[podIndex];
+          existingPod.active = true;
+          if (isSeed) {
+            const regularPods = pods.filter(_pod => _pod.podType === 0);
+            const numRegular = regularPods.length;
+            const numRegularActive = regularPods.filter(_pod => _pod.active === true).length;
+            const partnerPods = pods.filter(_pod => _pod.podType === 1);
+            const numPartner = partnerPods.length;
+            const numPartnerActive = partnerPods.filter(_pod => _pod.active === true).length;
+
+            console.log(`Existing Pod Reconnected | [Regular: ${numRegularActive}/${numRegular}, Partner: ${numPartnerActive}/${numPartner}, Total: ${numRegularActive + numPartnerActive}/${numRegular + numPartner}]`); // temporary
+            // info(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
+            io.emit('message', podListUpdated(pods));
+          }
+        }
+        break;
+      }
+      case MessageType.POD_RECONNECTED: {
+        const podIndex = getPodIndexBySocket(socket, pods);
+        const pod = pods[podIndex];
+        pod.active = true;
+        if (isSeed) {
+          const regularPods = pods.filter(_pod => _pod.podType === 0);
+          const numRegular = regularPods.length;
+          const numRegularActive = regularPods.filter(_pod => _pod.active === true).length;
+          const partnerPods = pods.filter(_pod => _pod.podType === 1);
+          const numPartner = partnerPods.length;
+          const numPartnerActive = partnerPods.filter(_pod => _pod.active === true).length;
+
+          console.log(`Existing Pod Reconnected | [Regular: ${numRegularActive}/${numRegular}, Partner: ${numPartnerActive}/${numPartner} , Total: ${numRegularActive + numPartnerActive}/${numRegular + numPartner}]`); // temporary
+          // info(`Pod Breakdown: [Regular: ${numRegular}, Partner: ${numPartner}, Total: ${numRegular + numPartner}]`);
+          io.emit('message', podListUpdated(pods));
         }
         break;
       }

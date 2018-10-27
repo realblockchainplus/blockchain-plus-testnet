@@ -12,10 +12,11 @@ const selectRandom = (pods: Pod[], num: number, to: string = ''): Pod[] => {
     EventType.SELECT_RANDOM_PODS_START,
     LogLevel.SILLY,
   );
-  const randomNumbers: number[] = buildRandomSet(pods, num, to);
+  const activePods = pods.filter(pod => pod.active === true);
+  const randomNumbers: number[] = buildRandomSet(activePods, num, to);
   const _pods: Pod[] = [];
   for (let i = 0; i < randomNumbers.length; i += 1) {
-    _pods.push(pods[randomNumbers[i]]);
+    _pods.push(activePods[randomNumbers[i]]);
   }
   new LogEvent(
     '',
@@ -34,12 +35,12 @@ const buildRandomSet = (pods: Pod[], num: number, to: string): number[] => {
   const myIndex = getPodIndexByPublicKey(getPublicFromWallet(), pods);
   let randomNumber;
   // console.log(num, pods.length);
-  // console.dir(pods);
   const numInvalidPods = myIndex !== -1 ? 1 : 0;   // cannot select self
-  info(`[buildRandomSet] Number of pods: ${pods.length}`);
-  if (pods.length - numInvalidPods >= num) {
+  const podsLength = pods.length;
+  info(`[buildRandomSet] Number of pods: ${podsLength}`);
+  if (podsLength - numInvalidPods >= num) {
     while (randomSet.length < num) {
-      randomNumber = randomNumberFromRange(0, pods.length, true);
+      randomNumber = randomNumberFromRange(0, podsLength, true);
       // console.log(`Random Number: ${randomNumber}, MyIndex: ${myIndex}`);
       if (randomSet.indexOf(randomNumber) === -1 && randomNumber !== myIndex) {
         // console.log('Random number not in set, adding.');

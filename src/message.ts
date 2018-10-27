@@ -38,6 +38,7 @@ enum MessageType {
   SNAPSHOT_MAP_UPDATED = 15,
   LEDGER_REQUEST = 16,
   LEDGER_RESULT = 17,
+  POD_RECONNECTED = 18,
 }
 
 /**
@@ -270,6 +271,16 @@ const testStartMsg = (): IMessage => ({
 /**
  *
  *
+ * @returns {IMessage}
+ */
+const podReconnectMsg = (): IMessage => ({
+  type: MessageType.POD_RECONNECTED,
+  data: null,
+});
+
+/**
+ *
+ *
  * @param {LogEvent} event
  * @returns {IMessage}
  */
@@ -283,5 +294,5 @@ export {
   podListUpdated, responseIdentityMsg, responseIsTransactionHashValid,
   responseIsTransactionValid, sendTestConfig, wipeLedgersMsg, testStartMsg,
   logEventMsg, requestSnapshotMsg, responseSnapshotMsg, snapshotMapUpdated,
-  requestLedgerMsg, responseLedgerMsg,
+  requestLedgerMsg, responseLedgerMsg, podReconnectMsg,
 };

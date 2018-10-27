@@ -9,6 +9,7 @@ class Pod {
   public port: number;
   public ip: string;
   public socketId: string;
+  public active: boolean;
 
   constructor(podType: PodType, port: number) {
     this.podType = podType;
@@ -18,6 +19,7 @@ class Pod {
     this.port = port;
     this.ip = '';
     this.socketId = '';
+    this.active = false;
   }
 }
 
