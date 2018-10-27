@@ -1,3 +1,5 @@
+import * as minimist from 'minimist';
+
 import { conn } from './db';
 import { debug } from './logger';
 import { LogEventSchema } from './models/logEvent.model';
@@ -6,6 +8,9 @@ import { Pod } from './pod';
 import { TestConfig } from './testConfig';
 import { getCurrentTimestamp, getPodIndexByPublicKey } from './utils';
 import { getPublicFromWallet } from './wallet';
+
+const argv = minimist(process.argv.slice(2));
+const loggingEnabled = argv.l === 'true';
 
 /**
  *
@@ -63,15 +68,17 @@ class LogEvent {
    * @memberof LogEvent
    */
   sendToDb() {
-    if (conn.readyState === 1) {
-      // console.log('Connection is ready. Sending...');
-      this.sendLogEvent();
-    }
-    else {
-      conn.once('open', () => {
-        // console.log('Connection is now open. Sending...');
+    if (loggingEnabled) {
+      if (conn.readyState === 1) {
+        // console.log('Connection is ready. Sending...');
         this.sendLogEvent();
-      });
+      }
+      else {
+        conn.once('open', () => {
+          // console.log('Connection is now open. Sending...');
+          this.sendLogEvent();
+        });
+      }
     }
   }
 

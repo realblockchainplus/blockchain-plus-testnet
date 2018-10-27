@@ -1,5 +1,4 @@
 import * as bodyParser from 'body-parser';
-import { spawn } from 'child_process';
 import * as cors from 'cors';
 import * as dotenv from 'dotenv';
 dotenv.config();
@@ -27,9 +26,7 @@ const config = require('../node/config/config.json');
 // * p = Port (number)
 // * s = isSeed (boolean)
 // * t = podType (podType)
-// * c = isCluster (boolean)
-// * np = numPartner (number)
-// * nr = numRegular (number)
+// * l = isLogging (boolean)
 const argv = minimist(process.argv.slice(2));
 
 // Arbitrary range
@@ -39,11 +36,6 @@ const portMax = config.portMax;
 // Either a port is passed through the npm run command, or a random port is selected
 // For non-local tests the port 80 is passed through npm run
 const port = parseInt(argv.p, 10) || randomNumberFromRange(portMin, portMax, true);
-
-// For local testing a cluster is created
-const localCluster = argv.c === 'true';
-const numRegular = argv.nr || 0;
-const numPartner = argv.np || 0;
 
 /**
  * Initializes a http server with a limited API to allow for
@@ -191,25 +183,12 @@ const initHttpServer = (port: number, callback = (server: http.Server) => {}): v
   });
 };
 
-// Used with `npm run start-cluster-local`. Does not work properly.
-if (localCluster) {
-  for (let i = 0; i < numRegular; i += 1) {
-    info('Spawning Regular node...');
-    spawn('npm.cmd', ['run', 'start-regular-local']);
-  }
-  for (let i = 0; i < numPartner; i += 1) {
-    info('Spawning Partner node...');
-    spawn('npm.cmd', ['run', 'start-partner-local']);
-  }
-}
-else {
-  initHttpServer(port, (server) => {
-    const address = server.address() as AddressInfo;
-    info(`[Node] New Node created on port: ${address.port}`);
-    initWallet(address.port);
-    initP2PServer(server);
-    initP2PNode(server);
-  });
-}
+initHttpServer(port, (server) => {
+  const address = server.address() as AddressInfo;
+  info(`[Node] New Node created on port: ${address.port}`);
+  initWallet(address.port);
+  initP2PServer(server);
+  initP2PNode(server);
+});
 
 export { initHttpServer, port };
